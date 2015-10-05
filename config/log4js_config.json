@@ -1,0 +1,23 @@
+{
+  "appenders": [
+    {
+      "type": "fileSync",
+      "filename": "app.log",
+      "level":"DEBUG",
+      "category": "app"
+    },
+    {
+      "type": "fileSync",
+      "filename": "Limit.log",
+      "level":"DEBUG",
+      "category": "limapi"
+    },
+    {
+      "type": "fileSync",
+      "filename": "CallServerPicker.log",
+      "level":"DEBUG",
+      "category": "shdlapi"
+    }
+
+  ]
+}
