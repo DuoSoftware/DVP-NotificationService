@@ -5,7 +5,7 @@
  * Created by Pawan on 10/5/2015.
  */
 var io = require('socket.io-client');
-var socket = io('http://localhost:8081');
+var socket = io('http://localhost:8081', { query: "myid=cli_002" });
 var config=require('config');
 
 socket.on('connect', function(){
@@ -24,7 +24,9 @@ socket.on('news', function(data){
     console.log(data);
     socket.disconnect();
 });
-socket.on('userID',function()
+
+/*socket.on('userID',function()
 {
     socket.emit('user','user2');
 });
+    */

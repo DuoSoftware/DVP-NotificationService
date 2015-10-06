@@ -46,11 +46,16 @@ var Clients=new Array();
 
 io.sockets.on('connection', function (socket) {
 
-    console.log("new user registered : "+socket.id);
+    console.log("new user registered : "+socket.id+" user id -" + socket.handshake.query.myid);
+    var ClientID=socket.handshake.query.myid;
+    Clients[ClientID]= socket;
+    console.log("User added : Client - "+ClientID+" Socket - "+Clients[ClientID].id);
 
-    socket.emit('userID',null);
 
-    socket.on('user',function(data)
+
+    //socket.emit('userID',null);
+
+    /*socket.on('user',function(data)
     {
        console.log(data);
         if(data)
@@ -64,6 +69,7 @@ io.sockets.on('connection', function (socket) {
             console.log("Error No data")
         }
     });
+    */
 
 
    /* {
@@ -101,7 +107,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
     {
         console.log("Socket found....");
         //socket.emit('message',Message);
-        redisManager.SocketObjectManager(Tkey,socket.id,ClientID,Direction,function(errRedis,resRedis)
+        redisManager.SocketObjectManager(Tkey,socket.id,ClientID,Direction,'user001',function(errRedis,resRedis)
         {
             if(errRedis)
             {
@@ -111,7 +117,13 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
             else
             {
                 console.log("Done redis");
-                socket.emit('message',Message);
+
+                var MsgObj={
+
+                    "Message":Message,
+                    "TopicKey":Tkey
+                };
+                socket.emit('message',MsgObj);
                 res.end(Tkey);
                /* socket.on('reply',function(data)
                 {
@@ -166,8 +178,8 @@ res.end(errRedis);
         else
         {
 
-            console.log(resRedis[0]);
-            ClientID=resRedis[0];
+            console.log(resRedis[1]);
+            ClientID=resRedis[1];
             console.log("Socket found "+ClientID);
             var socket=GetSocketData(ClientID);
             if(socket)

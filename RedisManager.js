@@ -11,9 +11,9 @@ client.on("error", function (err) {
 });
 
 
-SocketObjectManager = function(TopicID,socketID,clientID,direction,callback)
+SocketObjectManager = function(TopicID,socketID,clientID,direction,From,callback)
 {
-    client.hmset([TopicID,"Client",clientID,"Socket",socketID,"Direction",direction],function(errHmset,resHmset)
+    client.hmset([TopicID,"From",From,"Client",clientID,"Socket",socketID,"Direction",direction],function(errHmset,resHmset)
     {
         if(errHmset)
         {
