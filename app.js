@@ -22,6 +22,8 @@ var RestServer = restify.createServer({
     version: '1.0.0'
 });
 
+var request = require('request');
+
 var io = socketio.listen(RestServer.server);
 
 restify.CORS.ALLOW_HEADERS.push('authorization');
@@ -43,6 +45,7 @@ RestServer.use(restify.acceptParser(RestServer.acceptable));
 RestServer.use(restify.queryParser());
 
 var Clients=new Array();
+var Refs=new Array();
 
 io.sockets.on('connection', function (socket) {
 
@@ -88,7 +91,41 @@ io.sockets.on('connection', function (socket) {
 
     socket.on('reply',function(data)
     {
-       console.log("Reply : - "+data+" of "+socket.id);
+        console.log("Reply is comming");
+        var TK=data.Tkey;
+        console.log(TK);
+         redisManager.SocketFinder(TK,function(errRedis,resRedis)
+    {
+        if(errRedis)
+        {
+console.log("ERR "+errRedis);
+        }
+        else
+        {
+            console.log(resRedis);
+            var URL=resRedis[3];//"http://192.168.0.15:2226/DVP/DialerAPI/ResumeCallback";//
+            console.log(URL);
+
+            var ReplyObj={
+                reply:data,
+                ref:Refs[TK]
+            };
+            var optionsX = {url: URL, method: "POST", json: ReplyObj};
+            request(optionsX, function (errorX, responseX, dataX) {
+
+                if (!errorX && responseX != undefined && responseX.statusCode == 200) {
+
+                    //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [SOCKET] - Socket Disconnection request sends successfully   ',JSON.stringify(responseX.body));
+                   // socket.send(responseX.body);
+                    console.log("Sent "+data+" To "+URL);
+
+
+                }
+            });
+
+        }
+    });
+       //console.log("Reply : - "+data+" of "+socket.id);
     });
 
 
@@ -97,17 +134,22 @@ io.sockets.on('connection', function (socket) {
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',function(req,res,next)
 {
+    console.log("New request");
     var ClientID=req.body.To;
     var Direction=req.body.Direction;
     var Tkey=TopicIdGenerator();
     var Message=req.body.message;
+    var CallBk=req.body.clbk;
+    var ref=req.body.Ref;
+
+    Refs[Tkey]= ref;
 
     var socket=GetSocketData(ClientID);
     if(socket)
     {
         console.log("Socket found....");
         //socket.emit('message',Message);
-        redisManager.SocketObjectManager(Tkey,socket.id,ClientID,Direction,'user001',function(errRedis,resRedis)
+        redisManager.SocketObjectManager(Tkey,socket.id,ClientID,Direction,'user001',CallBk,function(errRedis,resRedis)
         {
             if(errRedis)
             {
@@ -167,6 +209,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/push',fun
     //var Direction=req.body.Direction;
     var Tkey=req.body.TokenKey;
     var Message=req.body.message;
+    Refs[Tkey]= ref;
 
     redisManager.SocketFinder(Tkey,function(errRedis,resRedis)
     {
@@ -178,8 +221,8 @@ res.end(errRedis);
         else
         {
 
-            console.log(resRedis[1]);
-            ClientID=resRedis[1];
+            console.log(resRedis[0]);
+            ClientID=resRedis[0];
             console.log("Socket found "+ClientID);
             var socket=GetSocketData(ClientID);
             if(socket)

@@ -31,7 +31,10 @@ socket.on('message', function(data){
     });
     */
     console.log('new message recieved from '+socket.id);
-    socket.emit('reply',"message1 from user1");
+
+    console.log("Message "+Message);
+    var MsgObj={message:"Message fromC Client",Tkey:TopicKey};
+    socket.emit('reply',MsgObj);
     // socket.emit('reply',"this is a reply 2");
     //socket.disconnect();
 });

@@ -11,9 +11,9 @@ client.on("error", function (err) {
 });
 
 
-SocketObjectManager = function(TopicID,socketID,clientID,direction,From,callback)
+SocketObjectManager = function(TopicID,socketID,clientID,direction,From,cburl,callback)
 {
-    client.hmset([TopicID,"From",From,"Client",clientID,"Socket",socketID,"Direction",direction],function(errHmset,resHmset)
+    client.hmset([TopicID,"From",From,"Client",clientID,"Socket",socketID,"Direction",direction,"Callback",cburl],function(errHmset,resHmset)
     {
         if(errHmset)
         {
@@ -30,7 +30,7 @@ SocketObjectManager = function(TopicID,socketID,clientID,direction,From,callback
 
 SocketFinder = function(TopicID,callback)
 {
-    client.hmget(TopicID,"Client","Socket","Direction",function(errUser,resUser)
+    client.hmget(TopicID,"Client","Socket","Direction","Callback",function(errUser,resUser)
     {
         if(errUser)
         {
