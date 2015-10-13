@@ -6,12 +6,13 @@ var socket = io('http://localhost:8081', { query: "myid=cli_001" });
 var config=require('config');
 //var redisManager=require('./RedisManager.js');
 
-socket.on('connect', function(){
+/*socket.on('connect', function(){
 
     console.log("Connected");
     //socket.emit('userID','usr001');
 
 });
+*/
 
 socket.on('message', function(data){
 
