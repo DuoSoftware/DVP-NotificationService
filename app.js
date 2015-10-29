@@ -7,9 +7,9 @@ var restify = require('restify');
 var socketio = require('socket.io');
 
 var redisManager=require('./RedisManager.js');
+//var RedisMgr=require('./RedisManager.js');
 
-
-var port = 8081;//config.Host.port || 3000;
+var port = config.Host.port || 3000;
 var version=config.Host.version;
 var hpath=config.Host.hostpath;
 

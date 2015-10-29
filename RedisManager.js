@@ -3,9 +3,9 @@
  */
 var redis=require('redis');
 var config = require('config');
-var port = config.Host.port || 3000;
+var port = config.Redis.port || 3000;
 var client = redis.createClient(config.Redis.port,config.Redis.ip);
-var io = require('socket.io')(config.Host.port);
+//var io = require('socket.io')(config.Host.port);
 client.on("error", function (err) {
     console.log("Error " + err);
 });
