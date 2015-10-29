@@ -59,26 +59,26 @@ io.sockets.on('connection', function (socket) {
     //socket.emit('userID',null);
 
     /*socket.on('user',function(data)
-    {
-       console.log(data);
-        if(data)
-        {
-            console.log("User id "+data);
-            Clients[data]= socket;
-            console.log("User added "+Clients[data].id);
-        }
-        else
-        {
-            console.log("Error No data")
-        }
-    });
-    */
+     {
+     console.log(data);
+     if(data)
+     {
+     console.log("User id "+data);
+     Clients[data]= socket;
+     console.log("User added "+Clients[data].id);
+     }
+     else
+     {
+     console.log("Error No data")
+     }
+     });
+     */
 
 
-   /* {
-       console.log("Socket id is "+data);
-    });
-    */
+    /* {
+     console.log("Socket id is "+data);
+     });
+     */
 
 
 
@@ -91,41 +91,42 @@ io.sockets.on('connection', function (socket) {
 
     socket.on('reply',function(data)
     {
-        console.log("Reply is comming");
+        console.log("Reply is coming");
         var TK=data.Tkey;
         console.log(TK);
-         redisManager.SocketFinder(TK,function(errRedis,resRedis)
-    {
-        if(errRedis)
+        console.log(data.message);
+        redisManager.SocketFinder(TK,function(errRedis,resRedis)
         {
-console.log("ERR "+errRedis);
-        }
-        else
-        {
-            console.log(resRedis);
-            var URL=resRedis[3];//"http://192.168.0.15:2226/DVP/DialerAPI/ResumeCallback";//
-            console.log(URL);
+            if(errRedis)
+            {
+                console.log("ERR "+errRedis);
+            }
+            else
+            {
+                console.log(resRedis);
+                var URL=resRedis[3];//"http://192.168.0.15:2226/DVP/DialerAPI/ResumeCallback";//
+                console.log(URL);
 
-            var ReplyObj={
-                reply:data,
-                ref:Refs[TK]
-            };
-            var optionsX = {url: URL, method: "POST", json: ReplyObj};
-            request(optionsX, function (errorX, responseX, dataX) {
+                var ReplyObj={
+                    reply:data,
+                    ref:Refs[TK]
+                };
+                var optionsX = {url: URL, method: "POST", json: ReplyObj};
+                request(optionsX, function (errorX, responseX, dataX) {
 
-                if (!errorX && responseX != undefined && responseX.statusCode == 200) {
+                    if (!errorX && responseX != undefined && responseX.statusCode == 200) {
 
-                    //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [SOCKET] - Socket Disconnection request sends successfully   ',JSON.stringify(responseX.body));
-                   // socket.send(responseX.body);
-                    console.log("Sent "+data+" To "+URL);
+                        //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [SOCKET] - Socket Disconnection request sends successfully   ',JSON.stringify(responseX.body));
+                        // socket.send(responseX.body);
+                        console.log("Sent "+data+" To "+URL);
 
 
-                }
-            });
+                    }
+                });
 
-        }
-    });
-       //console.log("Reply : - "+data+" of "+socket.id);
+            }
+        });
+        //console.log("Reply : - "+data+" of "+socket.id);
     });
 
 
@@ -138,8 +139,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
     var ClientID=req.body.To;
     var Direction=req.body.Direction;
     var Tkey=TopicIdGenerator();
-    var Message=req.body.message;
-    var CallBk=req.body.clbk;
+    var Message=req.body.Message;
+    var CallBk=req.body.Callback;
     var ref=req.body.Ref;
 
     Refs[Tkey]= ref;
@@ -167,13 +168,13 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                 };
                 socket.emit('message',MsgObj);
                 res.end(Tkey);
-               /* socket.on('reply',function(data)
-                {
-                    //res.send(data);
-                    //console.log(data);
-                    res.end()
-                });
-                /*socket.on('disconnect', function(){
+                /* socket.on('reply',function(data)
+                 {
+                 //res.send(data);
+                 //console.log(data);
+                 res.end()
+                 });
+                 /*socket.on('disconnect', function(){
 
                  console.log("Disconnected "+socket.id);
                  res.end('disconnected');
@@ -216,7 +217,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/push',fun
         if(errRedis)
         {
             console.log("Error in finding socket");
-res.end(errRedis);
+            res.end(errRedis);
         }
         else
         {
@@ -230,11 +231,11 @@ res.end(errRedis);
                 console.log("Socket found....");
                 socket.emit('message',Message);
                 res.end("New message sent to Client : "+ClientID);
-               /* socket.on('reply',function(data)
-                {
-                    res.end(data);
-                });
-                */
+                /* socket.on('reply',function(data)
+                 {
+                 res.end(data);
+                 });
+                 */
             }
             else
             {

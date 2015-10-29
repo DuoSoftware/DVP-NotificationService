@@ -11,9 +11,10 @@ client.on("error", function (err) {
 });
 
 
-SocketObjectManager = function(TopicID,socketID,clientID,direction,From,cburl,callback)
+SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,callback)
 {
-    client.hmset([TopicID,"From",From,"Client",clientID,"Socket",socketID,"Direction",direction,"Callback",cburl],function(errHmset,resHmset)
+    console.log("Redis Callback "+clbk);
+    client.hmset(TopicID,["From",From,"Client",clientID,"Socket",socketID,"Direction",direction,"Callback",clbk],function(errHmset,resHmset)
     {
         if(errHmset)
         {
