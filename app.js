@@ -108,19 +108,29 @@ io.sockets.on('connection', function (socket) {
                 console.log(URL);
 
                 var ReplyObj={
-                    reply:data,
-                    ref:Refs[TK]
+                    Reply:data,
+                    Ref:Refs[TK]
                 };
+                console.log("Replies .... "+JSON.stringify(ReplyObj));
                 var optionsX = {url: URL, method: "POST", json: ReplyObj};
                 request(optionsX, function (errorX, responseX, dataX) {
 
-                    if (!errorX && responseX != undefined && responseX.statusCode == 200) {
+                    if(errorX)
+                    {
+                        console.log("ERROR "+errorX);
+                    }
+
+                    else if (!errorX && responseX != undefined && responseX.statusCode == 200) {
 
                         //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [SOCKET] - Socket Disconnection request sends successfully   ',JSON.stringify(responseX.body));
                         // socket.send(responseX.body);
                         console.log("Sent "+data+" To "+URL);
 
 
+                    }
+                    else
+                    {
+                        console.log("Nooooooo");
                     }
                 });
 

@@ -107,8 +107,9 @@ function ConfigCollector(status)
         //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [READLINE] - Read line closed ');
         var r2 = readline.createInterface(process.stdin, process.stdout);
         console.log("Closing "+clentID);
-        var IP="http://"+Sip+":"+Sport;
-        var socket = io(IP, { query: "myid="+clentID });
+        //var IP="http://"+Sip+":"+Sport;
+        var fakeip="http://notificationservice.104.131.67.21.xip.io";
+        var socket = io(fakeip, { query: "myid="+clentID });
 
 
          socket.on('message', function(data){
@@ -125,7 +126,8 @@ function ConfigCollector(status)
          r2.on('line', function(line) {
 
          rep=line;
-         var MsgObj={message:rep,Tkey:TopicKey};
+         var MsgObj={Message:rep,Tkey:TopicKey};
+             console.log(MsgObj.Message);
          socket.emit('reply',MsgObj);
             // console.log(MsgObj.message);
 
