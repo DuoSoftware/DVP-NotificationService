@@ -214,7 +214,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
     if(!isNaN(req.body.Timeout))
     {
-        TTL =req.body.Timeout
+        TTL =req.body.Timeout;
+        console.log("TTL found "+TTL);
     }
     
     if(socket)
@@ -240,19 +241,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                 };
                 socket.emit('message',MsgObj);
                 res.end(Tkey);
-                /* socket.on('reply',function(data)
-                 {
-                 //res.send(data);
-                 //console.log(data);
-                 res.end()
-                 });
-                 /*socket.on('disconnect', function(){
 
-                 console.log("Disconnected "+socket.id);
-                 res.end('disconnected');
-
-                 });
-                 */
 
             }
 
@@ -260,7 +249,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
     }
     else
     {
-        //console.log("No SocketFound");
+        console.log("No Socket Found");
         res.status(400);
         res.end();
     }
@@ -376,6 +365,7 @@ TopicIdGenerator = function ()
 {
 
     var topicID=uuid.v1();
+    console.log("Token Key generated "+topicID);
     return topicID;
 
 
