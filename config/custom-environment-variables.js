@@ -22,6 +22,10 @@ module.exports = {
         "port": "HOST_NOTIFICATIONSERVICE_PORT",
         "version": "HOST_VERSION",
         "logfilepath": "LOG4JS_CONFIG"
+    },
+    "TTL":
+    {
+        "ttl":"SYS_TTL"
     }
 };
 

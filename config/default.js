@@ -26,5 +26,9 @@ module.exports = {
   {
 
         "port":"8001"
+  },
+  "TTL":
+  {
+    "ttl":"60"
   }
 };

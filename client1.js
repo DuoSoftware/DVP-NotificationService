@@ -4,9 +4,13 @@
 var readline = require('readline');
 var config=require('config');
 var io = require('socket.io-client');
+var util = require('util');
+var validator=require('validator');
+
 var Sport;
 var Sip;
 var clentID;
+
 
 var path=ConfigCollector(1);
 //console.log(path);
@@ -107,9 +111,14 @@ function ConfigCollector(status)
         //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [READLINE] - Read line closed ');
         var r2 = readline.createInterface(process.stdin, process.stdout);
         console.log("Closing "+clentID);
-        //var IP="http://"+Sip+":"+Sport;
-        var fakeip="http://notificationservice.104.131.67.21.xip.io";
-        var socket = io(fakeip, { query: "myid="+clentID });
+        var IP="http://"+Sip;
+        if(validator.isIP(Sip))
+        {
+            IP="http://"+Sip+":"+Sport;
+        }
+        //var fakeip="http://notificationservice.104.131.67.21.xip.io";
+
+        var socket = io(IP, { query: "myid="+clentID });
 
 
          socket.on('message', function(data){
