@@ -118,10 +118,30 @@ function ConfigCollector(status)
         }
         //var fakeip="http://notificationservice.104.131.67.21.xip.io";
 
-        var socket = io(IP, { query: "myid="+clentID });
+        var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: false });
+
+        socket.on('disconnect', function(reason)
+        {
+            if(reason != "io server disconnect")
+            {
+                console.log("Disconnecting "+reason +" Reconnecting");
+                socket = io(IP, { query: "myid="+clentID });
+                //socket.connect();
+            }
+            else
+            {
+                console.log("Disconnect request from server.Disconnecting "+reason );
+                socket = io(IP, { query: "myid="+clentID });
+                //socket.connect();
+            }
+
+            //
+        });
+
 
 
          socket.on('message', function(data){
+             //socket.disconnect();
          var rep="";
          var TopicKey=data.TopicKey;
          var Message=data.Message;
@@ -141,6 +161,7 @@ function ConfigCollector(status)
             // console.log(MsgObj.message);
 
          });
+
 
 
 

@@ -31,9 +31,6 @@ RestServer.use(restify.fullResponse());
 RestServer.listen(port, function () {
     console.log('%s listening at %s', RestServer.name, RestServer.url);
 
-
-    // SetDays();
-
 });
 
 RestServer.use(restify.bodyParser());
@@ -52,87 +49,61 @@ io.sockets.on('connection', function (socket) {
     console.log("User added : Client - "+ClientID+" Socket - "+Clients[ClientID].id);
 
 
+    socket.on('disconnect', function(reason){
 
-    //socket.emit('userID',null);
+        console.log("Disconnected "+socket.id+" Reason "+reason);
 
-    /*socket.on('user',function(data)
-     {
-     console.log(data);
-     if(data)
-     {
-     console.log("User id "+data);
-     Clients[data]= socket;
-     console.log("User added "+Clients[data].id);
-     }
-     else
-     {
-     console.log("Error No data")
-     }
-     });
-     */
-
-
-    /* {
-     console.log("Socket id is "+data);
-     });
-     */
-
-
-
-    socket.on('disconnect', function(){
-
-        console.log("Disconnected "+socket.id);
-
-        var Tkey=Sessions[socket.id];
-        if(Tkey)
+        if(reason=='client namespace disconnect')
         {
-            redisManager.SocketStateChanger(Tkey,"Disconnected",2,function(errSession,resSession)
+            console.log("Client side disconnection.. waiting to reconnect ....")
+        }
+        else
+        {
+            var Tkey=Sessions[socket.id];
+            if(Tkey)
             {
-                if(errSession)
+                redisManager.SocketStateChanger(Tkey,"Disconnected",TTL,function(errSession,resSession)
                 {
-                    console.log("State update failed of Topic key "+Tkey);
-                }
-                else
-                {
-                    var ReplyObj={
-                        Reply:"Session disconnected ",
-                        Ref:Refs[Tkey]
-                    };
-                    console.log("Replies .... "+JSON.stringify(ReplyObj));
-                    var optionsX = {url: resSession, method: "POST", json: ReplyObj};
-                    request(optionsX, function (errorX, responseX, dataX) {
+                    if(errSession)
+                    {
+                        console.log("State update failed of Topic key "+Tkey);
+                    }
+                    else
+                    {
+                        var ReplyObj={
+                            Reply:"Session disconnected ",
+                            Ref:Refs[Tkey]
+                        };
+                        console.log("Replies .... "+JSON.stringify(ReplyObj));
+                        var optionsX = {url: resSession, method: "POST", json: ReplyObj};
+                        request(optionsX, function (errorX, responseX, dataX) {
 
-                        if(errorX)
-                        {
-                            console.log("ERROR "+errorX);
-                        }
+                            if(errorX)
+                            {
+                                console.log("ERROR "+errorX);
+                            }
+                            else if (!errorX && responseX != undefined )
+                            {
+                                console.log("Sent  To "+resSession);
+                            }
+                            else
+                            {
+                                console.log("Nooooooo");
+                            }
+                        });
+                    }
 
-                        else if (!errorX && responseX != undefined ) {
-
-                            //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [SOCKET] - Socket Disconnection request sends successfully   ',JSON.stringify(responseX.body));
-                            // socket.send(responseX.body);
-                            console.log("Sent  To "+resSession);
-
-
-                        }
-                        else
-                        {
-                            console.log("Nooooooo");
-                        }
-                    });
-                }
-
-            });
-        }else
-        {
-            console.log("Session disconnected in early stages");
+                });
+            }else
+            {
+                console.log("Session disconnected in early stages. Reason : "+reason);
+            }
         }
 
 
-        //client.SocketStateChanger
 
 
-        //res.end('disconnected');
+
 
     });
 
@@ -196,63 +167,72 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 {
     console.log("New request");
     var ClientID=req.body.To;
-    var Direction=req.body.Direction;
-    var Tkey=TopicIdGenerator();
-    var Message=req.body.Message;
-    var CallBk=req.body.Callback;
-    var ref=req.body.Ref;
-    var State="WAITINGFORACCEPT";
-    var From=req.body.From;
-
-
-    Refs[Tkey]= ref;
-
-
-    var socket=GetSocketData(ClientID);
-
-
 
     if(!isNaN(req.body.Timeout))
     {
         TTL =req.body.Timeout;
         console.log("TTL found "+TTL);
     }
-    
-    if(socket)
+
+    if(Clients[ClientID])
     {
-        console.log("Socket found....");
-        Sessions[socket.id]=Tkey;
-        //socket.emit('message',Message);
-        redisManager.SocketObjectManager(Tkey,socket.id,ClientID,Direction,From,CallBk,State,TTL,function(errRedis,resRedis)
+        console.log("Registered Client");
+        var Direction=req.body.Direction;
+        var Tkey=TopicIdGenerator();
+        var Message=req.body.Message;
+        var CallBk=req.body.Callback;
+        var ref=req.body.Ref;
+        var State="WAITINGFORACCEPT";
+        var From=req.body.From;
+        Refs[Tkey]= ref;
+
+        var socket=GetSocketData(ClientID);
+
+        if(socket)
         {
-            if(errRedis)
+            console.log("Socket found....");
+            Sessions[socket.id]=Tkey;
+            //socket.emit('message',Message);
+            redisManager.SocketObjectManager(Tkey,socket.id,ClientID,Direction,From,CallBk,State,TTL,function(errRedis,resRedis)
             {
-                console.log("Error redis");
-                res.end(errRedis);
-            }
-            else
-            {
-                console.log("Done redis");
+                if(errRedis)
+                {
+                    console.log("Error redis");
+                    res.end(errRedis);
+                }
+                else
+                {
+                    console.log("Done redis");
 
-                var MsgObj={
+                    var MsgObj={
 
-                    "Message":Message,
-                    "TopicKey":Tkey
-                };
-                socket.emit('message',MsgObj);
-                res.end(Tkey);
+                        "Message":Message,
+                        "TopicKey":Tkey
+                    };
+                    socket.emit('message',MsgObj);
+                    res.end(Tkey);
 
 
-            }
+                }
 
-        });
+            });
+        }
+        else
+        {
+            console.log("No Socket Found");
+            res.status(400);
+            res.end();
+        }
+
     }
     else
     {
-        console.log("No Socket Found");
+        console.log("Unknown Client");
         res.status(400);
-        res.end();
+        res.end("Unknown Client");
+
     }
+
 
     return next();
 
@@ -357,7 +337,17 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/disconnec
 GetSocketData = function (clientID) {
 
     console.log("Hit get socket" +Clients[clientID].id );
-    return Clients[clientID];
+    if(Clients[clientID])
+    {
+        console.log("Session  "+Clients[clientID]+ "Found for Client "+clientID);
+        return Clients[clientID];
+    }
+    else
+    {
+        console.log("No Session  Found for Client "+clientID);
+        return false;
+    }
+
 
 };
 
@@ -371,5 +361,9 @@ TopicIdGenerator = function ()
 
 };
 
+CheckUserAvalability = function()
+{
+
+}
 
 module.exports.GetSocketData = GetSocketData;
