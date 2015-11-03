@@ -104,23 +104,31 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
         }
         else
         {
-            client.hset(TopicID,"Socket",SocketID,function(errUpdt,resUpdt)
+            if(!resObj)
             {
-                if(errUpdt)
+               callback(new Error("No object found"),undefined);
+            }
+            else
+            {
+                client.hset(TopicID,"Socket",SocketID,function(errUpdt,resUpdt)
                 {
-                    callback(errUpdt,undefined);
-                }
-                else
-                {
-                    if(!resUpdt)
+                    if(errUpdt)
                     {
-                        callback(new Error("Nothing to update"),undefined);
-                    }else
-                    {
-                        callback(undefined,resUpdt);
+                        callback(errUpdt,undefined);
                     }
-                }
-            });
+                    else
+                    {
+                        if(!resUpdt)
+                        {
+                            callback(new Error("Nothing to update"),undefined);
+                        }else
+                        {
+                            callback(undefined,resUpdt);
+                        }
+                    }
+                });
+            }
+
         }
 
     });
