@@ -66,9 +66,10 @@ console.log("Client is in DB");
     }
     else
     {
+        Clients[ClientID]= socket;
         console.log("new user registered : "+socket.id+" user id -" + socket.handshake.query.myid);
         console.log("User added : Client - "+ClientID+" Socket - "+Clients[ClientID].id);
-        Clients[ClientID]= socket;
+        
     }
 
 
