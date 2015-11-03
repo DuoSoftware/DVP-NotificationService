@@ -48,8 +48,9 @@ io.sockets.on('connection', function (socket) {
 
     if(Clients[ClientID])
     {
-console.log("Client is in DB");
+         console.log("Client is in DB");
         var tkn=Sessions[Clients[ClientID].id];
+        
         SocketObjectUpdater(tkn,socket.id,function(errupdt,resupdt)
         {
             if(errupdt)
@@ -66,9 +67,10 @@ console.log("Client is in DB");
     }
     else
     {
+        Clients[ClientID]= socket;
         console.log("new user registered : "+socket.id+" user id -" + socket.handshake.query.myid);
         console.log("User added : Client - "+ClientID+" Socket - "+Clients[ClientID].id);
-        Clients[ClientID]= socket;
+
     }
 
 

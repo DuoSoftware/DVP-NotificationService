@@ -118,7 +118,7 @@ function ConfigCollector(status)
         }
         //var fakeip="http://notificationservice.104.131.67.21.xip.io";
 
-        var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: true });
+        var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: false });
 
         socket.on('disconnect', function(reason)
         {

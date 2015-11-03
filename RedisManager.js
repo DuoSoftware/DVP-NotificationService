@@ -96,23 +96,36 @@ TouchSession =function(TopicID,TTL)
 
 SocketObjectUpdater = function(TopicID,SocketID,callback)
 {
-    client.hset(TopicID,"Socket",SocketID,function(errUpdt,resUpdt)
+    SocketFinder(TopicID,120,function(errObj,resObj)
     {
-        if(errUpdt)
+        if(errObj)
         {
-            callback(errUpdt,undefined);
+            callback(errObj,undefined);
         }
         else
         {
-            if(!resUpdt)
+            client.hset(TopicID,"Socket",SocketID,function(errUpdt,resUpdt)
             {
-                callback(new Error("Nothing to update"),undefined);
-            }else
-            {
-                callback(undefined,resUpdt);
-            }
+                if(errUpdt)
+                {
+                    callback(errUpdt,undefined);
+                }
+                else
+                {
+                    if(!resUpdt)
+                    {
+                        callback(new Error("Nothing to update"),undefined);
+                    }else
+                    {
+                        callback(undefined,resUpdt);
+                    }
+                }
+            });
         }
+
     });
+
+
 };
 
 module.exports.SocketObjectManager = SocketObjectManager;
