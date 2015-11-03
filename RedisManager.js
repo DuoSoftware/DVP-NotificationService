@@ -93,6 +93,29 @@ TouchSession =function(TopicID,TTL)
 {
     client.expire(TopicID, TTL);
 };
+
+SocketObjectUpdater = function(TopicID,SocketID,callback)
+{
+    client.hset(TopicID,"Socket",SocketID,function(errUpdt,resUpdt)
+    {
+        if(errUpdt)
+        {
+            callback(errUpdt,undefined);
+        }
+        else
+        {
+            if(!resUpdt)
+            {
+                callback(new Error("Nothing to update"),undefined);
+            }else
+            {
+                callback(undefined,resUpdt);
+            }
+        }
+    });
+};
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
+module.exports.SocketObjectUpdater = SocketObjectUpdater;

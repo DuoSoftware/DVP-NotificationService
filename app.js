@@ -43,10 +43,35 @@ var Sessions= new Array();
 
 io.sockets.on('connection', function (socket) {
 
-    console.log("new user registered : "+socket.id+" user id -" + socket.handshake.query.myid);
+
     var ClientID=socket.handshake.query.myid;
-    Clients[ClientID]= socket;
-    console.log("User added : Client - "+ClientID+" Socket - "+Clients[ClientID].id);
+
+    if(Clients[ClientID])
+    {
+console.log("Client is in DB");
+        var tkn=Sessions[Clients[ClientID].id];
+        SocketObjectUpdater(tkn,socket.id,function(errupdt,resupdt)
+        {
+            if(errupdt)
+            {
+                console.log("New socket data recording failed "+errupdt);
+            }
+            else
+            {
+                console.log("User registeration Updated: "+socket.id+" user id -" + socket.handshake.query.myid);
+                console.log("User updated : Client - "+ClientID+" Socket - "+Clients[ClientID].id);
+                console.log("New socket data recording succeeded "+resupdt);
+            }
+        })
+    }
+    else
+    {
+        console.log("new user registered : "+socket.id+" user id -" + socket.handshake.query.myid);
+        console.log("User added : Client - "+ClientID+" Socket - "+Clients[ClientID].id);
+        Clients[ClientID]= socket;
+    }
+
+
 
 
     socket.on('disconnect', function(reason){

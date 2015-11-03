@@ -118,20 +118,20 @@ function ConfigCollector(status)
         }
         //var fakeip="http://notificationservice.104.131.67.21.xip.io";
 
-        var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: false });
+        var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: true });
 
         socket.on('disconnect', function(reason)
         {
             if(reason != "io server disconnect")
             {
                 console.log("Disconnecting "+reason +" Reconnecting");
-                socket = io(IP, { query: "myid="+clentID });
+                //socket = io(IP, { query: "myid="+clentID });
                 //socket.connect();
             }
             else
             {
                 console.log("Disconnect request from server.Disconnecting "+reason );
-                socket = io(IP, { query: "myid="+clentID });
+                //socket = io(IP, { query: "myid="+clentID });
                 //socket.connect();
             }
 
