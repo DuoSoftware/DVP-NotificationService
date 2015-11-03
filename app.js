@@ -50,8 +50,8 @@ io.sockets.on('connection', function (socket) {
     {
          console.log("Client is in DB");
         var tkn=Sessions[Clients[ClientID].id];
-        
-        SocketObjectUpdater(tkn,socket.id,function(errupdt,resupdt)
+
+        redisManager.SocketObjectUpdater(tkn,socket.id,function(errupdt,resupdt)
         {
             if(errupdt)
             {
