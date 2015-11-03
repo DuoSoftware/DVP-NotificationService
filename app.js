@@ -55,7 +55,18 @@ io.sockets.on('connection', function (socket) {
         {
             if(errupdt)
             {
-                console.log("New socket data recording failed "+errupdt);
+                if(errupdt=="NOOBJ")
+                {
+                    var i = Clients.indexOf(ClientID);
+                    if(i != -1) {
+                        Clients.splice(i, 1);
+                    }
+                }
+                else
+                {
+                    console.log("New socket data recording failed "+errupdt);
+                }
+
             }
             else
             {

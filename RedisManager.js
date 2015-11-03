@@ -10,6 +10,10 @@ client.on("error", function (err) {
     console.log("Error " + err);
 });
 
+client.on("connect", function (err) {
+    client.select(config.Redis.db, redis.print);
+});
+
 
 SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,state,ttl,callback)
 {
@@ -70,15 +74,23 @@ SocketStateChanger = function(TopicID,State,ttl,callback)
             }
             else
             {
-                client.hset(TopicID,"State",State,function(errSt,resSt)
+                client.hmset(TopicID,"State",State,function(errSt,resSt)
                 {
                     if(errSt)
                     {
                         callback(errSt,undefined);
                     }else
                     {
-                        TouchSession(TopicID,ttl);
-                        callback(undefined,resUser[3]);
+                        if(!resSt || resSt=="")
+                        {
+                            callback(new Error("State updation failed "),undefined);
+                        }
+                        else
+                        {
+                            TouchSession(TopicID,ttl);
+                            callback(undefined,resUser[3]);
+                        }
+
                     }
 
                 });
@@ -96,7 +108,10 @@ TouchSession =function(TopicID,TTL)
 
 SocketObjectUpdater = function(TopicID,SocketID,callback)
 {
-    SocketFinder(TopicID,120,function(errObj,resObj)
+    console.log("TopicID "+TopicID);
+    console.log("SOCKET "+SocketID);
+
+    SocketFinder(TopicID,1000,function(errObj,resObj)
     {
         if(errObj)
         {
@@ -106,11 +121,11 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
         {
             if(!resObj)
             {
-               callback(new Error("No object found"),undefined);
+               callback("NOOBJ",undefined);
             }
             else
             {
-                client.hset(TopicID,"Socket",SocketID,function(errUpdt,resUpdt)
+                client.hmset(TopicID,"Socket",SocketID,function(errUpdt,resUpdt)
                 {
                     if(errUpdt)
                     {
@@ -118,8 +133,10 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
                     }
                     else
                     {
-                        if(!resUpdt)
+
+                        if(resUpdt=="" || !resUpdt)
                         {
+
                             callback(new Error("Nothing to update"),undefined);
                         }else
                         {

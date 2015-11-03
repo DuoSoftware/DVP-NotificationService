@@ -10,7 +10,8 @@ module.exports = {
   "Redis":
   {
     "ip": "45.55.142.207",
-    "port": 6379
+    "port": 6379,
+    "db":9
 
   },
 
@@ -29,6 +30,6 @@ module.exports = {
   },
   "TTL":
   {
-    "ttl":"60"
+    "ttl":"1000"
   }
 };
