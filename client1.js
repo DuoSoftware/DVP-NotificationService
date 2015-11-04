@@ -10,6 +10,7 @@ var validator=require('validator');
 var Sport;
 var Sip;
 var clentID;
+var Tokens=new Array();
 
 
 var path=ConfigCollector(1);
@@ -142,6 +143,7 @@ function ConfigCollector(status)
 
          socket.on('message', function(data){
              //socket.disconnect();
+             console.log("meeee");
          var rep="";
          var TopicKey=data.TopicKey;
          var Message=data.Message;

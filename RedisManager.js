@@ -153,7 +153,129 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
 
 };
 
+TokenObjectCreater = function(topicID,clientID,direction,sender,resURL,callback)
+{
+    console.log("Token Object creating");
+
+    client.hmset(topicID,["From",sender,"Client",clientID,"Direction",direction,"Callback",resURL],function(errHmset,resHmset)
+    {
+        if(errHmset)
+        {
+            callback(errHmset,undefined);
+        }
+        else
+        {
+
+            callback(undefined,resHmset);
+        }
+    });
+
+};
+
+ResourceObjectCreator = function(clientID,TopicID,ttl,callback)
+{
+    console.log("Token Object creating");
+    var objKey=clientID+":"+TopicID;
+
+    client.set(objKey,TopicID,function(errSet,resSet)
+    {
+        if(errSet)
+        {
+            callback(errSet,undefined);
+        }
+        else
+        {
+            if(resSet=="" || !resSet || resSet== "NULL")
+            {
+                callback(new Error("Invalid key to Update " + objKey),undefined);
+            }
+            else
+            {
+                TouchSession(objKey, ttl);
+                callback(undefined,resSet);
+            }
+        }
+    });
+
+};
+
+ResourceObjectPicker = function(clientID,topicID,ttl,callback)
+{
+    console.log("Token Object creating");
+    var objKey=clientID+":"+topicID;
+
+    client.get(objKey,function(errGet,resGet)
+    {
+        if(errGet)
+        {
+            callback(errGet,undefined);
+        }
+        else
+        {
+            if(resGet=="" || !resGet || resGet == "NULL")
+            {
+                callback(new Error("No such key found " + objKey),undefined);
+            }
+
+            else
+            {
+                TouchSession(objKey, ttl);
+                //callback(undefined,resGet);
+                ResponseUrlPicker(topicID,function(errURL,resURL)
+                {
+                    if(errURL)
+                    {
+                        console.log("Error in searching ResponceURL "+errURL);
+                        callback(errURL,undefined);
+                    }
+                    else
+                    {
+                        console.log("Response URL found "+resURL);
+                        callback(undefined,resURL);
+                    }
+                });
+            }
+        }
+    });
+
+};
+
+ResponseUrlPicker = function(topicID,callback)
+{
+    console.log("ResponseURL of "+topicID+ "picking ");
+
+
+    client.hmget(topicID,"Callback",function(errGet,resGet)
+    {
+        if(errGet)
+        {
+            callback(errGet,undefined);
+        }
+        else
+        {
+            if( !resGet )
+            {
+                callback(new Error("No such key found " + topicID),undefined);
+            }
+            else if(resGet=="" || resGet == "NULL")
+            {
+                callback(undefined,"STATELESS");
+            }
+            else
+            {
+
+                callback(undefined,resGet[0]);
+            }
+        }
+    });
+};
+
+//ClientTokenPicker = function()
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
-module.exports.SocketObjectUpdater = SocketObjectUpdater;
+module.exports.SocketObjectUpdater = SocketObjectUpdater
+module.exports.TokenObjectCreater = TokenObjectCreater;
+module.exports.ResourceObjectCreator = ResourceObjectCreator;
+module.exports.ResourceObjectPicker = ResourceObjectPicker;
+module.exports.ResponseUrlPicker = ResponseUrlPicker;
