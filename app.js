@@ -174,7 +174,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
             }
 
 
-            redisManager.TokenObjectCreater(topicID,clientID,direction,sender,callbackURL,function(errTobj,resTobj)
+            redisManager.TokenObjectCreater(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
             {
                 if(errTobj)
                 {

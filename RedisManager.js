@@ -153,7 +153,7 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
 
 };
 
-TokenObjectCreater = function(topicID,clientID,direction,sender,resURL,callback)
+TokenObjectCreater = function(topicID,clientID,direction,sender,resURL,ttl,callback)
 {
     console.log("Token Object creating");
 
@@ -165,7 +165,7 @@ TokenObjectCreater = function(topicID,clientID,direction,sender,resURL,callback)
         }
         else
         {
-
+            TouchSession(topicID, ttl);
             callback(undefined,resHmset);
         }
     });
@@ -240,7 +240,7 @@ ResourceObjectPicker = function(clientID,topicID,ttl,callback)
 
 };
 
-ResponseUrlPicker = function(topicID,callback)
+ResponseUrlPicker = function(topicID,ttl,callback)
 {
     console.log("ResponseURL of "+topicID+ "picking ");
 
@@ -259,18 +259,19 @@ ResponseUrlPicker = function(topicID,callback)
             }
             else if(resGet=="" || resGet == "NULL")
             {
+                TouchSession(topicID, ttl);
                 callback(undefined,"STATELESS");
             }
             else
             {
-
+                TouchSession(topicID, ttl);
                 callback(undefined,resGet[0]);
             }
         }
     });
 };
 
-//ClientTokenPicker = function()
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
