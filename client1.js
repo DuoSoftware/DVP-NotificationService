@@ -14,58 +14,6 @@ var Tokens=new Array();
 
 
 var path=ConfigCollector(1);
-//console.log(path);
-
-    //var socket = io(path, { query: clentID });
-
-
-
-//console.log('http://'+Sip+':'+Sport);
-
-
-//var redisManager=require('./RedisManager.js');
-
-/*socket.on('connect', function(){
-
-    console.log("Connected");
-    //socket.emit('userID','usr001');
-
-});
-*/
-/*
-socket.on('message', function(data){
-var rep="";
-    var TopicKey=data.TopicKey;
-    var Message=data.Message;
-
-
-    console.log('new message recieved from '+socket.id);
-    console.log("Message "+Message);
-    console.log('Message received Send Your reply : ');
-    rl.prompt();
-
-    rl.on('line', function(line) {
-
-        rep=line;
-        var MsgObj={message:rep,Tkey:TopicKey};
-        socket.emit('reply',MsgObj);
-
-    });
-
-
-
-
-
-
-    // socket.emit('reply',"this is a reply 2");
-    //socket.disconnect();
-});
-socket.on('news', function(data){
-    console.log(data);
-    socket.disconnect();
-});
-*/
-
 
 function ConfigCollector(status)
 {
@@ -93,7 +41,7 @@ function ConfigCollector(status)
             rl.prompt();
 
             //process.exit(0);
-           // process.exit(0);
+            // process.exit(0);
 
         }
         else
@@ -110,7 +58,7 @@ function ConfigCollector(status)
 
     }).on('close',function(){
         //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [READLINE] - Read line closed ');
-        var r2 = readline.createInterface(process.stdin, process.stdout);
+
         console.log("Closing "+clentID);
         var IP="http://"+Sip;
         if(validator.isIP(Sip))
@@ -118,6 +66,8 @@ function ConfigCollector(status)
             IP="http://"+Sip+":"+Sport;
         }
         //var fakeip="http://notificationservice.104.131.67.21.xip.io";
+
+        console.log("====================================");
 
         var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: false });
 
@@ -141,45 +91,42 @@ function ConfigCollector(status)
 
 
 
-         socket.on('message', function(data){
-             //socket.disconnect();
-             console.log("meeee");
-         var rep="";
-         var TopicKey=data.TopicKey;
-         var Message=data.Message;
+        socket.on('message', function(data){
+            //socket.disconnect();
+            var r2 = readline.createInterface(process.stdin, process.stdout);
+            console.log("meeee");
+            var rep="";
+            var TopicKey=data.TopicKey;
+            var Message=data.Message;
+            var MsgObj="";
+            var count=0;
 
 
-         console.log('new message recieved from '+socket.id);
-         console.log("Message "+Message);
-         console.log('Message received Send Your reply : ');
-         r2.prompt();
+            console.log('new message recieved from '+socket.id);
+            console.log("Message "+Message);
+            console.log('Message received Send Your reply : ');
+            r2.prompt();
 
-         r2.on('line', function(line) {
+            r2.on('line', function(line) {
 
-         rep=line;
-         var MsgObj={Message:rep,Tkey:TopicKey};
-             console.log(MsgObj.Message);
-         socket.emit('reply',MsgObj);
-            // console.log(MsgObj.message);
+                rep=line;
 
-         });
-
-
+                MsgObj={Message:rep,Tkey:TopicKey};
+                console.log(count+1);
+                console.log(MsgObj.Message);
+                socket.emit('reply',MsgObj);
+                r2.close();
 
 
+            });
 
 
-
-         // socket.emit('reply',"this is a reply 2");
-         //socket.disconnect();
-         });
-         socket.on('news', function(data){
-         console.log(data);
-         socket.disconnect();
-         });
+        });
+        socket.on('news', function(data){
+            console.log(data);
+            socket.disconnect();
+        });
 
 
-        //socket= io('http://'+Sip+':'+Sport, { query: clentID });
-        //process.exit(0);
     });
 }

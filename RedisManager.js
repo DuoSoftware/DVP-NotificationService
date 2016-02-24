@@ -18,7 +18,10 @@ client.on("connect", function (err) {
 SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,state,ttl,callback)
 {
     console.log("Redis Callback "+clbk);
-    client.hmset(TopicID,["From",From,"Client",clientID,"Socket",socketID,"Direction",direction,"Callback",clbk,"State",state],function(errHmset,resHmset)
+
+    var key ="notification:"+TopicID;
+
+    client.hmset(key,["From",From,"Client",clientID,"Socket",socketID,"Direction",direction,"Callback",clbk,"State",state],function(errHmset,resHmset)
     {
         if(errHmset)
         {
@@ -26,7 +29,7 @@ SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,sta
         }
         else
         {
-            TouchSession(TopicID, ttl);
+            TouchSession(key, ttl);
             callback(undefined,resHmset);
         }
     });
@@ -36,6 +39,8 @@ SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,sta
 
 SocketFinder = function(TopicID,ttl,callback)
 {
+    var key ="notification:"+TopicID;
+
     client.hmget(TopicID,"Client","Socket","Direction","Callback",function(errUser,resUser)
     {
         if(errUser)
@@ -50,7 +55,7 @@ SocketFinder = function(TopicID,ttl,callback)
             }
             else
             {
-                TouchSession(TopicID,ttl);
+                TouchSession(key,ttl);
                 callback(undefined,resUser);
             }
 
@@ -60,7 +65,9 @@ SocketFinder = function(TopicID,ttl,callback)
 
 SocketStateChanger = function(TopicID,State,ttl,callback)
 {
-    client.hmget(TopicID,"Client","Socket","Direction","Callback",function(errUser,resUser)
+    var key ="notification:"+TopicID;
+
+    client.hmget(key,"Client","Socket","Direction","Callback",function(errUser,resUser)
     {
         if(errUser)
         {
@@ -74,7 +81,7 @@ SocketStateChanger = function(TopicID,State,ttl,callback)
             }
             else
             {
-                client.hmset(TopicID,"State",State,function(errSt,resSt)
+                client.hmset(key,"State",State,function(errSt,resSt)
                 {
                     if(errSt)
                     {
@@ -87,7 +94,7 @@ SocketStateChanger = function(TopicID,State,ttl,callback)
                         }
                         else
                         {
-                            TouchSession(TopicID,ttl);
+                            TouchSession(key,ttl);
                             callback(undefined,resUser[3]);
                         }
 
@@ -111,7 +118,10 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
     console.log("TopicID "+TopicID);
     console.log("SOCKET "+SocketID);
 
-    SocketFinder(TopicID,1000,function(errObj,resObj)
+    var key ="notification:"+TopicID;
+
+
+    SocketFinder(key,1000,function(errObj,resObj)
     {
         if(errObj)
         {
@@ -121,11 +131,11 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
         {
             if(!resObj)
             {
-               callback("NOOBJ",undefined);
+                callback("NOOBJ",undefined);
             }
             else
             {
-                client.hmset(TopicID,"Socket",SocketID,function(errUpdt,resUpdt)
+                client.hmset(key,"Socket",SocketID,function(errUpdt,resUpdt)
                 {
                     if(errUpdt)
                     {
@@ -153,11 +163,12 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
 
 };
 
-TokenObjectCreater = function(topicID,clientID,direction,sender,resURL,ttl,callback)
+TokenObjectCreator = function(topicID,clientID,direction,sender,resURL,ttl,callback)
 {
     console.log("Token Object creating");
-
-    client.hmset(topicID,["From",sender,"Client",clientID,"Direction",direction,"Callback",resURL],function(errHmset,resHmset)
+    var key ="notification:"+topicID;
+//notification:topic
+    client.hmset(key,["From",sender,"Client",clientID,"Direction",direction,"Callback",resURL],function(errHmset,resHmset)
     {
         if(errHmset)
         {
@@ -165,7 +176,7 @@ TokenObjectCreater = function(topicID,clientID,direction,sender,resURL,ttl,callb
         }
         else
         {
-            TouchSession(topicID, ttl);
+            TouchSession(key, ttl);
             callback(undefined,resHmset);
         }
     });
@@ -175,7 +186,7 @@ TokenObjectCreater = function(topicID,clientID,direction,sender,resURL,ttl,callb
 ResourceObjectCreator = function(clientID,TopicID,ttl,callback)
 {
     console.log("Token Object creating");
-    var objKey=clientID+":"+TopicID;
+    var objKey="notification:"+clientID+":"+TopicID;
 
     client.set(objKey,TopicID,function(errSet,resSet)
     {
@@ -191,6 +202,7 @@ ResourceObjectCreator = function(clientID,TopicID,ttl,callback)
             }
             else
             {
+                console.log("yap...............................");
                 TouchSession(objKey, ttl);
                 callback(undefined,resSet);
             }
@@ -201,8 +213,9 @@ ResourceObjectCreator = function(clientID,TopicID,ttl,callback)
 
 ResourceObjectPicker = function(clientID,topicID,ttl,callback)
 {
-    console.log("Token Object creating");
-    var objKey=clientID+":"+topicID;
+    console.log("Token Object searching");
+    var objKey="notification:"+clientID+":"+topicID;
+    var key ="notification:"+topicID;
 
     client.get(objKey,function(errGet,resGet)
     {
@@ -221,7 +234,7 @@ ResourceObjectPicker = function(clientID,topicID,ttl,callback)
             {
                 TouchSession(objKey, ttl);
                 //callback(undefined,resGet);
-                ResponseUrlPicker(topicID,function(errURL,resURL)
+                ResponseUrlPicker(key,ttl,function(errURL,resURL)
                 {
                     if(errURL)
                     {
@@ -243,9 +256,10 @@ ResourceObjectPicker = function(clientID,topicID,ttl,callback)
 ResponseUrlPicker = function(topicID,ttl,callback)
 {
     console.log("ResponseURL of "+topicID+ "picking ");
+    var key ="notification:"+topicID;
 
 
-    client.hmget(topicID,"Callback",function(errGet,resGet)
+    client.hmget(key,"Direction","Callback",function(errGet,resGet)
     {
         if(errGet)
         {
@@ -264,19 +278,186 @@ ResponseUrlPicker = function(topicID,ttl,callback)
             }
             else
             {
-                TouchSession(topicID, ttl);
-                callback(undefined,resGet[0]);
+                TouchSession(key, ttl);
+                callback(undefined,resGet);
             }
         }
     });
 };
 
 
+// sprint DUO V6 Voice UI 2
+
+RecordUserServer = function (clientName,server,callback)
+{
+
+    var key="notification:loc:"+clientName+":"+server;//notification:loc....
+
+    client.set(key,server,function(errSet,resSet)
+    {
+        if(errSet)
+        {
+            callback(errSet,undefined);
+        }
+        else
+        {
+            if(resSet=="" || !resSet || resSet== "NULL")
+            {
+                callback(new Error("Invalid key to set "),undefined);
+            }
+            else
+            {
+                callback(undefined,resSet);
+            }
+        }
+    });
+};
+
+GetClientsServer = function (clientName,callback) {
+
+    var key="notification:loc:"+clientName+":*";
+
+    client.keys(key,function(errGet,resGet)
+    {
+        if(errGet)
+        {
+            callback(errGet,undefined);
+        }
+        else
+        {
+            if(resGet=="" || !resGet || resGet== "NULL")
+            {
+                callback(new Error("Invalid key to get "),undefined);
+            }
+            else
+            {
+                var serverID = resGet.split(" ")[0];
+
+                callback(undefined,serverID);
+            }
+        }
+    });
+};
+
+TopicObjectPicker = function (topicId,ttl,callback) {
+
+    TouchSession(topicId,ttl);
+    var key = "notification:"+topicId;
+    client.hgetall(key, function (errTkn,resTkn) {
+        callback(errTkn,resTkn);
+
+    });
+
+};
+
+ClientLocationDataRemover = function (clientID,server,callback) {
+
+    var key = "notification:loc:"+clientID+":"+server;
+    client.del(key, function (e,r) {
+        callback(e,r);
+    })
+};
+
+SessionRemover = function (topicKey,callback) {
+
+    var key ="notification:"+topicKey;
+    client.del(key, function (e,r) {
+        callback(e,r);
+    });
+};
+
+CheckClientAvailability = function (clientId,callback) {
+
+    var key = "notification:loc:"+clientId+":*";
+
+    console.log(key);
+    client.hgetall(key, function (errClient,resClient) {
+
+        if(errClient)
+        {
+            callback(errClient,false);
+        }
+        else
+        {
+            if(!resClient || resClient=="" || resClient == null)
+            {
+                callback(undefined,true);
+            }
+            else
+            {
+                callback(undefined,false);
+            }
+
+
+        }
+
+    });
+};
+
+ResetServerData = function (serverID,callback) {
+
+    var key= "notification:loc:*"+serverID;
+    client.keys(key, function (errKeys,resKeys) {
+        if(errKeys)
+        {
+            callback(errKeys,undefined);
+        }
+        else
+        {
+            if(!resKeys || resKeys=="" || resKeys ==null)
+            {
+                callback(undefined,"Already Cleared")
+            }
+            else
+            {
+                console.log(resKeys);
+                var delKeys="";
+                /* for(var i=0;i<resKeys.length;i++)
+                 {
+                 delKeys=delKeys.concat(" ");
+                 delKeys=delKeys.concat(resKeys[i]);
+
+                 if(i==resKeys.length-1)
+                 {
+                 //callback(undefined,delKeys);
+                 console.log("HIT");
+                 RemoveKeys(delKeys, function (e,r) {
+                 callback(e,r);
+                 })
+                 }
+                 }*/
+
+                client.del(resKeys, function (e,r) {
+                    callback(e,r);
+                })
+
+            }
+        }
+    });
+
+};
+
+RemoveKeys = function (keys,callback) {
+
+    client.del(keys, function (e,r) {
+        callback(e,r);
+    });
+
+};
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
-module.exports.SocketObjectUpdater = SocketObjectUpdater
-module.exports.TokenObjectCreater = TokenObjectCreater;
+module.exports.SocketObjectUpdater = SocketObjectUpdater;
+module.exports.TokenObjectCreator = TokenObjectCreator;
 module.exports.ResourceObjectCreator = ResourceObjectCreator;
 module.exports.ResourceObjectPicker = ResourceObjectPicker;
 module.exports.ResponseUrlPicker = ResponseUrlPicker;
+module.exports.RecordUserServer = RecordUserServer;
+module.exports.GetClientsServer = GetClientsServer;
+module.exports.TopicObjectPicker = TopicObjectPicker;
+module.exports.ClientLocationDataRemover = ClientLocationDataRemover;
+module.exports.SessionRemover = SessionRemover;
+module.exports.CheckClientAvailability = CheckClientAvailability;
+module.exports.ResetServerData = ResetServerData;
+
