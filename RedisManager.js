@@ -14,6 +14,10 @@ client.on("connect", function (err) {
     client.select(config.Redis.db, redis.print);
 });
 
+client.select(9, function () {
+
+});
+
 
 SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,state,ttl,callback)
 {
@@ -371,14 +375,16 @@ CheckClientAvailability = function (clientId,callback) {
     var key = "notification:loc:"+clientId+":*";
 
     console.log(key);
-    client.hgetall(key, function (errClient,resClient) {
+    client.keys(key, function (errClient,resClient) {
 
         if(errClient)
         {
+            console.log("Error in checking Availability ",errClient);
             callback(errClient,false);
         }
         else
         {
+            console.log("checking Availability Result ",resClient);
             if(!resClient || resClient=="" || resClient == null)
             {
                 callback(undefined,true);
@@ -396,14 +402,17 @@ CheckClientAvailability = function (clientId,callback) {
 
 ResetServerData = function (serverID,callback) {
 
-    var key= "notification:loc:*"+serverID;
-    client.keys(key, function (errKeys,resKeys) {
+    var key= "notification:loc:*:"+serverID;
+    console.log("Key ..... ",key);
+    client.KEYS(key, function (errKeys,resKeys) {
         if(errKeys)
         {
+            console.log("Error in searching keys ",err);
             callback(errKeys,undefined);
         }
         else
         {
+            console.log("response in searching keys ",resKeys);
             if(!resKeys || resKeys=="" || resKeys ==null)
             {
                 callback(undefined,"Already Cleared")

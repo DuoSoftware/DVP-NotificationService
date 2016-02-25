@@ -13,6 +13,7 @@ var clentID;
 var Tokens=new Array();
 
 
+
 var path=ConfigCollector(1);
 
 function ConfigCollector(status)
@@ -93,6 +94,7 @@ function ConfigCollector(status)
 
         socket.on('message', function(data){
             //socket.disconnect();
+
             var r2 = readline.createInterface(process.stdin, process.stdout);
             console.log("meeee");
             var rep="";
