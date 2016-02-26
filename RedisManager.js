@@ -335,7 +335,7 @@ GetClientsServer = function (clientName,callback) {
             }
             else
             {
-                var serverID = resGet.split(" ")[0];
+                var serverID = resGet[0].split(":")[3];
 
                 callback(undefined,serverID);
             }
@@ -454,6 +454,38 @@ RemoveKeys = function (keys,callback) {
 
 };
 
+IsRegisteredClient = function (clientID,callback) {
+
+    var key = "notification:loc:"+clientID+":*";
+
+    console.log("Reg key "+key);
+    client.keys(key, function (errClient,resClient) {
+
+        if(errClient)
+        {
+            console.log("Error in checking Availability ",errClient);
+            callback(errClient,false,undefined);
+        }
+        else
+        {
+            console.log("checking Availability Result ",resClient);
+            if(!resClient || resClient=="" || resClient == null)
+            {
+                callback(undefined,false,undefined);
+            }
+            else
+            {
+                console.log("Reg clients "+resClient);
+
+                callback(undefined,true,resClient[0]);
+            }
+
+
+        }
+
+    });
+};
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
@@ -469,4 +501,6 @@ module.exports.ClientLocationDataRemover = ClientLocationDataRemover;
 module.exports.SessionRemover = SessionRemover;
 module.exports.CheckClientAvailability = CheckClientAvailability;
 module.exports.ResetServerData = ResetServerData;
+module.exports.IsRegisteredClient = IsRegisteredClient;
+
 

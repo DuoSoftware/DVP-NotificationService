@@ -39,7 +39,8 @@ PersistenceMessageRecorder = function (Obj,callback) {
         Message:dataBody.Message,
         Ref:dataBody.Ref,
         Direction:dataBody.Direction,
-        Topic:topic
+        Topic:topic,
+        CallbackURL : dataBody.Callback
     };
     try {
         var newMessageObject = DbConn.PersistenceMessages
@@ -67,24 +68,31 @@ PersistenceMessageRecorder = function (Obj,callback) {
 
 QueuedMessagesPicker = function (clientID,callback) {
 
-    DbConn.PersistenceMessages.findall({where:[{To:clientID}]}).then(function (resMessages) {
-        callback(undefined,resMessages);
-    }).catch(function (errMessages) {
-        callback(errMessages,undefined);
-    })
-
-};
-
-QueuedMessagesSender = function (messageObj,callback) {
-
-    for(var i=0; i<messageObj.length ; i++)
+    DbConn.PersistenceMessages.findAll({where:{To:clientID}}).then(function (resMessages)
     {
+        callback(undefined,resMessages);
 
-    }
+    }).catch(function (errMessages)
+    {
+        callback(errMessages,undefined);
+    });
 
 };
+
+PersistenceMessageRemover = function (msgId,callback) {
+
+    DbConn.PersistenceMessages.destroy({where:{id:msgId}}).then(function (resRem) {
+        callback(undefined,resRem);
+    }).catch(function (errRem) {
+        callback(errRem,undefined);
+    });
+};
+
+
+
 
 
 module.exports.ServerPicker = ServerPicker;
 module.exports.PersistenceMessageRecorder = PersistenceMessageRecorder;
 module.exports.QueuedMessagesPicker = QueuedMessagesPicker;
+module.exports.PersistenceMessageRemover = PersistenceMessageRemover;

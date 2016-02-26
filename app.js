@@ -43,19 +43,6 @@ var Refs=new Array();
 RestServer.listen(port, function () {
     console.log('%s listening at %s', RestServer.name, RestServer.url);
 
-    // Reset server data
-    redisManager.ResetServerData(MyID, function (errReset,resReset) {
-
-        if(errReset)
-        {
-            console.log("Error occurred on resetting",errReset);
-        }
-        else
-        {
-            console.log(resReset);
-            console.log("Server resets successfully");
-        }
-    });
 
 });
 
@@ -73,55 +60,527 @@ io.sockets.on('connection', function (socket) {
     var clientID = socket.handshake.query.myid;
     console.log(clientID);
 
-    redisManager.CheckClientAvailability(clientID,function (errAvbl,resAvbl) {
 
-        if(errAvbl)
+
+    redisManager.IsRegisteredClient(clientID, function (errReg,status,dataKey) {
+
+        if(errReg )
         {
-            console.log("Exception found in Checking client availability ",errAvbl);
+            console.log("Error in Checking Register status of "+clientID,errReg);
         }
         else
         {
-            if(!resAvbl)
+            if(!status && !dataKey)
             {
-                console.log("Client name is already taken");
+                // does not exist\
+                Clients[clientID]=socket;
+
+
+                redisManager.RecordUserServer(clientID,MyID, function (errSet,resSet) {
+                    if(errSet)
+                    {
+                        console.log("Error in Client registration , Check your redis connection");
+                    }
+                    else
+                    {
+                        //console.log(JSON.stringify(Clients));
+                        console.log("New client registering ");
+                        console.log("new user registered : user id -" + socket.handshake.query.myid);
+                        console.log("User added : Client - "+clientID+" Socket - "+Clients[clientID].id);
+
+                        DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+
+                            if(errMsg)
+                            {
+                                console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+                            }
+                            else
+                            {
+                                if(!resMsg)
+                                {
+                                    console.log("No Queued messages found for Client : "+clientID);
+                                }
+                                else
+                                {
+                                    for(var i=0 ;i<resMsg.length;i++)
+                                    {
+                                        var topicData = JSON.parse(resMsg[i].Callback);
+                                        var ClientData = resMsg[i];
+                                        if(topicData =="")
+                                        {
+                                            QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+                                                if(errInitiate)
+                                                {
+                                                    console.log("Error in sending initiate Message to Client : "+ClientData.To,errInitiate);
+                                                }
+                                                else
+                                                {
+                                                    DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                                        if(errRem)
+                                                        {
+                                                            console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                                        }
+                                                        else
+                                                        {
+                                                            console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                                        }
+                                                    });
+                                                }
+
+                                            });
+                                        }
+                                        else
+                                        {
+                                            QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+                                                if(errInitiate)
+                                                {
+                                                    console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                                                }
+                                                else
+                                                {
+                                                    DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                                        if(errRem)
+                                                        {
+                                                            console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                                        }
+                                                        else
+                                                        {
+                                                            console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                                        }
+                                                    });
+                                                }
+
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
             }
             else
             {
-                if(!Clients[clientID])
+                console.log("KEY "+dataKey);
+                console.log("type : "+ typeof (dataKey));
+                var serverID = dataKey.split(":")[3];
+                console.log("Server ID "+serverID);
+                if(serverID==MyID)
                 {
-                    // does not exist\
+                    console.log("Registered Client on This server");
+
                     Clients[clientID]=socket;
 
+                    DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
 
-                    redisManager.RecordUserServer(clientID,MyID, function (errSet,resSet) {
-                        if(errSet)
+                        if(errMsg)
                         {
-                            console.log("Error in Client registration , Check your redis connection");
+                            console.log("Error in queued messages searching for Client : "+clientID,errMsg);
                         }
                         else
                         {
-                            //console.log(JSON.stringify(Clients));
-                            console.log("New client registering ");
-                            console.log("new user registered : user id -" + socket.handshake.query.myid);
-                            console.log("User added : Client - "+clientID+" Socket - "+Clients[clientID].id);
+                            if(!resMsg)
+                            {
+                                console.log("No Queued messages found for Client : "+clientID);
+                            }
+                            else
+                            {
+                                for(var i=0 ;i<resMsg.length;i++)
+                                {
+                                    var topicData = JSON.parse(resMsg[i].Callback);
+                                    var ClientData = resMsg[i];
+                                    if(topicData =="")
+                                    {
+                                        QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+                                            if(errInitiate)
+                                            {
+                                                console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                                            }
+                                            else
+                                            {
+                                                DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                                    if(errRem)
+                                                    {
+                                                        console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                                    }
+                                                    else
+                                                    {
+                                                        console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                                    }
+                                                });
+                                            }
+
+                                        });
+                                    }
+                                    else
+                                    {
+                                        QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+                                            if(errInitiate)
+                                            {
+                                                console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                                            }
+                                            else
+                                            {
+                                                DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                                    if(errRem)
+                                                    {
+                                                        console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                                    }
+                                                    else
+                                                    {
+                                                        console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                                    }
+                                                });
+                                            }
+
+                                        });
+                                    }
+                                }
+                            }
                         }
                     });
-
                 }
                 else
                 {
-                    // does exist
-                    Clients[clientID]=socket;
+                    console.log("Not registered client in this server");
 
-                    console.log("Recorded client");
-                    console.log("User registeration Updated: user id -" + socket.handshake.query.myid);
-                    console.log("User updated : Client - "+clientID+" Socket - "+Clients[clientID].id);
+                    DBController.ServerPicker(serverID, function (errPick,resPick) {
+
+                        if(errPick)
+                        {
+                            console.log("Error in Searching Server IP ",errPick);
+                        }
+                        else
+                        {
+                            console.log("serverrrrrrrrr  "+JSON.stringify(resPick));
+                            var URL="http://"+resPick.URL+"/DVP/API/"+version+"/NotificationService/Notification/Server/"+serverID+"/Availability";
+                            var URL="http://www.l.com";
+                            console.log(URL);
+                            var optionsX = {url: URL, method: "GET"};
+                            request(optionsX, function (errorX, responseX, dataX) {
 
 
+                                if(errorX )
+                                {
+                                    console.log("ERROR "+errorX);
+                                    redisManager.RecordUserServer(clientID,serverID, function (errRecord,resRecord) {
+
+                                        if(errRecord)
+                                        {
+                                            console.log("Error in client data : "+clientID+" saving with server : "+serverID,errRecord);
+                                        }
+                                        else
+                                        {
+                                            Clients[clientID]=socket;
+                                            console.log("Client registered successfully");
+
+                                            DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+
+                                                if(errMsg)
+                                                {
+                                                    console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+                                                }
+                                                else
+                                                {
+                                                    if(!resMsg)
+                                                    {
+                                                        console.log("No Queued messages found for Client : "+clientID);
+                                                    }
+                                                    else
+                                                    {
+                                                        for(var i=0 ;i<resMsg.length;i++)
+                                                        {
+                                                            var topicData = JSON.parse(resMsg[i].Callback);
+                                                            var ClientData = resMsg[i];
+                                                            if(topicData =="")
+                                                            {
+                                                                QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+                                                                    if(errInitiate)
+                                                                    {
+                                                                        console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                                                            if(errRem)
+                                                                            {
+                                                                                console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                                                            }
+                                                                        });
+                                                                    }
+
+                                                                });
+                                                            }
+                                                            else
+                                                            {
+                                                                QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+                                                                    if(errInitiate)
+                                                                    {
+                                                                        console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                                                            if(errRem)
+                                                                            {
+                                                                                console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                                                            }
+                                                                        });
+                                                                    }
+
+                                                                });
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        }
+
+                                    });
+
+                                }
+
+                                else if (!errorX && responseX.statusCode  == 200 ) {
+
+
+                                    console.log("Client is already registered in another Active server, Try with another client");
+
+                                }
+                                else
+                                {
+                                    DBController.RecordUserServer(clientID,serverID, function (errRecord,resRecord) {
+
+                                        if(errRecord)
+                                        {
+                                            console.log("Error in client data : "+clientID+" saving with server : "+serverID,errRecord);
+                                        }
+                                        else
+                                        {
+                                            Clients[clientID]=socket;
+                                            console.log("Client registered successfully");
+
+                                            DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+
+                                                if(errMsg)
+                                                {
+                                                    console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+                                                }
+                                                else
+                                                {
+                                                    if(!resMsg)
+                                                    {
+                                                        console.log("No Queued messages found for Client : "+clientID);
+                                                    }
+                                                    else
+                                                    {
+                                                        for(var i=0 ;i<resMsg.length;i++)
+                                                        {
+                                                            var topicData = JSON.parse(resMsg[i].Callback);
+                                                            var ClientData = resMsg[i];
+                                                            if(topicData =="")
+                                                            {
+                                                                QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+                                                                    if(errInitiate)
+                                                                    {
+                                                                        console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                                                            if(errRem)
+                                                                            {
+                                                                                console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                                                            }
+                                                                        });
+                                                                    }
+
+                                                                });
+                                                            }
+                                                            else
+                                                            {
+                                                                QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+                                                                    if(errInitiate)
+                                                                    {
+                                                                        console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                                                            if(errRem)
+                                                                            {
+                                                                                console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                                                            }
+                                                                        });
+                                                                    }
+
+                                                                });
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        }
+
+                                    });
+                                }
+                            });
+                        }
+
+                    });
                 }
+
             }
+
         }
+
     });
+
+
+
+    /*redisManager.CheckClientAvailability(clientID,function (errAvbl,resAvbl) {
+
+     if(errAvbl)
+     {
+     console.log("Exception found in Checking client availability ",errAvbl);
+     }
+     else
+     {
+     if(!resAvbl)
+     {
+     console.log("Client name is already taken");
+     }
+     else
+     {
+     if(!Clients[clientID])
+     {
+     // does not exist\
+     Clients[clientID]=socket;
+     redisManager.RecordUserServer(clientID,MyID, function (errSet,resSet) {
+     if(errSet)
+     {
+     console.log("Error in Client registration , Check your redis connection");
+     }
+     else
+     {
+     //console.log(JSON.stringify(Clients));
+     console.log("New client registering ");
+     console.log("new user registered : user id -" + socket.handshake.query.myid);
+     console.log("User added : Client - "+clientID+" Socket - "+Clients[clientID].id);
+     }
+     });
+
+     }
+     else
+     {
+     // does exist
+     Clients[clientID]=socket;
+
+     console.log("Recorded client");
+     console.log("User registeration Updated: user id -" + socket.handshake.query.myid);
+     console.log("User updated : Client - "+clientID+" Socket - "+Clients[clientID].id);
+
+
+     }
+
+     DBController.QueuedMessagesPicker('client1', function (errMsg,resMsg) {
+
+     if(errMsg)
+     {
+     console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+     }
+     else
+     {
+     if(!resMsg)
+     {
+     console.log("No Queued messages found for Client : "+clientID);
+     }
+     else
+     {
+     for(var i=0 ;i<resMsg.length;i++)
+     {
+     var topicData = JSON.parse(resMsg[i].Callback);
+     var ClientData = resMsg[i];
+     if(topicData =="")
+     {
+     QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+     if(errInitiate)
+     {
+     console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+     }
+     else
+     {
+     DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+     if(errRem)
+     {
+     console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+     }
+     else
+     {
+     console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+     }
+     });
+     }
+
+     });
+     }
+     else
+     {
+     QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
+
+     if(errInitiate)
+     {
+     console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+     }
+     else
+     {
+     DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+     if(errRem)
+     {
+     console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+     }
+     else
+     {
+     console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+     }
+     });
+     }
+
+     });
+     }
+     }
+     }
+     }
+     });
+
+
+     }
+     }
+     });*/
 
 
     socket.on('reply',function(data)
@@ -820,21 +1279,21 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
     return next();
 });
 
+RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id/Availability',function(req,res,next)
+{
+    res.status(200);
+    res.end(true);
+
+    return next();
+});
+
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test',function(req,res,next)
 {
-    var array={};
-    array["a"]=1;
-    array["b"]=2;
-    array["c"]=3;
-    array["d"]=4;
-    array["e"]=5;
-    array["f"]=6;
-
-    //console.log(array["c"]);
-    console.log(array["f"]);
-    delete array["d"];
-    console.log(array);
-    res.end();
+    DBController.QueuedMessagesPicker('client1', function (e,r) {
+        console.log("Error "+e);
+        console.log("Res "+JSON.stringify(r));
+        res.end();
+    });
 
 
 
@@ -852,6 +1311,197 @@ TopicIdGenerator = function ()
 
 
 };
+
+QueuedInitiateMessageSender = function (messageObj,callback) {
+
+    var clientID = messageObj.To;
+    var Persistency =true;
+    var callbackObj= JSON.parse(messageObj.Callback);
+    var Timeout = callbackObj.Timeout;
+    var Direction =callbackObj.Direction;
+    var Message = callbackObj.Message;
+    var Ref = callbackObj.Ref;
+    var callbackURL = "";
+    var From = messageObj.From;
+
+
+
+    redisManager.CheckClientAvailability(clientID, function (errAvbl,resAvbl) {
+
+        console.log("Checking result "+resAvbl);
+        if(resAvbl && Persistency)
+        {
+            console.log("Client is not available.......................");
+            if(errAvbl)
+            {
+                console.log("Error in Checking Availability ",errAvbl);
+
+            }
+
+        }
+        else
+        {
+            if(!isNaN(Timeout))
+            {
+                TTL = Timeout;
+                console.log("TTL found "+TTL);
+            }
+            console.log(clientID);
+
+            if(Clients[clientID])
+            {
+
+                var socket=Clients[clientID];
+
+                console.log("Destination available");
+                try
+                {
+
+                    var topicID = TopicIdGenerator();
+                    var direction = Direction;
+                    callbackURL = "";
+                    var message = Message;
+                    var ref = Ref;
+
+                    Refs[topicID]=ref;
+
+                    if(direction=="STATEFUL")
+                    {
+                        callbackURL=callbackObj.CallbackURL;
+                    }
+                    var sender = From;
+
+
+
+                }
+                catch(ex)
+                {
+                    console.log("Error in request body "+ex);
+                    callback(ex,undefined);
+                }
+
+
+                redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
+                {
+                    if(errTobj)
+                    {
+                        console.log("Error in TokenObject creation "+errTobj);
+                        //res.end("Error in TokenObject creation "+errTobj);
+                        callback(errTobj,undefined);
+                    }
+                    else
+                    {
+
+                        /*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
+                         {
+                         if(errSet)
+                         {
+                         console.log("Resource object creation failed "+errSet);
+                         res.end("Resource object creation failed "+errSet);
+                         }
+                         else
+                         {
+                         console.log("Resource object creation Succeeded "+resSet);*/
+                        var msgObj={
+
+                            "Message":message,
+                            "TopicKey":topicID
+                        };
+                        socket.emit('message',msgObj);
+                        callback(undefined,topicID);
+
+                        /*    }
+
+                         });*/
+
+                    }
+                });
+
+            }
+            else
+            {
+                callback(new Error("Invlid Client data"+clientID),undefined);
+            }
+        }
+
+    });
+
+};
+
+QueuedContinueMessageSender = function (messageObj,callback) {
+
+
+    var callbackObj =JSON.parse(messageObj);
+    var message= callbackObj.Message;
+    var topicKey = callbackObj.Topic;
+    var Persistency = true;
+
+
+
+    redisManager.TopicObjectPicker(topicKey,TTL, function (e,r) {
+
+        if(e)
+        {
+            console.log(e);
+            callback(e,undefined);
+        }
+        else
+        {
+            if(r==null || r=="")
+            {
+                console.log("Invalid or Expired Token given, Please try from initial step");
+                callback(new Error("Invalid Topic"),undefined);
+            }
+            else
+            {
+                // console.log("Got token Data "+r);
+                redisManager.CheckClientAvailability(r.Client, function (errAvbl,resAvbl) {
+
+                    console.log("Checking result "+resAvbl);
+
+                    if(resAvbl && Persistency)
+                    {
+                        console.log("Client is not available.......................");
+                        if(errAvbl)
+                        {
+                            console.log("Error in Checking Availability ",errAvbl);
+                            callback(errAvbl,undefined);
+
+                        }
+
+                    }
+                    else
+                    {
+                        if(Clients[r.Client])
+                        {
+                            var socket= Clients[r.Client];
+                            var msgObj={
+
+                                "Message":message,
+                                "TopicKey":topicKey
+                            };
+                            socket.emit('message',msgObj);
+                            callback(undefined,topicKey);
+                        }
+                        else
+                        {
+                            callback(new Error("Client unavailable "+r.Client),undefined);
+                        }
+                    }
+
+
+                });
+
+
+            }
+
+        }
+
+    });
+
+};
+
+
 
 /*
  ServerPicker = function (SID,callback) {
