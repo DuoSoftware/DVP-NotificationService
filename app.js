@@ -19,6 +19,7 @@ var validator = require('validator');
 var request = require('request');
 var util = require('util');
 var DBController = require('./DBController.js');
+var async= require('async');
 
 
 
@@ -91,6 +92,9 @@ io.sockets.on('connection', function (socket) {
                         DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
 
                             console.log(JSON.stringify(resMsg));
+
+
+
                             if(errMsg)
                             {
                                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
@@ -98,30 +102,35 @@ io.sockets.on('connection', function (socket) {
                             else
                             {
                                 console.log(resMsg.length+" Messages found ");
-                                for(var i=0 ;i<resMsg.length;i++)
+                                for(i=0 ;i<resMsg.length;i++)
                                 {
                                     var topicKey=JSON.parse(resMsg[i].Callback).Topic;
-                                    console.log("topicKey "+topicKey);
+
+                                    var msgReciever = resMsg[i].To;
+                                    var msgID=resMsg[i].id;
 
                                     if(!topicKey)
                                     {
-                                        console.log("No tpoic Key found, Identified as Initiate request");
+                                        console.log("No topic Key found, Identified as Initiate request");
                                         QueuedInitiateMessageSender(resMsg[i], function (errInitiate,resInitiate) {
+
 
                                             if(errInitiate)
                                             {
-                                                console.log("Error in sending initiate Message to Client : "+resMsg[i].To,errInitiate);
+                                                //console.log("Error in sending initiate Message to Client : "+msgReciever,errInitiate);
                                             }
                                             else
                                             {
-                                                DBController.PersistenceMessageRemover(resMsg[i].id, function (errRem,resRem) {
+
+                                                //console.log(JSON.stringify(resMsg[i]));
+                                                DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
                                                     if(errRem)
                                                     {
-                                                        console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
+                                                        //console.log("Error in Removing Queued Message data : "+msgReciever,errRem);
                                                     }
                                                     else
                                                     {
-                                                        console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
+                                                        //console.log("Queued message Sent and Removed from Queue : "+msgReciever);
                                                     }
                                                 });
                                             }
@@ -141,21 +150,21 @@ io.sockets.on('connection', function (socket) {
                                             else
                                             {
                                                 console.log("Continue messages sent successfully ");
-                                                DBController.PersistenceMessageRemover(resMsg[i].id, function (errRem,resRem) {
+
+                                                DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
                                                     if(errRem)
                                                     {
-                                                        console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
+                                                        console.log("Error in Removing Queued Message data : "+msgReciever,errRem);
                                                     }
                                                     else
                                                     {
-                                                        console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
+                                                        console.log("Queued message Sent and Removed from Queue : "+msgReciever);
                                                     }
                                                 });
                                             }
 
                                         });
                                     }
-
                                     /* var topicData = JSON.parse(resMsg[i].Callback);
                                      var ClientData = resMsg[i];
 
@@ -208,8 +217,14 @@ io.sockets.on('connection', function (socket) {
                                      });
                                      }*/
 
+                                    QueuedMessageOperator(resMsg[i]);
+
 
                                 }
+
+
+
+
 
                             }
                         });
@@ -237,173 +252,177 @@ io.sockets.on('connection', function (socket) {
                         else
                         {
                             /*for(var i=0 ;i<resMsg.length;i++)
-                                {
-                                    var topicData = JSON.parse(resMsg[i].Callback);
-                                    var ClientData = resMsg[i];
-                                    if(topicData =="")
-                                    {
-                                        QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
+                             {
+                             var topicData = JSON.parse(resMsg[i].Callback);
+                             var ClientData = resMsg[i];
+                             if(topicData =="")
+                             {
+                             QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
 
-                                            if(errInitiate)
-                                            {
-                                                console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
-                                            }
-                                            else
-                                            {
-                                                DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
-                                                    if(errRem)
-                                                    {
-                                                        console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
-                                                    }
-                                                    else
-                                                    {
-                                                        console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
-                                                    }
-                                                });
-                                            }
+                             if(errInitiate)
+                             {
+                             console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                             }
+                             else
+                             {
+                             DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                             if(errRem)
+                             {
+                             console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                             }
+                             else
+                             {
+                             console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                             }
+                             });
+                             }
 
-                                        });
-                                    }
-                                    else
-                                    {
-                                        QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
+                             });
+                             }
+                             else
+                             {
+                             QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
 
-                                            if(errInitiate)
-                                            {
-                                                console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
-                                            }
-                                            else
-                                            {
-                                                DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
-                                                    if(errRem)
-                                                    {
-                                                        console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
-                                                    }
-                                                    else
-                                                    {
-                                                        console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
-                                                    }
-                                                });
-                                            }
+                             if(errInitiate)
+                             {
+                             console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                             }
+                             else
+                             {
+                             DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                             if(errRem)
+                             {
+                             console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                             }
+                             else
+                             {
+                             console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                             }
+                             });
+                             }
 
-                                        });
-                                    }
-                                }*/
+                             });
+                             }
+                             }*/
 
-                                console.log(resMsg.length+" Messages found ");
-                                for(var i=0 ;i<resMsg.length;i++)
-                                {
-                                    var topicKey=JSON.parse(resMsg[i].Callback).Topic;
-                                    console.log("topicKey "+topicKey);
+                            console.log(resMsg.length+" Messages found ");
+                            for(var i=0 ;i<resMsg.length;i++)
+                            {
+                                /*var topicKey=JSON.parse(resMsg[i].Callback).Topic;
+                                 console.log("topicKey "+topicKey);
+                                 console.log("I = "+resMsg[i].id);
 
-                                    if(!topicKey)
-                                    {
-                                        console.log("No tpoic Key found, Identified as Initiate request");
-                                        QueuedInitiateMessageSender(resMsg[i], function (errInitiate,resInitiate) {
+                                 var msgReciever=resMsg[i].To;
+                                 var msgID= resMsg[i].id;
 
-                                            if(errInitiate)
-                                            {
-                                                console.log("Error in sending initiate Message to Client : "+resMsg[i].To,errInitiate);
-                                            }
-                                            else
-                                            {
-                                                //console.log("Done ");
-                                                DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
-                                                    if(errRem)
-                                                    {
-                                                        console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
-                                                    }
-                                                    else
-                                                    {
-                                                        console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
-                                                    }
-                                                });
-                                            }
+                                 if(!topicKey)
+                                 {
+                                 console.log("No tpoic Key found, Identified as Initiate request");
+                                 QueuedInitiateMessageSender(resMsg[i], function (errInitiate,resInitiate) {
 
-                                        });
-                                    }
-                                    else
-                                    {
-                                        console.log("An Continue message");
+                                 if(errInitiate)
+                                 {
+                                 console.log("Error in sending initiate Message to Client : "+resMsg[i].To,errInitiate);
+                                 }
+                                 else
+                                 {
+                                 //console.log("Done ");
+                                 DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
+                                 if(errRem)
+                                 {
+                                 console.log("Error in Removing Queued Message data : "+msgReciever,errRem);
+                                 }
+                                 else
+                                 {
+                                 console.log("Queued message Sent and Removed from Queue : "+msgReciever);
+                                 }
+                                 });
+                                 }
 
-                                        QueuedContinueMessageSender(resMsg[i].Callback, function (errConMsg,resConMsg) {
+                                 });
+                                 }
+                                 else
+                                 {
+                                 console.log("An Continue message");
 
-                                            if(errConMsg)
-                                            {
-                                                console.log("Error in Sending Continues Messages ",errConMsg);
-                                            }
-                                            else
-                                            {
-                                                console.log("Continue messages sent successfully ");
-                                                DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
-                                                    if(errRem)
-                                                    {
-                                                        console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
-                                                    }
-                                                    else
-                                                    {
-                                                        console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
-                                                    }
-                                                });
-                                            }
+                                 QueuedContinueMessageSender(resMsg[i].Callback, function (errConMsg,resConMsg) {
 
-                                        });
-                                    }
+                                 if(errConMsg)
+                                 {
+                                 console.log("Error in Sending Continues Messages ",errConMsg);
+                                 }
+                                 else
+                                 {
+                                 console.log("Continue messages sent successfully ");
+                                 DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
+                                 if(errRem)
+                                 {
+                                 console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
+                                 }
+                                 else
+                                 {
+                                 console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
+                                 }
+                                 });
+                                 }
 
-                                    /* var topicData = JSON.parse(resMsg[i].Callback);
-                                     var ClientData = resMsg[i];
+                                 });
+                                 }*/
 
-                                     if(topicData =="")
-                                     {
-                                     QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
+                                /* var topicData = JSON.parse(resMsg[i].Callback);
+                                 var ClientData = resMsg[i];
 
-                                     if(errInitiate)
-                                     {
-                                     console.log("Error in sending initiate Message to Client : "+ClientData.To,errInitiate);
-                                     }
-                                     else
-                                     {
-                                     DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
-                                     if(errRem)
-                                     {
-                                     console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
-                                     }
-                                     else
-                                     {
-                                     console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
-                                     }
-                                     });
-                                     }
+                                 if(topicData =="")
+                                 {
+                                 QueuedInitiateMessageSender(ClientData, function (errInitiate,resInitiate) {
 
-                                     });
-                                     }
-                                     else
-                                     {
-                                     QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
+                                 if(errInitiate)
+                                 {
+                                 console.log("Error in sending initiate Message to Client : "+ClientData.To,errInitiate);
+                                 }
+                                 else
+                                 {
+                                 DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                 if(errRem)
+                                 {
+                                 console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                 }
+                                 else
+                                 {
+                                 console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                 }
+                                 });
+                                 }
 
-                                     if(errInitiate)
-                                     {
-                                     console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
-                                     }
-                                     else
-                                     {
-                                     DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
-                                     if(errRem)
-                                     {
-                                     console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
-                                     }
-                                     else
-                                     {
-                                     console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
-                                     }
-                                     });
-                                     }
+                                 });
+                                 }
+                                 else
+                                 {
+                                 QueuedContinueMessageSender(ClientData, function (errInitiate,resInitiate) {
 
-                                     });
-                                     }*/
+                                 if(errInitiate)
+                                 {
+                                 console.log("Error in sending initiate Message to Clinet : "+ClientData.To,errInitiate);
+                                 }
+                                 else
+                                 {
+                                 DBController.PersistenceMessageRemover(ClientData.id, function (errRem,resRem) {
+                                 if(errRem)
+                                 {
+                                 console.log("Error in Removing Queued Message data : "+ClientData.id,errRem);
+                                 }
+                                 else
+                                 {
+                                 console.log("Queued message Sent and Removed from Queue : "+ClientData.id);
+                                 }
+                                 });
+                                 }
 
+                                 });
+                                 }*/
+                                QueuedMessageOperator(resMsg[i]);
 
-                                }
+                            }
 
 
 
@@ -459,61 +478,62 @@ io.sockets.on('connection', function (socket) {
                                                         console.log(resMsg.length+" Messages found ");
                                                         for(var i=0 ;i<resMsg.length;i++)
                                                         {
-                                                            var topicKey=JSON.parse(resMsg[i].Callback).Topic;
-                                                            console.log("topicKey "+topicKey);
+                                                            /*var topicKey=JSON.parse(resMsg[i].Callback).Topic;
+                                                             console.log("topicKey "+topicKey);
+                                                             console.log("I = "+resMsg[i].id);
 
-                                                            if(!topicKey)
-                                                            {
-                                                                console.log("No tpoic Key found, Identified as Initiate request");
-                                                                QueuedInitiateMessageSender(resMsg[i], function (errInitiate,resInitiate) {
+                                                             if(!topicKey)
+                                                             {
+                                                             console.log("No tpoic Key found, Identified as Initiate request");
+                                                             QueuedInitiateMessageSender(resMsg[i], function (errInitiate,resInitiate) {
 
-                                                                    if(errInitiate)
-                                                                    {
-                                                                        console.log("Error in sending initiate Message to Client : "+resMsg[i].To,errInitiate);
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
-                                                                            if(errRem)
-                                                                            {
-                                                                                console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
-                                                                            }
-                                                                        });
-                                                                    }
+                                                             if(errInitiate)
+                                                             {
+                                                             console.log("Error in sending initiate Message to Client : "+resMsg[i].To,errInitiate);
+                                                             }
+                                                             else
+                                                             {
+                                                             DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
+                                                             if(errRem)
+                                                             {
+                                                             console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
+                                                             }
+                                                             else
+                                                             {
+                                                             console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
+                                                             }
+                                                             });
+                                                             }
 
-                                                                });
-                                                            }
-                                                            else
-                                                            {
-                                                                console.log("An Continue message");
+                                                             });
+                                                             }
+                                                             else
+                                                             {
+                                                             console.log("An Continue message");
 
-                                                                QueuedContinueMessageSender(resMsg[i].Callback, function (errConMsg,resConMsg) {
+                                                             QueuedContinueMessageSender(resMsg[i].Callback, function (errConMsg,resConMsg) {
 
-                                                                    if(errConMsg)
-                                                                    {
-                                                                        console.log("Error in Sending Continues Messages ",errConMsg);
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        console.log("Continue messages sent successfully ");
-                                                                        DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
-                                                                            if(errRem)
-                                                                            {
-                                                                                console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
-                                                                            }
-                                                                        });
-                                                                    }
+                                                             if(errConMsg)
+                                                             {
+                                                             console.log("Error in Sending Continues Messages ",errConMsg);
+                                                             }
+                                                             else
+                                                             {
+                                                             console.log("Continue messages sent successfully ");
+                                                             DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
+                                                             if(errRem)
+                                                             {
+                                                             console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
+                                                             }
+                                                             else
+                                                             {
+                                                             console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
+                                                             }
+                                                             });
+                                                             }
 
-                                                                });
-                                                            }
+                                                             });
+                                                             }*/
 
                                                             /* var topicData = JSON.parse(resMsg[i].Callback);
                                                              var ClientData = resMsg[i];
@@ -567,6 +587,8 @@ io.sockets.on('connection', function (socket) {
                                                              });
                                                              }*/
 
+                                                            QueuedMessageOperator(resMsg[i]);
+
 
                                                         }
 
@@ -619,61 +641,62 @@ io.sockets.on('connection', function (socket) {
                                                     console.log(resMsg.length+" Messages found ");
                                                     for(var i=0 ;i<resMsg.length;i++)
                                                     {
-                                                        var topicKey=JSON.parse(resMsg[i].Callback).Topic;
-                                                        console.log("topicKey "+topicKey);
+                                                        /*var topicKey=JSON.parse(resMsg[i].Callback).Topic;
+                                                         console.log("topicKey "+topicKey);
+                                                         console.log("I = "+resMsg[i].id);
 
-                                                        if(!topicKey)
-                                                        {
-                                                            console.log("No tpoic Key found, Identified as Initiate request");
-                                                            QueuedInitiateMessageSender(resMsg[i], function (errInitiate,resInitiate) {
+                                                         if(!topicKey)
+                                                         {
+                                                         console.log("No tpoic Key found, Identified as Initiate request");
+                                                         QueuedInitiateMessageSender(resMsg[i], function (errInitiate,resInitiate) {
 
-                                                                if(errInitiate)
-                                                                {
-                                                                    console.log("Error in sending initiate Message to Client : "+resMsg[i].To,errInitiate);
-                                                                }
-                                                                else
-                                                                {
-                                                                    DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
-                                                                        if(errRem)
-                                                                        {
-                                                                            console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
-                                                                        }
-                                                                    });
-                                                                }
+                                                         if(errInitiate)
+                                                         {
+                                                         console.log("Error in sending initiate Message to Client : "+resMsg[i].To,errInitiate);
+                                                         }
+                                                         else
+                                                         {
+                                                         DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
+                                                         if(errRem)
+                                                         {
+                                                         console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
+                                                         }
+                                                         else
+                                                         {
+                                                         console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
+                                                         }
+                                                         });
+                                                         }
 
-                                                            });
-                                                        }
-                                                        else
-                                                        {
-                                                            console.log("An continue message");
+                                                         });
+                                                         }
+                                                         else
+                                                         {
+                                                         console.log("An continue message");
 
-                                                            QueuedContinueMessageSender(resMsg[i].Callback, function (errConMsg,resConMsg) {
+                                                         QueuedContinueMessageSender(resMsg[i].Callback, function (errConMsg,resConMsg) {
 
-                                                                if(errConMsg)
-                                                                {
-                                                                    console.log("Error in Sending Continues Messages ",errConMsg);
-                                                                }
-                                                                else
-                                                                {
-                                                                    console.log("Continue messages sent successfully ");
-                                                                    DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
-                                                                        if(errRem)
-                                                                        {
-                                                                            console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
-                                                                        }
-                                                                    });
-                                                                }
+                                                         if(errConMsg)
+                                                         {
+                                                         console.log("Error in Sending Continues Messages ",errConMsg);
+                                                         }
+                                                         else
+                                                         {
+                                                         console.log("Continue messages sent successfully ");
+                                                         DBController.PersistenceMessageRemover(resMsg[i].To, function (errRem,resRem) {
+                                                         if(errRem)
+                                                         {
+                                                         console.log("Error in Removing Queued Message data : "+resMsg[i].To,errRem);
+                                                         }
+                                                         else
+                                                         {
+                                                         console.log("Queued message Sent and Removed from Queue : "+resMsg[i].To);
+                                                         }
+                                                         });
+                                                         }
 
-                                                            });
-                                                        }
+                                                         });
+                                                         }*/
 
                                                         /* var topicData = JSON.parse(resMsg[i].Callback);
                                                          var ClientData = resMsg[i];
@@ -726,6 +749,8 @@ io.sockets.on('connection', function (socket) {
 
                                                          });
                                                          }*/
+
+                                                        QueuedMessageOperator(resMsg[i]);
 
 
                                                     }
@@ -2037,6 +2062,66 @@ InmsgSender = function (clientData,callback) {
 
 };
 
+QueuedMessageOperator = function (msgObj) {
+
+    var topicKey=JSON.parse(msgObj.Callback).Topic;
+    var msgReciever = msgObj.To;
+    var msgID=msgObj.id;
+
+    if(!topicKey)
+    {
+        QueuedInitiateMessageSender(msgObj, function (errInitiate,resInitiate)
+        {
+            if(errInitiate)
+            {
+                console.log("errorrrrrrrrvvvvv "+errInitiate);
+            }
+            else
+            {
+                DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
+                    if(errRem)
+                    {
+                        console.log("Error in Removing Queued Message data : "+msgReciever,errRem);
+                    }
+                    else
+                    {
+                        console.log("Queued message Sent and Removed from Queue : "+msgReciever);
+                    }
+                });
+            }
+        });
+    }
+    else
+    {
+        console.log("An Continue message");
+
+        QueuedContinueMessageSender(msgObj.Callback, function (errConMsg,resConMsg) {
+
+            if(errConMsg)
+            {
+                console.log("Error in Sending Continues Messages ",errConMsg);
+            }
+            else
+            {
+                console.log("Continue messages sent successfully ");
+
+                DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
+                    if(errRem)
+                    {
+                        console.log("Error in Removing Queued Message data : "+msgReciever,errRem);
+                    }
+                    else
+                    {
+                        console.log("Queued message Sent and Removed from Queue : "+msgReciever);
+                    }
+                });
+            }
+
+        });
+    }
+
+
+};
 /*
  ServerPicker = function (SID,callback) {
 

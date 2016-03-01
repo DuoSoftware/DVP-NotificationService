@@ -4,6 +4,7 @@
   "description": "Notification service for service to client communication",
   "main": "app.js",
   "dependencies": {
+    "async": "^1.5.2",
     "config": "^1.16.0",
     "dvp-common": "^0.0.16",
     "dvp-dbmodels": "0.0.45",
