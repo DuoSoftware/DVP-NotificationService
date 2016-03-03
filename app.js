@@ -936,6 +936,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
             if(errAvbl)
             {
                 console.log("Error in Checking Availability ",errAvbl);
+                res.end();
 
             }
 
@@ -1079,7 +1080,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         if (!error && response.statusCode == 200)
                                         {
                                             console.log("no errrs");
-                                            res.end();
+                                            res.end(response);
                                         }
                                         else
                                         {
