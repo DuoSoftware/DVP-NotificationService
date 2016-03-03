@@ -40,7 +40,8 @@ PersistenceMessageRecorder = function (Obj,callback) {
         Ref:dataBody.Ref,
         Direction:dataBody.Direction,
         Topic:topic,
-        CallbackURL : dataBody.Callback
+        CallbackURL : dataBody.Callback,
+        MessageType:"GENERAL"
     };
     try {
         var newMessageObject = DbConn.PersistenceMessages
@@ -102,7 +103,8 @@ PersistenceGroupMessageRecorder = function (Obj,callback) {
         Ref:dataBody.Ref,
         Direction:dataBody.Direction,
         Topic:"",
-        CallbackURL : ""
+        CallbackURL : "",
+        MessageType:"BROADCAST"
     };
 
     console.log("Saving "+CallbackObj);
