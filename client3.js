@@ -153,9 +153,9 @@ function ConfigCollector(status)
             // socket.emit('reply',"this is a reply 2");
             //socket.disconnect();
         });
-        socket.on('news', function(data){
+        socket.on('broadcast', function(data){
             console.log(data);
-            socket.disconnect();
+            //socket.disconnect();
         });
 
 

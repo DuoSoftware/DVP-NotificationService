@@ -124,9 +124,9 @@ function ConfigCollector(status)
 
 
         });
-        socket.on('news', function(data){
+        socket.on('broadcast', function(data){
             console.log(data);
-            socket.disconnect();
+            //socket.disconnect();
         });
 
 

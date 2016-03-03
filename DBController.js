@@ -88,7 +88,47 @@ PersistenceMessageRemover = function (msgId,callback) {
     });
 };
 
+PersistenceGroupMessageRecorder = function (Obj,callback) {
 
+
+    var dataBody=Obj;
+    console.log("To Db of records "+dataBody);
+
+
+    var CallbackObj = {
+
+        Timeout:dataBody.Timeout,
+        Message:dataBody.Message,
+        Ref:dataBody.Ref,
+        Direction:dataBody.Direction,
+        Topic:"",
+        CallbackURL : ""
+    };
+
+    console.log("Saving "+CallbackObj);
+    try {
+        var newMessageObject = DbConn.PersistenceMessages
+            .build(
+            {
+                From : dataBody.From,
+                To : dataBody.To,
+                Time : Date.now(),
+                Callback:JSON.stringify(CallbackObj)
+
+            }
+        )
+    }
+    catch (e)
+    {
+        callback(e,undefined);
+    }
+
+    newMessageObject.save().then(function (resSave) {
+        callback(undefined,resSave)
+    }).catch(function (errSave) {
+        callback(errSave,undefined);
+    });
+};
 
 
 
@@ -96,3 +136,4 @@ module.exports.ServerPicker = ServerPicker;
 module.exports.PersistenceMessageRecorder = PersistenceMessageRecorder;
 module.exports.QueuedMessagesPicker = QueuedMessagesPicker;
 module.exports.PersistenceMessageRemover = PersistenceMessageRemover;
+module.exports.PersistenceGroupMessageRecorder = PersistenceGroupMessageRecorder;

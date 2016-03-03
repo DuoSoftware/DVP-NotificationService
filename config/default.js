@@ -18,7 +18,7 @@ module.exports = {
   "Host":
   {
     "domain": "127.0.0.1",
-    "port": 8087,
+    "port": 8080,
     "version":"6.0",
     "hostpath":"./config",
     "logfilepath": ""
@@ -31,5 +31,5 @@ module.exports = {
   {
     "ttl":"1000"
   },
-  "ID":"2"
+  "ID":"1"
 };

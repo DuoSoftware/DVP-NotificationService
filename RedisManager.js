@@ -486,6 +486,39 @@ IsRegisteredClient = function (clientID,callback) {
     });
 };
 
+BroadcastTopicObjectCreator = function (topicId,msgObj,clients,callback) {
+
+    var groupTopicId = "Group:"+topicId;
+    var direction = msgObj.Direction;
+    var sender = msgObj.From;
+    var callbackURL="";
+    if(direction=="STATEFUL")
+    {
+        callbackURL=msgObj.Callback;
+    }
+    if(!isNaN(msgObj.Timeout))
+    {
+        TTL =msgObj.Timeout;
+        console.log("TTL found "+TTL);
+    }
+
+    TokenObjectCreator(groupTopicId,clients,direction,sender,callbackURL,TTL, function (errTknCreate,resTknCreate) {
+
+        if(errTknCreate)
+        {
+            console.log("Group Token creation error ",errTknCreate);
+            callback(errTknCreate,undefined);
+        }
+        else
+        {
+            console.log("Token created ");
+            callback(undefined,resTknCreate);
+        }
+
+    });
+
+};
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
@@ -502,5 +535,7 @@ module.exports.SessionRemover = SessionRemover;
 module.exports.CheckClientAvailability = CheckClientAvailability;
 module.exports.ResetServerData = ResetServerData;
 module.exports.IsRegisteredClient = IsRegisteredClient;
+module.exports.BroadcastTopicObjectCreator = BroadcastTopicObjectCreator;
+
 
 
