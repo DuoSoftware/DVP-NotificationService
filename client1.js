@@ -128,6 +128,10 @@ function ConfigCollector(status)
             console.log(data);
             //socket.disconnect();
         });
+        socket.on('publish', function(data){
+            console.log(data);
+            //socket.disconnect();
+        });
 
 
     });

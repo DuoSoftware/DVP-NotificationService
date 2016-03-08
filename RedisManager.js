@@ -320,7 +320,7 @@ RecordUserServer = function (clientName,server,callback)
 GetClientsServer = function (clientName,callback) {
 
     var key="notification:loc:"+clientName+":*";
-
+    console.log(key);
     client.keys(key,function(errGet,resGet)
     {
         if(errGet)
@@ -519,6 +519,87 @@ BroadcastTopicObjectCreator = function (topicId,msgObj,clients,callback) {
 
 };
 
+ParamKeyGenerator = function (paramData) {
+
+    if(paramData)
+    {
+        var paramKey ="";
+        var keyObj=Object.keys(paramData);
+        for(var i=0;i<keyObj.length;i++)
+        {
+            if(i==0)
+            {
+                paramKey=keyObj[i]+"-"+paramData[keyObj[i]];
+            }
+            else
+            {
+                paramKey=paramKey+"-"+keyObj[i]+"-"+paramData[keyObj[i]];
+            }
+
+            if(i==keyObj.length-1)
+            {
+                return paramKey;
+            }
+        }
+    }
+    else
+    {
+        return null;
+    }
+
+
+};
+
+QueryKeyGenerator = function (dataObj,clientID,callback) {
+
+    IsRegisteredClient(clientID, function (errAvbl,status,datakey) {
+        if(errAvbl)
+        {
+            console.log("error in searching client ",errAvbl);
+            callback(errAvbl,undefined);
+        }
+        else
+        {
+            if(!status && !datakey)
+            {
+                console.log("No client found ");
+                callback(new Error("No client found"),undefined);
+            }
+            else
+            {
+                var paramKey = ParamKeyGenerator(dataObj.FilterData);
+                if(paramKey)
+                {
+                    var key = "Query:"+dataObj.Query+":"+dataObj.Company+":"+dataObj.Tenant+":"+paramKey;
+                    client.RPUSH(key,clientID, function (errKey,resKey) {
+                        if(errKey)
+                        {
+                            console.log("Error in push");
+                            callback(errKey,undefined);
+                        }
+                        else
+                        {
+                            console.log("Key "+key);
+                            callback(undefined,resKey);
+                        }
+                    });
+
+                }
+                else
+                {
+                    console.log("Error in search");
+                    callback(new Error("Invalid param key"),undefined);
+                }
+            }
+        }
+    });
+
+
+    // client.RPUSH("key",)
+};
+
+
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
@@ -536,6 +617,8 @@ module.exports.CheckClientAvailability = CheckClientAvailability;
 module.exports.ResetServerData = ResetServerData;
 module.exports.IsRegisteredClient = IsRegisteredClient;
 module.exports.BroadcastTopicObjectCreator = BroadcastTopicObjectCreator;
+module.exports.ParamKeyGenerator = ParamKeyGenerator;
+module.exports.QueryKeyGenerator = QueryKeyGenerator;
 
 
 
