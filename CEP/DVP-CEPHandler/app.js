@@ -49,36 +49,45 @@ RestServer.post('/DVP/API/'+version+'/CEPHandler/Notification/Publish', function
             }
             else
             {
-                // ServerPicker()
-                console.log(resSubs);
-                var subsCount = resSubs.length;
-
-                for(var i=0;i<resSubs.length;i++)
+                if(!resSubs)
                 {
-                    console.log("I ==== "+i);
-                    console.log("Length ==== "+resSubs.length);
-                    PublishToUser(resSubs[i],msgObj, function (errPublish,resPublish) {
-
-                        console.log("")
-                        if(i==subsCount)
-                        {
-                            console.log("End");
-                            res.end("Done publish")
-                        }
-
-                        if(errPublish)
-                        {
-                            //res.end("Error");
-                            console.log(errPublish);
-
-                        }
-                        else
-                        {
-                            console.log("Success");
-                            //res.end("Done");
-                        }
-                    });
+                    console.log("No Subscribers found");
+                    res.end();
                 }
+                else
+                {
+                    console.log(resSubs);
+                    var subsCount = resSubs.length;
+
+                    for(var i=0;i<resSubs.length;i++)
+                    {
+                        console.log("I ==== "+i);
+                        console.log("Length ==== "+resSubs.length);
+                        PublishToUser(resSubs[i],msgObj, function (errPublish,resPublish) {
+
+                            console.log("")
+                            if(i==subsCount)
+                            {
+                                console.log("End");
+                                res.end("Done publish")
+                            }
+
+                            if(errPublish)
+                            {
+                                //res.end("Error");
+                                console.log(errPublish);
+
+                            }
+                            else
+                            {
+                                console.log("Success");
+                                //res.end("Done");
+                            }
+                        });
+                    }
+                }
+                // ServerPicker()
+
             }
         });
     }

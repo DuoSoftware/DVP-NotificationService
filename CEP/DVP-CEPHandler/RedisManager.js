@@ -31,7 +31,15 @@ QueryKeySubscriberPicker = function (queryKey,callback) {
         {
             console.log("Done Range");
             console.log(typeof (resSubs));
-            callback(undefined,resSubs);
+            if(resSubs.length>0)
+            {
+                callback(undefined,resSubs);
+            }
+            else
+            {
+                callback(undefined,false);
+            }
+
         }
     });
 };
