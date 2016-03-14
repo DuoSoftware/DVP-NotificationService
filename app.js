@@ -16,7 +16,6 @@ var MyID = config.ID;
 var DbConn = require('dvp-dbmodels');
 var httpReq = require('request');
 var validator = require('validator');
-var request = require('request');
 var util = require('util');
 var DBController = require('./DBController.js');
 var async= require('async');
@@ -90,7 +89,7 @@ io.sockets.on('connection', function (socket) {
                         //console.log(JSON.stringify(Clients));
                         console.log("New client registering ");
                         console.log("new user registered : user id -" + socket.handshake.query.myid);
-                        console.log("User added : Client - "+clientID+" Socket - "+Clients[clientID].id);
+                        //console.log("User added : Client - "+clientID+" Socket - "+Clients[clientID].id);
 
                         DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
 
@@ -447,16 +446,16 @@ io.sockets.on('connection', function (socket) {
                             //var URL="http://www.l.com";
                             console.log(URL);
                             var optionsX = {url: URL, method: "GET"};
-                            request(optionsX, function (errorX, responseX, dataX) {
+                            httpReq(optionsX, function (errorX, responseX, dataX) {
 
 
                                 if(errorX )
                                 {
-
+                                    console.log("ERROR in searching server location "+errorX);
 
                                     // if(errorX.code=="ENOTFOUND")
                                     // {
-                                    redisManager.RecordUserServer(clientID,serverID, function (errRecord,resRecord) {
+                                    redisManager.UserServerUpdater(clientID,serverID,MyID,function (errRecord,resRecord) {
 
                                         if(errRecord)
                                         {
@@ -465,7 +464,7 @@ io.sockets.on('connection', function (socket) {
                                         else
                                         {
                                             Clients[clientID]=socket;
-                                            console.log("Client registered successfully");
+                                            console.log("Client registered to Server ID : ",MyID);
 
                                             DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
 
@@ -603,7 +602,8 @@ io.sockets.on('connection', function (socket) {
                                     //  }
                                     // else
                                     // {
-                                    console.log("ERROR in serching server location "+errorX);
+
+
                                     // }
 
 
@@ -867,7 +867,7 @@ io.sockets.on('connection', function (socket) {
                             console.log("Reply to sender .... "+JSON.stringify(replyObj));
 
                             var optionsX = {url: URL, method: "POST", json: replyObj};
-                            request(optionsX, function (errorX, responseX, dataX) {
+                            httpReq(optionsX, function (errorX, responseX, dataX) {
 
                                 if(errorX)
                                 {
@@ -1727,53 +1727,66 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
         }
         else
         {
-            var ServerIP="127.0.0.1:8050";
-            var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
-            var msgObj=req.body;
-            msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
-            var options = {
-                url : httpUrl,
-                method : 'POST',
-                json : msgObj
-
-            };
-
-            console.log(options);
-            try
+            if(r)
             {
-                httpReq(options, function (error, response, body)
+                var ServerIP="127.0.0.1:8050";
+                var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
+                var msgObj=req.body;
+                // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
+                var options = {
+                    url : httpUrl,
+                    method : 'POST',
+                    json : msgObj
+
+                };
+
+                console.log(options);
+                try
                 {
-                    if (!error && response.statusCode == 200)
+                    httpReq(options, function (error, response, body)
                     {
-                        console.log("no errrs in request 200 ok");
-                        callback(undefined,response.statusCode);
+                        if (!error && response.statusCode == 200)
+                        {
+                            console.log("no errrs in request 200 ok");
+                            //callback(undefined,response.statusCode);
+                            res.end("Success");
 
-                    }
-                    else
-                    {
-                        console.log("errrs in request  "+error);
-                        callback(error,undefined);
+                        }
+                        else
+                        {
+                            console.log("errrs in request  "+error);
+                            res.end("Error");
+                            //callback(error,undefined);
 
-                    }
-                });
+                        }
+                    });
+                }
+                catch(ex)
+                {
+                    console.log("ex..."+ex);
+                    //callback(ex,undefined);
+
+                }
             }
-            catch(ex)
+            else
             {
-                console.log("ex..."+ex);
-                callback(ex,undefined);
-
+                console.log("Already a subscriber");
+                res.end();
             }
+
         }
     });
 
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish', function (req,res,next) {
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username', function (req,res,next) {
 
-    var clientID=req.body.username;
+    console.log("HIT publish");
+    var clientID=req.params.username;
     if(Clients[clientID])
     {
+        console.log(clientID+" in");
         var socket=Clients[clientID];
         socket.emit('publish',req.body);
         res.end("Success");
@@ -1788,7 +1801,22 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
     return next();
 });
 
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', function (req,res,next){
 
+    redisManager.SubsQueryUserAvailabitityChecker("Query:select * agents:1:3:name-saman-age-10","client1", function (e,r) {
+
+        if(e)
+        {
+            console.log(e);
+            res.end("error");
+        }
+        else
+        {
+            res.end("success");
+        }
+    })
+
+});
 TopicIdGenerator = function ()
 {
 
@@ -2259,3 +2287,32 @@ SubscribeDataRecorder = function (dataObj,userId) {
 
 
 };
+
+function Crossdomain(req,res,next){
+
+
+    var xml='<?xml version=""1.0""?><!DOCTYPE cross-domain-policy SYSTEM ""http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd""> <cross-domain-policy>    <allow-access-from domain=""*"" />        </cross-domain-policy>';
+
+    /*var xml='<?xml version="1.0"?>\n';
+
+     xml+= '<!DOCTYPE cross-domain-policy SYSTEM "/xml/dtds/cross-domain-policy.dtd">\n';
+     xml+='';
+     xml+=' \n';
+     xml+='\n';
+     xml+='';*/
+    req.setEncoding('utf8');
+    res.end(xml);
+
+}
+
+function Clientaccesspolicy(req,res,next){
+
+
+    var xml='<?xml version="1.0" encoding="utf-8" ?>       <access-policy>        <cross-domain-access>        <policy>        <allow-from http-request-headers="*">        <domain uri="*"/>        </allow-from>        <grant-to>        <resource include-subpaths="true" path="/"/>        </grant-to>        </policy>        </cross-domain-access>        </access-policy>';
+    req.setEncoding('utf8');
+    res.end(xml);
+
+}
+
+RestServer.get("/crossdomain.xml",Crossdomain);
+RestServer.get("/clientaccesspolicy.xml",Clientaccesspolicy);

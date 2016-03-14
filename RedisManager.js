@@ -294,7 +294,8 @@ ResponseUrlPicker = function(topicID,ttl,callback)
 
 RecordUserServer = function (clientName,server,callback)
 {
-
+    console.log("Client "+clientName);
+    console.log("server "+server);
     var key="notification:loc:"+clientName+":"+server;//notification:loc....
 
     client.set(key,server,function(errSet,resSet)
@@ -315,6 +316,49 @@ RecordUserServer = function (clientName,server,callback)
             }
         }
     });
+};
+
+UserServerUpdater = function (clientName,server,myID,callback)
+{
+    console.log("Client "+clientName);
+    console.log("server "+server);
+    console.log("myID "+myID);
+    var key="notification:loc:"+clientName+":"+server;//notification:loc....
+    var newKey="notification:loc:"+clientName+":"+myID;
+    console.log("key "+key);
+    console.log("newkey "+newKey);
+    client.rename(key,newKey, function (errRename,resRename) {
+        if(errRename)
+        {
+            cosole.log("Renam error ",errRename);
+            callback(errRename,undefined);
+        }
+        else
+        {
+            client.set(newKey,myID,function(errSet,resSet)
+            {
+                if(errSet)
+                {
+                    console.log("Error serever uodate ",errSet);
+                    callback(errSet,undefined);
+                }
+                else
+                {
+                    if(resSet=="" || !resSet || resSet== "NULL")
+                    {
+                        console.log("invalid key to set");
+                        callback(new Error("Invalid key to set "),undefined);
+                    }
+                    else
+                    {
+                        console.log("done ",resSet);
+                        callback(undefined,resSet);
+                    }
+                }
+            });
+        }
+    });
+
 };
 
 GetClientsServer = function (clientName,callback) {
@@ -568,21 +612,45 @@ QueryKeyGenerator = function (dataObj,clientID,callback) {
             else
             {
                 var paramKey = ParamKeyGenerator(dataObj.FilterData);
+                console.log("param key "+paramKey);
                 if(paramKey)
                 {
                     var key = "Query:"+dataObj.Query+":"+dataObj.Company+":"+dataObj.Tenant+":"+paramKey;
-                    client.RPUSH(key,clientID, function (errKey,resKey) {
-                        if(errKey)
+
+                    SubsQueryUserAvailabitityChecker(key,clientID, function (errChk,resChk) {
+
+                        if(errChk)
                         {
-                            console.log("Error in push");
-                            callback(errKey,undefined);
+                            console.log("Error in searching client subscription");
+                            callback(errChk,undefined);
                         }
                         else
                         {
-                            console.log("Key "+key);
-                            callback(undefined,resKey);
+                            if(resChk)
+                            {
+                                client.RPUSH(key,clientID, function (errKey,resKey) {
+                                    if(errKey)
+                                    {
+                                        console.log("Error in push");
+                                        callback(errKey,undefined);
+                                    }
+                                    else
+                                    {
+                                        console.log("Key "+key);
+                                        callback(undefined,resKey);
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                console.log("Already subscribed");
+                                callback(undefined,false);
+                            }
+
                         }
                     });
+
+
 
                 }
                 else
@@ -598,7 +666,38 @@ QueryKeyGenerator = function (dataObj,clientID,callback) {
     // client.RPUSH("key",)
 };
 
+SubsQueryUserAvailabitityChecker = function (queryKey,clientID,callback) {
 
+    client.LRANGE(queryKey,0,-1, function (errSubs,resSubs) {
+
+        if(errSubs)
+        {
+            console.log("Error Range ",errSubs);
+            callback(errSubs,undefined);
+        }
+        else
+        {
+            console.log("Done Range");
+            console.log(resSubs);
+            if(resSubs.indexOf(clientID)==-1)
+            {
+
+                callback(undefined,true);
+
+            }
+            else
+            {
+
+                callback(undefined,false);
+            }
+            // console.log(typeof (resSubs));
+            // callback(undefined,resSubs);
+
+
+
+        }
+    });
+};
 
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
@@ -619,6 +718,8 @@ module.exports.IsRegisteredClient = IsRegisteredClient;
 module.exports.BroadcastTopicObjectCreator = BroadcastTopicObjectCreator;
 module.exports.ParamKeyGenerator = ParamKeyGenerator;
 module.exports.QueryKeyGenerator = QueryKeyGenerator;
+module.exports.UserServerUpdater = UserServerUpdater;
+module.exports.SubsQueryUserAvailabitityChecker = SubsQueryUserAvailabitityChecker;
 
 
 
