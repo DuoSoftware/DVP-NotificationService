@@ -1083,7 +1083,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         if (!error && response.statusCode == 200)
                                         {
                                             console.log("no errrs");
-                                            res.end(response);
+                                            res.end("Success");
                                         }
                                         else
                                         {
@@ -1302,7 +1302,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
                                             console.log(ServerIP);
 
 
-                                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Continue/'+req.params.Topic, ServerIP, version);
+                                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Continue/'+req.params.Topic, ServerIP, version);
                                             var options = {
                                                 url : httpUrl,
                                                 method : 'POST',
@@ -1315,6 +1315,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
                                             {
                                                 httpReq(options, function (error, response, body)
                                                 {
+                                                    console.log("error "+error);
+                                                    console.log("response "+response.statusCode);
                                                     if (!error && response.statusCode == 200)
                                                     {
                                                         console.log("no errrs");
