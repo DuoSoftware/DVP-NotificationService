@@ -429,6 +429,7 @@ CheckClientAvailability = function (clientId,callback) {
         else
         {
             console.log("checking Availability Result ",resClient);
+
             if(!resClient || resClient=="" || resClient == null)
             {
                 callback(undefined,true);
@@ -600,14 +601,14 @@ QueryKeyGenerator = function (dataObj,clientID,callback) {
         if(errAvbl)
         {
             console.log("error in searching client ",errAvbl);
-            callback(errAvbl,undefined);
+            callback(errAvbl,undefined,"ERROR");
         }
         else
         {
             if(!status && !datakey)
             {
                 console.log("No client found ");
-                callback(new Error("No client found"),undefined);
+                callback(new Error("No client found"),undefined,"ERROR");
             }
             else
             {
@@ -617,46 +618,74 @@ QueryKeyGenerator = function (dataObj,clientID,callback) {
                 {
                     var key = "Query:"+dataObj.Query+":"+dataObj.Company+":"+dataObj.Tenant+":"+paramKey;
 
-                    SubsQueryUserAvailabitityChecker(key,clientID, function (errChk,resChk) {
+                    QueryKeyAvailabilityChecker(key, function (errKeyAvbl,resKeyAvbl) {
 
-                        if(errChk)
+                        if(errKeyAvbl)
                         {
-                            console.log("Error in searching client subscription");
-                            callback(errChk,undefined);
+                            callback(errKeyAvbl,undefined,"ERROR");
                         }
                         else
                         {
-                            if(resChk)
+                            if(!resKeyAvbl)
                             {
                                 client.RPUSH(key,clientID, function (errKey,resKey) {
                                     if(errKey)
                                     {
                                         console.log("Error in push");
-                                        callback(errKey,undefined);
+                                        callback(errKey,undefined,"ERROR");
                                     }
                                     else
                                     {
                                         console.log("Key "+key);
-                                        callback(undefined,resKey);
+                                        callback(undefined,resKey,"NEWKEY");
                                     }
                                 });
                             }
                             else
                             {
-                                console.log("Already subscribed");
-                                callback(undefined,false);
+                                SubsQueryUserAvailabitityChecker(key,clientID, function (errChk,resChk) {
+
+                                    if(errChk)
+                                    {
+                                        console.log("Error in searching client subscription");
+                                        callback(errChk,undefined,"ERROR");
+                                    }
+                                    else
+                                    {
+                                        if(resChk)
+                                        {
+                                            client.RPUSH(key,clientID, function (errKey,resKey) {
+                                                if(errKey)
+                                                {
+                                                    console.log("Error in push");
+                                                    callback(errKey,undefined,"ERROR");
+                                                }
+                                                else
+                                                {
+                                                    console.log("Key "+key);
+                                                    callback(undefined,resKey,"REGEDKEY");
+                                                }
+                                            });
+                                        }
+                                        else
+                                        {
+                                            console.log("Already subscribed");
+                                            callback(undefined,false,"SUBEDUSER");
+                                        }
+
+                                    }
+                                });
                             }
-
                         }
-                    });
 
+                    });
 
 
                 }
                 else
                 {
                     console.log("Error in search");
-                    callback(new Error("Invalid param key"),undefined);
+                    callback(new Error("Invalid param key"),undefined,"ERROR");
                 }
             }
         }
@@ -699,6 +728,55 @@ SubsQueryUserAvailabitityChecker = function (queryKey,clientID,callback) {
     });
 };
 
+QueryKeySubscriberPicker = function (queryKey,callback) {
+
+    client.LRANGE(queryKey,0,-1, function (errSubs,resSubs) {
+
+        if(errSubs)
+        {
+            console.log("Error in Query key checker ",errSubs);
+            callback(errSubs,undefined);
+        }
+        else
+        {
+
+            if(resSubs.length>0)
+            {
+                callback(undefined,resSubs);
+            }
+            else
+            {
+                callback(undefined,false);
+            }
+
+        }
+    });
+};
+
+QueryKeyAvailabilityChecker = function (key,callback) {
+
+    client.keys(key, function (errKey,resKey) {
+
+        if(errKey)
+        {
+            callback(errKey,false);
+        }
+        else
+        {
+            if(!resKey || resKey=="" || resKey ==null)
+            {
+                callback(undefined,false);
+            }
+            else
+            {
+                callback(undefined,true);
+
+            }
+        }
+    });
+
+}
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
@@ -720,6 +798,7 @@ module.exports.ParamKeyGenerator = ParamKeyGenerator;
 module.exports.QueryKeyGenerator = QueryKeyGenerator;
 module.exports.UserServerUpdater = UserServerUpdater;
 module.exports.SubsQueryUserAvailabitityChecker = SubsQueryUserAvailabitityChecker;
+module.exports.QueryKeySubscriberPicker = QueryKeySubscriberPicker;
 
 
 
