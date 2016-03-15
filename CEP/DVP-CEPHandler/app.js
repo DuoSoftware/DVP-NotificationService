@@ -33,7 +33,7 @@ RestServer.use(restify.queryParser());
 
 RestServer.post('/DVP/API/'+version+'/CEPHandler/Notification/Publish', function (req,res,next){
 
-    console.log("method hit");
+   /* console.log("method hit");
     var msgObj=req.body.data;
     var queryKey =QueryKeyGenerator(msgObj);
     console.log("Query key "+queryKey);
@@ -96,6 +96,44 @@ RestServer.post('/DVP/API/'+version+'/CEPHandler/Notification/Publish', function
         console.log("no Key found");
         res.end("no Key found");
     }
+*/
+
+
+    var httpUrl = req.body.data.CallbackURL;
+    // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
+    var options = {
+        url : httpUrl,
+        method : 'POST',
+        json : req.body.Message
+
+    };
+
+    console.log(options);
+    try
+    {
+        httpReq(options, function (error, response, body)
+        {
+            if (!error && response.statusCode == 200)
+            {
+                console.log("no errrs in request 200 ok");
+                callback(undefined,response);
+
+            }
+            else
+            {
+                console.log("errrs in request  "+error);
+                callback(error,undefined);
+
+            }
+        });
+    }
+    catch(ex)
+    {
+        console.log("ex..."+ex);
+        callback(ex,undefined);
+
+    }
+
 
 
     return next();
