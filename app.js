@@ -37,10 +37,7 @@ RestServer.use(restify.fullResponse());
 
 var Clients ={};//=new Array();
 var Refs=new Array();
-var SubUsers = {};
-var SubRecords ={};
-var QuaryData = {};
-var testa;
+
 
 //Server listen
 
@@ -1083,7 +1080,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         if (!error && response.statusCode == 200)
                                         {
                                             console.log("no errrs");
-                                            res.end("Success");
+                                            console.log(JSON.stringify(response));
+                                            res.end(response.body);
                                         }
                                         else
                                         {
@@ -2419,8 +2417,17 @@ PublishToUser = function (clientID,msgObj,callback) {
 
             if(MyID==resServer)
             {
-                socket.emit('publish',msgObj);
-                callback(undefined,clientID);
+                if(Clients[clientID])
+                {
+                    var socket=Clients[clientID];
+                    socket.emit('publish',msgObj);
+                    callback(undefined,clientID);
+                }
+                else
+                {
+                    callback(new Error("Not registered user"),undefined);
+                }
+
             }
             else
             {
