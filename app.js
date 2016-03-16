@@ -1794,7 +1794,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
     try
     {
         var queryKey = req.body.refID;
-        var msgObj = req.body.data;
+        var msgObj = req.body;
         if(queryKey)
         {
             redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
@@ -1874,7 +1874,19 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:
     }
     else
     {
-        res.end("No user found");
+
+        DBController.PersistencePubSubMessageRecorder(req.body,clientID, function (errSave,resSave) {
+            if(errSave)
+            {
+                console.log("Error Save "+errSave);
+                res.end();
+            }
+            else
+            {
+                console.log("Success ");
+                res.end();
+            }
+        });
     }
 
 
@@ -1898,6 +1910,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', fu
     })
 
 });
+
 TopicIdGenerator = function ()
 {
 
@@ -1910,190 +1923,174 @@ TopicIdGenerator = function ()
 
 QueuedInitiateMessageSender = function (messageObj,callback) {
 
-    var clientID = messageObj.To;
-    var Persistency =true;
-    var callbackObj= JSON.parse(messageObj.Callback);
-    var Timeout = callbackObj.Timeout;
-    var Direction =callbackObj.Direction;
-    var Message = callbackObj.Message;
-    var Ref = callbackObj.Ref;
-    var callbackURL = "";
-    var From = messageObj.From;
+    try {
+        var clientID = messageObj.To;
+        var Persistency = true;
+        var callbackObj = JSON.parse(messageObj.Callback);
+        var Timeout = callbackObj.Timeout;
+        var Direction = callbackObj.Direction;
+        var Message = callbackObj.Message;
+        var Ref = callbackObj.Ref;
+        var callbackURL = "";
+        var From = messageObj.From;
 
 
+        redisManager.CheckClientAvailability(clientID, function (errAvbl, resAvbl) {
 
-    redisManager.CheckClientAvailability(clientID, function (errAvbl,resAvbl) {
-
-        console.log("Checking result "+resAvbl);
-        if(resAvbl && Persistency)
-        {
-            console.log("Client is not available.......................");
-            if(errAvbl)
-            {
-                console.log("Error in Checking Availability ",errAvbl);
-
-            }
-
-        }
-        else
-        {
-            if(!isNaN(Timeout))
-            {
-                TTL = Timeout;
-                console.log("TTL found "+TTL);
-            }
-            console.log(clientID);
-
-            if(Clients[clientID])
-            {
-
-                var socket=Clients[clientID];
-
-                console.log("Destination available");
-                try
-                {
-
-                    var topicID = TopicIdGenerator();
-                    var direction = Direction;
-                    callbackURL = "";
-                    var message = Message;
-                    var ref = Ref;
-
-                    Refs[topicID]=ref;
-
-                    if(direction=="STATEFUL")
-                    {
-                        callbackURL=callbackObj.CallbackURL;
-                    }
-                    var sender = From;
-
-
+            console.log("Checking result " + resAvbl);
+            if (resAvbl && Persistency) {
+                console.log("Client is not available.......................");
+                if (errAvbl) {
+                    console.log("Error in Checking Availability ", errAvbl);
 
                 }
-                catch(ex)
-                {
-                    console.log("Error in request body "+ex);
-                    callback(ex,undefined);
+
+            }
+            else {
+                if (!isNaN(Timeout)) {
+                    TTL = Timeout;
+                    console.log("TTL found " + TTL);
                 }
+                console.log(clientID);
+
+                if (Clients[clientID]) {
+
+                    var socket = Clients[clientID];
+
+                    console.log("Destination available");
+                    try {
+
+                        var topicID = TopicIdGenerator();
+                        var direction = Direction;
+                        callbackURL = "";
+                        var message = Message;
+                        var ref = Ref;
+
+                        Refs[topicID] = ref;
+
+                        if (direction == "STATEFUL") {
+                            callbackURL = callbackObj.CallbackURL;
+                        }
+                        var sender = From;
 
 
-                redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
+                    }
+                    catch (ex) {
+                        console.log("Error in request body " + ex);
+                        callback(ex, undefined);
+                    }
+
+
+                    redisManager.TokenObjectCreator(topicID, clientID, direction, sender, callbackURL, TTL, function (errTobj, resTobj) {
+                        if (errTobj) {
+                            console.log("Error in TokenObject creation " + errTobj);
+                            //res.end("Error in TokenObject creation "+errTobj);
+                            callback(errTobj, undefined);
+                        }
+                        else {
+                            /*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
+                             {
+                             if(errSet)
+                             {
+                             console.log("Resource object creation failed "+errSet);
+                             res.end("Resource object creation failed "+errSet);
+                             }
+                             else
+                             {
+                             console.log("Resource object creation Succeeded "+resSet);*/
+                            var msgObj={
+                                "Message":message,
+                                "TopicKey":topicID
+                            };
+                            socket.emit('message',msgObj);
+                            callback(
+                                undefined,topicID);
+                            /*    }
+
+                             });*/
+
+                        }
+                    });
+
+                }
+                else
                 {
-                    if(errTobj)
-                    {
-                        console.log("Error in TokenObject creation "+errTobj);
-                        //res.end("Error in TokenObject creation "+errTobj);
-                        callback(errTobj,undefined);
-                    }
-                    else
-                    {
-
-                        /*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
-                         {
-                         if(errSet)
-                         {
-                         console.log("Resource object creation failed "+errSet);
-                         res.end("Resource object creation failed "+errSet);
-                         }
-                         else
-                         {
-                         console.log("Resource object creation Succeeded "+resSet);*/
-                        var msgObj={
-
-                            "Message":message,
-                            "TopicKey":topicID
-                        };
-                        socket.emit('message',msgObj);
-                        callback(undefined,topicID);
-
-                        /*    }
-
-                         });*/
-
-                    }
-                });
-
+                    callback(new Error
+                    ("Invlid Client data"+
+                        clientID),undefined);
+                }
             }
-            else
-            {
-                callback(new Error("Invlid Client data"+clientID),undefined);
-            }
-        }
 
-    });
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 
 };
-
 QueuedContinueMessageSender = function (messageObj,callback) {
 
 
-    var callbackObj =JSON.parse(messageObj);
-    var message= callbackObj.Message;
-    var topicKey = callbackObj.Topic;
-    var Persistency = true;
+    try {
+        var callbackObj = JSON.parse(messageObj);
+        var message = callbackObj.Message;
+        var topicKey = callbackObj.Topic;
+        var Persistency = true;
 
 
+        redisManager.TopicObjectPicker(topicKey, TTL, function (e, r) {
 
-    redisManager.TopicObjectPicker(topicKey,TTL, function (e,r) {
-
-        if(e)
-        {
-            console.log(e);
-            callback(e,undefined);
-        }
-        else
-        {
-            if(r==null || r=="")
-            {
-                console.log("Invalid or Expired Token given, Please try from initial step");
-                callback(new Error("Invalid Topic"),undefined);
+            if (e) {
+                console.log(e);
+                callback(e, undefined);
             }
-            else
-            {
-                // console.log("Got token Data "+r);
-                redisManager.CheckClientAvailability(r.Client, function (errAvbl,resAvbl) {
+            else {
+                if (r == null || r == "") {
+                    console.log("Invalid or Expired Token given, Please try from initial step");
+                    callback(new Error("Invalid Topic"), undefined);
+                }
+                else {
+                    // console.log("Got token Data "+r);
+                    redisManager.CheckClientAvailability(r.Client, function (errAvbl, resAvbl) {
 
-                    console.log("Checking result "+resAvbl);
+                        console.log("Checking result " + resAvbl);
 
-                    if(resAvbl && Persistency)
-                    {
-                        console.log("Client is not available.......................");
-                        if(errAvbl)
-                        {
-                            console.log("Error in Checking Availability ",errAvbl);
-                            callback(errAvbl,undefined);
+                        if (resAvbl && Persistency) {
+                            console.log("Client is not available.......................");
+                            if (errAvbl) {
+                                console.log("Error in Checking Availability ", errAvbl);
+                                callback(errAvbl, undefined);
+
+                            }
 
                         }
+                        else {
+                            if (Clients[r.Client]) {
+                                var socket = Clients[r.Client];
+                                var msgObj = {
 
-                    }
-                    else
-                    {
-                        if(Clients[r.Client])
-                        {
-                            var socket= Clients[r.Client];
-                            var msgObj={
-
-                                "Message":message,
-                                "TopicKey":topicKey
-                            };
-                            socket.emit('message',msgObj);
-                            callback(undefined,topicKey);
+                                    "Message": message,
+                                    "TopicKey": topicKey
+                                };
+                                socket.emit('message', msgObj);
+                                callback(undefined, topicKey);
+                            }
+                            else {
+                                callback(new Error("Client unavailable " + r.Client), undefined);
+                            }
                         }
-                        else
-                        {
-                            callback(new Error("Client unavailable "+r.Client),undefined);
-                        }
-                    }
 
 
-                });
+                    });
 
+
+                }
 
             }
 
-        }
-
-    });
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 
 };
 
@@ -2112,89 +2109,102 @@ QueuedMessagesPicker = function (clientID,callback) {
 
 QueuedMessageOperator = function (msgObj) {
 
-    var topicKey=JSON.parse(msgObj.Callback).Topic;
-    var MessageType= JSON.parse(msgObj.Callback).MessageType;
-    var msgReciever = msgObj.To;
-    var msgID=msgObj.id;
+    try {
+        var topicKey = JSON.parse(msgObj.Callback).Topic;
+        var MessageType = JSON.parse(msgObj.Callback).MessageType;
+        var msgReciever = msgObj.To;
+        var msgID = msgObj.id;
 
-    if(!topicKey )
-    {
-        if(MessageType=="GENERAL")
-        {
-            QueuedInitiateMessageSender(msgObj, function (errInitiate,resInitiate)
-            {
-                if(errInitiate)
-                {
-                    console.log("errorrrrrrrrvvvvv "+errInitiate);
-                }
-                else
-                {
-                    DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
-                        if(errRem)
-                        {
-                            console.log("Error in Removing Queued Message data : "+msgReciever,errRem);
-                        }
-                        else
-                        {
-                            console.log("Queued message Sent and Removed from Queue : "+msgReciever);
-                        }
-                    });
-                }
-            });
-        }
-        else
-        {
-            QueuedBroadcastMessageSender(msgObj, function (errBcSend,resBcSend) {
-
-                if(errBcSend)
-                {
-                    console.log("errorrrrrrrrvvvvv "+errBcSend);
-                }
-                else
-                {
-                    DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
-                        if(errRem)
-                        {
-                            console.log("Error in Removing Queued Message data : "+msgReciever,errRem);
-                        }
-                        else
-                        {
-                            console.log("Queued message Sent and Removed from Queue : "+msgReciever);
-                        }
-                    });
-                }
-
-            });
-        }
-
-    }
-    else
-    {
-        console.log("An Continue message");
-
-        QueuedContinueMessageSender(msgObj.Callback, function (errConMsg,resConMsg) {
-
-            if(errConMsg)
-            {
-                console.log("Error in Sending Continues Messages ",errConMsg);
-            }
-            else
-            {
-                console.log("Continue messages sent successfully ");
-
-                DBController.PersistenceMessageRemover(msgID, function (errRem,resRem) {
-                    if(errRem)
-                    {
-                        console.log("Error in Removing Queued Message data : "+msgReciever,errRem);
+        if (!topicKey) {
+            if (MessageType == "GENERAL") {
+                QueuedInitiateMessageSender(msgObj, function (errInitiate, resInitiate) {
+                    if (errInitiate) {
+                        console.log("errorrrrrrrrvvvvv " + errInitiate);
                     }
-                    else
-                    {
-                        console.log("Queued message Sent and Removed from Queue : "+msgReciever);
+                    else {
+                        DBController.PersistenceMessageRemover(msgID, function (errRem, resRem) {
+                            if (errRem) {
+                                console.log("Error in Removing Queued Message data : " + msgReciever, errRem);
+                            }
+                            else {
+                                console.log("Queued message Sent and Removed from Queue : " + msgReciever);
+                            }
+                        });
                     }
                 });
             }
+            else {
+                if(MessageType="BROADCAST")
+                {
+                    QueuedBroadcastMessageSender(msgObj, function (errBcSend, resBcSend) {
 
-        });
+                        if (errBcSend) {
+                            console.log("errorrrrrrrrvvvvv " + errBcSend);
+                        }
+                        else {
+                            DBController.PersistenceMessageRemover(msgID, function (errRem, resRem) {
+                                if (errRem) {
+                                    console.log("Error in Removing Queued Message data : " + msgReciever, errRem);
+                                }
+                                else {
+                                    console.log("Queued message Sent and Removed from Queue : " + msgReciever);
+                                }
+                            });
+                        }
+
+                    });
+                }
+                else
+                {
+                    QueuedPubSubMessageSender(msgObj, function (errPubSubSend,resPubSubSend) {
+
+                        if(errPubSubSend)
+                        {
+                            console.log("Error "+errPubSubSend);
+                        }
+                        else
+                        {
+                            DBController.PersistenceMessageRemover(msgID, function (errRem, resRem) {
+                                if (errRem) {
+                                    console.log("Error in Removing Queued Message data : " + msgReciever, errRem);
+                                }
+                                else {
+                                    console.log("Queued message Sent and Removed from Queue : " + msgReciever);
+                                }
+                            });
+                        }
+
+                    })
+                }
+
+            }
+
+        }
+        else {
+            console.log("An Continue message");
+
+            QueuedContinueMessageSender(msgObj.Callback, function (errConMsg, resConMsg) {
+
+                if (errConMsg) {
+                    console.log("Error in Sending Continues Messages ", errConMsg);
+                }
+                else {
+                    console.log("Continue messages sent successfully ");
+
+                    DBController.PersistenceMessageRemover(msgID, function (errRem, resRem) {
+                        if (errRem) {
+                            console.log("Error in Removing Queued Message data : " + msgReciever, errRem);
+                        }
+                        else {
+                            console.log("Queued message Sent and Removed from Queue : " + msgReciever);
+                        }
+                    });
+                }
+
+            });
+        }
+    } catch (e) {
+        callback(e,undefined);
     }
 
 
@@ -2203,164 +2213,182 @@ QueuedMessageOperator = function (msgObj) {
 BroadcastMessageHandler = function (msgObj,clientData,callback) {
 
 
-    var msgBody =msgObj;
-    msgBody.To=clientData;
-    msgBody.Ref="";
-    msgBody.Direction="STATELESS";
-    msgBody.Topic="";
-    msgBody.Callback="";
+    try {
+        var msgBody = msgObj;
+        msgBody.To = clientData;
+        msgBody.Ref = "";
+        msgBody.Direction = "STATELESS";
+        msgBody.Topic = "";
+        msgBody.Callback = "";
 
-    console.log("Message Body "+JSON.stringify(msgBody));
-    redisManager.GetClientsServer(clientData, function (errServer,resServer) {
+        console.log("Message Body " + JSON.stringify(msgBody));
+        redisManager.GetClientsServer(clientData, function (errServer, resServer) {
 
-        if(errServer)
-        {
-            console.log("Error in server searching for client "+clientData);
+            if (errServer) {
+                console.log("Error in server searching for client " + clientData);
 
-            msgBody.To=clientData;
-            console.log("Error Client "+msgBody.To);
-            console.log("my Client "+clientData);
-            DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave,resSave)
-            {
-                if(errSave)
-                {
-                    callback(errSave,undefined);
-                }
-                else
-                {
-                    callback(undefined,resSave);
-                }
-
-            });
-        }
-        else
-        {
-            console.log("Server "+resServer+" found for client "+clientData);
-
-            if(MyID==resServer)
-            {
-                console.log("Client "+clientData+" is a registerd client");
-                if(Clients[clientData])
-                {
-                    var socket=Clients[clientData];
-                    var BcMsgObj={
-
-                        "Message":msgObj.Message
-                    };
-                    socket.emit('broadcast',BcMsgObj);
-                    callback(undefined,clientData);
-
-
-                }
-                else
-                {
-                    //record in DB
-                    console.log("Not in clientList "+clientData);
-                    msgBody.To=clientData;
-                    DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave,resSave)
-                    {
-                        if(errSave)
-                        {
-                            callback(errSave,undefined);
-                        }
-                        else
-                        {
-                            callback(undefined,resSave);
-                        }
-
-                    });
-                }
-            }
-            else
-            {
-                console.log("SERVER "+resServer);
-                console.log("My ID "+MyID);
-
-                console.log("Client "+clientData+" is not a registerd client");
-                DBController.ServerPicker(resServer, function (errSvrPick,resSvrPick) {
-
-                    if(errSvrPick)
-                    {
-                        console.log("error in Picking server from DB");
-                        console.log("Destination user not found");
-                        console.log("error "+errSvrPick);
-                        callback(errSvrPick,undefined);
-
+                msgBody.To = clientData;
+                console.log("Error Client " + msgBody.To);
+                console.log("my Client " + clientData);
+                DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave, resSave) {
+                    if (errSave) {
+                        callback(errSave, undefined);
                     }
-                    else
-                    {
-                        var ServerIP = resSvrPick.URL;
-                        console.log(ServerIP);
-                        var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/'+clientData, ServerIP, version);
-                        var options = {
-                            url : httpUrl,
-                            method : 'POST',
-                            json : msgObj
-
-                        };
-
-                        console.log(options);
-                        try
-                        {
-                            httpReq(options, function (error, response, body)
-                            {
-                                if (!error && response.statusCode == 200)
-                                {
-                                    console.log("no errrs in request 200 ok");
-                                    callback(undefined,response.statusCode);
-
-                                }
-                                else
-                                {
-                                    console.log("errrs in request  "+error);
-                                    callback(error,undefined);
-
-                                }
-                            });
-                        }
-                        catch(ex)
-                        {
-                            console.log("ex..."+ex);
-                            callback(ex,undefined);
-
-                        }
-
+                    else {
+                        callback(undefined, resSave);
                     }
+
                 });
             }
+            else {
+                console.log("Server " + resServer + " found for client " + clientData);
 
-        }
-    });
+                if (MyID == resServer) {
+                    console.log("Client " + clientData + " is a registerd client");
+                    if (Clients[clientData]) {
+                        var socket = Clients[clientData];
+                        var BcMsgObj = {
+
+                            "Message": msgObj.Message
+                        };
+                        socket.emit('broadcast', BcMsgObj);
+                        callback(undefined, clientData);
+
+
+                    }
+                    else {
+                        //record in DB
+                        console.log("Not in clientList " + clientData);
+                        msgBody.To = clientData;
+                        DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave, resSave) {
+                            if (errSave) {
+                                callback(errSave, undefined);
+                            }
+                            else {
+                                callback(undefined, resSave);
+                            }
+
+                        });
+                    }
+                }
+                else {
+                    console.log("SERVER " + resServer);
+                    console.log("My ID " + MyID);
+
+                    console.log("Client " + clientData + " is not a registerd client");
+                    DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                        if (errSvrPick) {
+                            console.log("error in Picking server from DB");
+                            console.log("Destination user not found");
+                            console.log("error " + errSvrPick);
+                            callback(errSvrPick, undefined);
+
+                        }
+                        else {
+                            var ServerIP = resSvrPick.URL;
+                            console.log(ServerIP);
+                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                            var options = {
+                                url: httpUrl,
+                                method: 'POST',
+                                json: msgObj
+
+                            };
+
+                            console.log(options);
+                            try {
+                                httpReq(options, function (error, response, body) {
+                                    if (!error && response.statusCode == 200) {
+                                        console.log("no errrs in request 200 ok");
+                                        callback(undefined, response.statusCode);
+
+                                    }
+                                    else {
+                                        console.log("errrs in request  " + error);
+                                        callback(error, undefined);
+
+                                    }
+                                });
+                            }
+                            catch (ex) {
+                                console.log("ex..." + ex);
+                                callback(ex, undefined);
+
+                            }
+
+                        }
+                    });
+                }
+
+            }
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 
 };
 
 QueuedBroadcastMessageSender = function (msgObj,callabck) {
 
-    console.log("Ypoooooo "+JSON.stringify(msgObj));
-    var user = msgObj.To;
-    var userData = msgObj;
-    var userMessage = JSON.parse(userData.Callback).Message;
+    try {
+        console.log("Ypoooooo " + JSON.stringify(msgObj));
+        var user = msgObj.To;
+        var userData = msgObj;
+        var userMessage = JSON.parse(userData.Callback).Message;
 
 
+        if (Clients[user]) {
+            var socket = Clients[user];
+            var BcMsgObj = {
 
-    if(Clients[user])
-    {
-        var socket=Clients[user];
-        var BcMsgObj={
+                "Message": userMessage
+            };
+            socket.emit('broadcast', BcMsgObj);
+            callabck(undefined, "Success");
+            //callback(undefined,user);
 
-            "Message":userMessage
-        };
-        socket.emit('broadcast',BcMsgObj);
-        callabck(undefined,"Success");
-        //callback(undefined,user);
+        }
+        else {
+            console.log("Not in clientList " + clientData);
+            callback(new Error("Invalid Client " + user), undefined);
 
+        }
+    } catch (e) {
+        callback(e,undefined);
     }
-    else
-    {
-        console.log("Not in clientList "+clientData);
-        callback(new Error("Invalid Client "+user),undefined);
 
+};
+
+QueuedPubSubMessageSender = function (msgObj,callabck) {
+
+    try {
+        console.log("Ypoooooo " + JSON.stringify(msgObj));
+        var user = msgObj.To;
+        var userData = msgObj;
+        var userMessage = JSON.parse(userData.Callback).Message;
+
+
+        if (Clients[user]) {
+            var socket = Clients[user];
+            var BcMsgObj = {
+
+                "Message": userMessage
+            };
+            socket.emit('publish', BcMsgObj);
+            callabck(undefined, "Success");
+            //callback(undefined,user);
+
+        }
+        else {
+            console.log("Not in clientList " + clientData);
+            callback(new Error("Invalid Client " + user), undefined);
+
+        }
+    } catch (e) {
+        callback(e,undefined);
     }
+
 };
 
 SubscribeDataRecorder = function (dataObj,userId) {
@@ -2405,84 +2433,93 @@ PublishToUser = function (clientID,msgObj,callback) {
 
      });*/
 
-    redisManager.GetClientsServer(clientID, function (errServer,resServer)
-    {
-        if(errServer)
-        {
-            callback(errServer,undefined);
-        }
-        else
-        {
-            console.log("Server "+resServer+" found for client "+clientID);
-
-            if(MyID==resServer)
-            {
-                if(Clients[clientID])
-                {
-                    var socket=Clients[clientID];
-                    socket.emit('publish',msgObj);
-                    callback(undefined,clientID);
-                }
-                else
-                {
-                    callback(new Error("Not registered user"),undefined);
-                }
-
-            }
-            else
-            {
-                DBController.ServerPicker(resServer, function (errSvrPick,resSvrPick)
-                {
-                    if(errSvrPick)
+    try {
+        redisManager.GetClientsServer(clientID, function (errServer, resServer) {
+            if (errServer) {
+                DBController.PersistencePubSubMessageRecorder(msgObj,clientID, function (errSave,resSave) {
+                    if(errSave)
                     {
-                        callback(errSvrPick,undefined);
+                        callback(errSave, undefined);
                     }
                     else
                     {
-                        var ServerIP = resSvrPick.URL;
-                        console.log(ServerIP);
-                        var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish/'+clientID, ServerIP, version);
-                        var options = {
-                            url : httpUrl,
-                            method : 'POST',
-                            json : msgObj
-
-                        };
-
-                        console.log(options);
-                        try
-                        {
-                            httpReq(options, function (error, response, body)
-                            {
-                                if (!error && response.statusCode == 200)
-                                {
-                                    console.log("no errrs in request 200 ok");
-                                    callback(undefined,response.statusCode);
-
-                                }
-                                else
-                                {
-                                    console.log("errrs in request  "+error);
-                                    callback(error,undefined);
-
-                                }
-                            });
-                        }
-                        catch(ex)
-                        {
-                            console.log("ex..."+ex);
-                            callback(ex,undefined);
-
-                        }
-
+                        callback(undefined,resSave);
                     }
                 });
             }
+            else {
+                console.log("Server " + resServer + " found for client " + clientID);
 
-        }
-    });
+                if (MyID == resServer) {
+                    if (Clients[clientID]) {
+                        var socket = Clients[clientID];
+                        socket.emit('publish', msgObj);
+                        callback(undefined, clientID);
+                    }
+                    else {
+                        console.log("Offline user");
+                        DBController.PersistencePubSubMessageRecorder(msgObj,clientID, function (errSave,resSave) {
+                            if(errSave)
+                            {
+                                callback(errSave, undefined);
+                            }
+                            else
+                            {
+                                callback(undefined,resSave);
+                            }
+                        });
 
-}
+                    }
+
+                }
+                else {
+                    DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+                        if (errSvrPick) {
+                            callback(errSvrPick, undefined);
+                        }
+                        else {
+                            var ServerIP = resSvrPick.URL;
+                            console.log(ServerIP);
+                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish/' + clientID, ServerIP, version);
+                            var options = {
+                                url: httpUrl,
+                                method: 'POST',
+                                json: msgObj
+
+                            };
+
+                            console.log(options);
+                            try {
+                                httpReq(options, function (error, response, body) {
+                                    if (!error && response.statusCode == 200) {
+                                        console.log("no errrs in request 200 ok");
+                                        callback(undefined, response.statusCode);
+
+                                    }
+                                    else {
+                                        console.log("errrs in request  " + error);
+                                        callback(error, undefined);
+
+                                    }
+                                });
+                            }
+                            catch (ex) {
+                                console.log("ex..." + ex);
+                                callback(ex, undefined);
+
+                            }
+
+                        }
+                    });
+                }
+
+            }
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
+
+};
 
 function Crossdomain(req,res,next){
 

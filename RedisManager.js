@@ -23,98 +23,97 @@ SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,sta
 {
     console.log("Redis Callback "+clbk);
 
-    var key ="notification:"+TopicID;
 
-    client.hmset(key,["From",From,"Client",clientID,"Socket",socketID,"Direction",direction,"Callback",clbk,"State",state],function(errHmset,resHmset)
+    try {
+        var key = "notification:" + TopicID;
+
+        client.hmset(key, ["From", From, "Client", clientID, "Socket", socketID, "Direction", direction, "Callback", clbk, "State", state], function (errHmset, resHmset) {
+            if (errHmset) {
+                callback(errHmset, undefined);
+            }
+            else {
+                TouchSession(key, ttl);
+                callback(undefined, resHmset);
+            }
+        });
+    }
+    catch (e)
     {
-        if(errHmset)
-        {
-            callback(errHmset,undefined);
-        }
-        else
-        {
-            TouchSession(key, ttl);
-            callback(undefined,resHmset);
-        }
-    });
+        callback(e,undefined);
+    }
 
 
 };
 
 SocketFinder = function(TopicID,ttl,callback)
 {
-    var key ="notification:"+TopicID;
+    try {
+        var key = "notification:" + TopicID;
 
-    client.hmget(TopicID,"Client","Socket","Direction","Callback",function(errUser,resUser)
+        client.hmget(TopicID, "Client", "Socket", "Direction", "Callback", function (errUser, resUser) {
+            if (errUser) {
+                callback(errUser, undefined);
+            }
+            else {
+                if (!resUser) {
+                    callback(new Error("No Session Object Found"), undefined);
+                }
+                else {
+                    TouchSession(key, ttl);
+                    callback(undefined, resUser);
+                }
+
+            }
+        });
+    } catch (e)
     {
-        if(errUser)
-        {
-            callback(errUser,undefined);
-        }
-        else
-        {
-            if(!resUser)
-            {
-                callback(new Error("No Session Object Found"),undefined);
-            }
-            else
-            {
-                TouchSession(key,ttl);
-                callback(undefined,resUser);
-            }
-
-        }
-    });
+        callback(e,undefined);
+    }
 };
 
 SocketStateChanger = function(TopicID,State,ttl,callback)
 {
-    var key ="notification:"+TopicID;
+    try {
+        var key = "notification:" + TopicID;
 
-    client.hmget(key,"Client","Socket","Direction","Callback",function(errUser,resUser)
+        client.hmget(key, "Client", "Socket", "Direction", "Callback", function (errUser, resUser) {
+            if (errUser) {
+                callback(errUser, undefined);
+            }
+            else {
+                if (!resUser) {
+                    callback(new Error("No Session Object Found"), undefined);
+                }
+                else {
+                    client.hmset(key, "State", State, function (errSt, resSt) {
+                        if (errSt) {
+                            callback(errSt, undefined);
+                        } else {
+                            if (!resSt || resSt == "") {
+                                callback(new Error("State updation failed "), undefined);
+                            }
+                            else {
+                                TouchSession(key, ttl);
+                                callback(undefined, resUser[3]);
+                            }
+
+                        }
+
+                    });
+                }
+
+            }
+        });
+    } catch (e)
     {
-        if(errUser)
-        {
-            callback(errUser,undefined);
-        }
-        else
-        {
-            if(!resUser)
-            {
-                callback(new Error("No Session Object Found"),undefined);
-            }
-            else
-            {
-                client.hmset(key,"State",State,function(errSt,resSt)
-                {
-                    if(errSt)
-                    {
-                        callback(errSt,undefined);
-                    }else
-                    {
-                        if(!resSt || resSt=="")
-                        {
-                            callback(new Error("State updation failed "),undefined);
-                        }
-                        else
-                        {
-                            TouchSession(key,ttl);
-                            callback(undefined,resUser[3]);
-                        }
-
-                    }
-
-                });
-            }
-
-        }
-    });
+        callback(e,undefined);
+    }
 
 };
 
 TouchSession =function(TopicID,TTL)
 {
-    client.expire(TopicID, TTL);
+        client.expire(TopicID, TTL);
 };
 
 SocketObjectUpdater = function(TopicID,SocketID,callback)
@@ -122,47 +121,41 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
     console.log("TopicID "+TopicID);
     console.log("SOCKET "+SocketID);
 
-    var key ="notification:"+TopicID;
+    try {
+        var key = "notification:" + TopicID;
 
-
-    SocketFinder(key,1000,function(errObj,resObj)
-    {
-        if(errObj)
-        {
-            callback(errObj,undefined);
-        }
-        else
-        {
-            if(!resObj)
-            {
-                callback("NOOBJ",undefined);
+        SocketFinder(key, 1000, function (errObj, resObj) {
+            if (errObj) {
+                callback(errObj, undefined);
             }
-            else
-            {
-                client.hmset(key,"Socket",SocketID,function(errUpdt,resUpdt)
-                {
-                    if(errUpdt)
-                    {
-                        callback(errUpdt,undefined);
-                    }
-                    else
-                    {
-
-                        if(resUpdt=="" || !resUpdt)
-                        {
-
-                            callback(new Error("Nothing to update"),undefined);
-                        }else
-                        {
-                            callback(undefined,resUpdt);
+            else {
+                if (!resObj) {
+                    callback("NOOBJ", undefined);
+                }
+                else {
+                    client.hmset(key, "Socket", SocketID, function (errUpdt, resUpdt) {
+                        if (errUpdt) {
+                            callback(errUpdt, undefined);
                         }
-                    }
-                });
+                        else {
+
+                            if (resUpdt == "" || !resUpdt) {
+
+                                callback(new Error("Nothing to update"), undefined);
+                            } else {
+                                callback(undefined, resUpdt);
+                            }
+                        }
+                    });
+                }
+
             }
 
-        }
-
-    });
+        });
+    } catch (e)
+    {
+        callback(e,undefined);
+    }
 
 
 };
@@ -170,123 +163,121 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
 TokenObjectCreator = function(topicID,clientID,direction,sender,resURL,ttl,callback)
 {
     console.log("Token Object creating");
-    var key ="notification:"+topicID;
+    try {
+        var key = "notification:" + topicID;
 //notification:topic
-    client.hmset(key,["From",sender,"Client",clientID,"Direction",direction,"Callback",resURL],function(errHmset,resHmset)
+        client.hmset(key, ["From", sender, "Client", clientID, "Direction", direction, "Callback", resURL], function (errHmset, resHmset) {
+            if (errHmset) {
+                callback(errHmset, undefined);
+            }
+            else {
+                TouchSession(key, ttl);
+                callback(undefined, resHmset);
+            }
+        });
+    } catch (e)
     {
-        if(errHmset)
-        {
-            callback(errHmset,undefined);
-        }
-        else
-        {
-            TouchSession(key, ttl);
-            callback(undefined,resHmset);
-        }
-    });
+        callback(e,undefined);
+    }
 
 };
 
 ResourceObjectCreator = function(clientID,TopicID,ttl,callback)
 {
     console.log("Token Object creating");
-    var objKey="notification:"+clientID+":"+TopicID;
+    try {
+        var objKey = "notification:" + clientID + ":" + TopicID;
 
-    client.set(objKey,TopicID,function(errSet,resSet)
+        client.set(objKey, TopicID, function (errSet, resSet) {
+            if (errSet) {
+                callback(errSet, undefined);
+            }
+            else {
+                if (resSet == "" || !resSet || resSet == "NULL") {
+                    callback(new Error("Invalid key to Update " + objKey), undefined);
+                }
+                else {
+                    console.log("yap...............................");
+                    TouchSession(objKey, ttl);
+                    callback(undefined, resSet);
+                }
+            }
+        });
+    } catch (e)
     {
-        if(errSet)
-        {
-            callback(errSet,undefined);
-        }
-        else
-        {
-            if(resSet=="" || !resSet || resSet== "NULL")
-            {
-                callback(new Error("Invalid key to Update " + objKey),undefined);
-            }
-            else
-            {
-                console.log("yap...............................");
-                TouchSession(objKey, ttl);
-                callback(undefined,resSet);
-            }
-        }
-    });
+        callback(e,undefined);
+    }
 
 };
 
 ResourceObjectPicker = function(clientID,topicID,ttl,callback)
 {
     console.log("Token Object searching");
-    var objKey="notification:"+clientID+":"+topicID;
-    var key ="notification:"+topicID;
+    try {
+        var objKey = "notification:" + clientID + ":" + topicID;
+        var key = "notification:" + topicID;
 
-    client.get(objKey,function(errGet,resGet)
+        client.get(objKey, function (errGet, resGet) {
+            if (errGet) {
+                callback(errGet, undefined);
+            }
+            else {
+                if (resGet == "" || !resGet || resGet == "NULL") {
+                    callback(new Error("No such key found " + objKey), undefined);
+                }
+
+                else {
+                    TouchSession(objKey, ttl);
+                    //callback(undefined,resGet);
+                    ResponseUrlPicker(key, ttl, function (errURL, resURL) {
+                        if (errURL) {
+                            console.log("Error in searching ResponceURL " + errURL);
+                            callback(errURL, undefined);
+                        }
+                        else {
+                            console.log("Response URL found " + resURL);
+                            callback(undefined, resURL);
+                        }
+                    });
+                }
+            }
+        });
+    } catch (e)
     {
-        if(errGet)
-        {
-            callback(errGet,undefined);
-        }
-        else
-        {
-            if(resGet=="" || !resGet || resGet == "NULL")
-            {
-                callback(new Error("No such key found " + objKey),undefined);
-            }
-
-            else
-            {
-                TouchSession(objKey, ttl);
-                //callback(undefined,resGet);
-                ResponseUrlPicker(key,ttl,function(errURL,resURL)
-                {
-                    if(errURL)
-                    {
-                        console.log("Error in searching ResponceURL "+errURL);
-                        callback(errURL,undefined);
-                    }
-                    else
-                    {
-                        console.log("Response URL found "+resURL);
-                        callback(undefined,resURL);
-                    }
-                });
-            }
-        }
-    });
+        callback(e,undefined);
+    }
 
 };
 
 ResponseUrlPicker = function(topicID,ttl,callback)
 {
     console.log("ResponseURL of "+topicID+ "picking ");
-    var key ="notification:"+topicID;
+    try {
+        var key = "notification:" + topicID;
 
 
-    client.hmget(key,"Direction","Callback",function(errGet,resGet)
+        client.hmget(key, "Direction", "Callback", function (errGet, resGet) {
+            if (errGet) {
+                callback(errGet, undefined);
+            }
+            else {
+                if (!resGet) {
+                    callback(new Error("No such key found " + topicID), undefined);
+                }
+                else if (resGet == "" || resGet == "NULL") {
+                    TouchSession(topicID, ttl);
+                    callback(undefined, "STATELESS");
+                }
+                else {
+                    TouchSession(key, ttl);
+                    callback(undefined, resGet);
+                }
+            }
+        });
+    } catch (e)
     {
-        if(errGet)
-        {
-            callback(errGet,undefined);
-        }
-        else
-        {
-            if( !resGet )
-            {
-                callback(new Error("No such key found " + topicID),undefined);
-            }
-            else if(resGet=="" || resGet == "NULL")
-            {
-                TouchSession(topicID, ttl);
-                callback(undefined,"STATELESS");
-            }
-            else
-            {
-                TouchSession(key, ttl);
-                callback(undefined,resGet);
-            }
-        }
-    });
+        callback(e,undefined);
+    }
 };
 
 
@@ -296,26 +287,26 @@ RecordUserServer = function (clientName,server,callback)
 {
     console.log("Client "+clientName);
     console.log("server "+server);
-    var key="notification:loc:"+clientName+":"+server;//notification:loc....
+    try {
+        var key = "notification:loc:" + clientName + ":" + server;//notification:loc....
 
-    client.set(key,server,function(errSet,resSet)
+        client.set(key, server, function (errSet, resSet) {
+            if (errSet) {
+                callback(errSet, undefined);
+            }
+            else {
+                if (resSet == "" || !resSet || resSet == "NULL") {
+                    callback(new Error("Invalid key to set "), undefined);
+                }
+                else {
+                    callback(undefined, resSet);
+                }
+            }
+        });
+    } catch (e)
     {
-        if(errSet)
-        {
-            callback(errSet,undefined);
-        }
-        else
-        {
-            if(resSet=="" || !resSet || resSet== "NULL")
-            {
-                callback(new Error("Invalid key to set "),undefined);
-            }
-            else
-            {
-                callback(undefined,resSet);
-            }
-        }
-    });
+        callback(e,undefined);
+    }
 };
 
 UserServerUpdater = function (clientName,server,myID,callback)
@@ -323,41 +314,39 @@ UserServerUpdater = function (clientName,server,myID,callback)
     console.log("Client "+clientName);
     console.log("server "+server);
     console.log("myID "+myID);
-    var key="notification:loc:"+clientName+":"+server;//notification:loc....
-    var newKey="notification:loc:"+clientName+":"+myID;
-    console.log("key "+key);
-    console.log("newkey "+newKey);
-    client.rename(key,newKey, function (errRename,resRename) {
-        if(errRename)
-        {
-            cosole.log("Renam error ",errRename);
-            callback(errRename,undefined);
-        }
-        else
-        {
-            client.set(newKey,myID,function(errSet,resSet)
-            {
-                if(errSet)
-                {
-                    console.log("Error serever uodate ",errSet);
-                    callback(errSet,undefined);
-                }
-                else
-                {
-                    if(resSet=="" || !resSet || resSet== "NULL")
-                    {
-                        console.log("invalid key to set");
-                        callback(new Error("Invalid key to set "),undefined);
+    try {
+        var key = "notification:loc:" + clientName + ":" + server;//notification:loc....
+        var newKey = "notification:loc:" + clientName + ":" + myID;
+        console.log("key " + key);
+        console.log("newkey " + newKey);
+        client.rename(key, newKey, function (errRename, resRename) {
+            if (errRename) {
+                cosole.log("Renam error ", errRename);
+                callback(errRename, undefined);
+            }
+            else {
+                client.set(newKey, myID, function (errSet, resSet) {
+                    if (errSet) {
+                        console.log("Error serever uodate ", errSet);
+                        callback(errSet, undefined);
                     }
-                    else
-                    {
-                        console.log("done ",resSet);
-                        callback(undefined,resSet);
+                    else {
+                        if (resSet == "" || !resSet || resSet == "NULL") {
+                            console.log("invalid key to set");
+                            callback(new Error("Invalid key to set "), undefined);
+                        }
+                        else {
+                            console.log("done ", resSet);
+                            callback(undefined, resSet);
+                        }
                     }
-                }
-            });
-        }
-    });
+                });
+            }
+        });
+    } catch (e)
+    {
+        callback(e,undefined);
+    }
 
 };
 
@@ -365,53 +354,68 @@ GetClientsServer = function (clientName,callback) {
 
     var key="notification:loc:"+clientName+":*";
     console.log(key);
-    client.keys(key,function(errGet,resGet)
-    {
-        if(errGet)
-        {
-            callback(errGet,undefined);
-        }
-        else
-        {
-            if(resGet=="" || !resGet || resGet== "NULL")
-            {
-                callback(new Error("Invalid key to get "),undefined);
+    try {
+        client.keys(key, function (errGet, resGet) {
+            if (errGet) {
+                callback(errGet, undefined);
             }
-            else
-            {
-                var serverID = resGet[0].split(":")[3];
+            else {
+                if (resGet == "" || !resGet || resGet == "NULL") {
+                    callback(new Error("Invalid key to get "), undefined);
+                }
+                else {
+                    var serverID = resGet[0].split(":")[3];
 
-                callback(undefined,serverID);
+                    callback(undefined, serverID);
+                }
             }
-        }
-    });
+        });
+    } catch (e)
+    {
+        callback(e,undefined);
+    }
 };
 
 TopicObjectPicker = function (topicId,ttl,callback) {
 
-    TouchSession(topicId,ttl);
-    var key = "notification:"+topicId;
-    client.hgetall(key, function (errTkn,resTkn) {
-        callback(errTkn,resTkn);
+    try {
+        TouchSession(topicId, ttl);
+        var key = "notification:" + topicId;
+        client.hgetall(key, function (errTkn, resTkn) {
+            callback(errTkn, resTkn);
 
-    });
+        });
+    } catch (e)
+    {
+        callback(e,undefined);
+    }
 
 };
 
 ClientLocationDataRemover = function (clientID,server,callback) {
 
-    var key = "notification:loc:"+clientID+":"+server;
-    client.del(key, function (e,r) {
-        callback(e,r);
-    })
+    try {
+        var key = "notification:loc:" + clientID + ":" + server;
+        client.del(key, function (e, r) {
+            callback(e, r);
+        })
+    } catch (e)
+    {
+        callback(e,undefined);
+    }
 };
 
 SessionRemover = function (topicKey,callback) {
 
-    var key ="notification:"+topicKey;
-    client.del(key, function (e,r) {
-        callback(e,r);
-    });
+    try {
+        var key = "notification:" + topicKey;
+        client.del(key, function (e, r) {
+            callback(e, r);
+        });
+    } catch (e)
+    {
+        callback(e,undefined);
+    }
 };
 
 CheckClientAvailability = function (clientId,callback) {
@@ -419,83 +423,73 @@ CheckClientAvailability = function (clientId,callback) {
     var key = "notification:loc:"+clientId+":*";
 
     console.log(key);
-    client.keys(key, function (errClient,resClient) {
+    try {
+        client.keys(key, function (errClient, resClient) {
 
-        if(errClient)
-        {
-            console.log("Error in checking Availability ",errClient);
-            callback(errClient,false);
-        }
-        else
-        {
-            console.log("checking Availability Result ",resClient);
-
-            if(!resClient || resClient=="" || resClient == null)
-            {
-                callback(undefined,true);
+            if (errClient) {
+                console.log("Error in checking Availability ", errClient);
+                callback(errClient, false);
             }
-            else
-            {
-                callback(undefined,false);
+            else {
+                console.log("checking Availability Result ", resClient);
+
+                if (!resClient || resClient == "" || resClient == null) {
+                    callback(undefined, true);
+                }
+                else {
+                    callback(undefined, false);
+                }
+
+
             }
 
-
-        }
-
-    });
+        });
+    } catch (e)
+    {
+        callback(e,undefined);
+    }
 };
 
 ResetServerData = function (serverID,callback) {
 
     var key= "notification:loc:*:"+serverID;
     console.log("Key ..... ",key);
-    client.KEYS(key, function (errKeys,resKeys) {
-        if(errKeys)
-        {
-            console.log("Error in searching keys ",err);
-            callback(errKeys,undefined);
-        }
-        else
-        {
-            console.log("response in searching keys ",resKeys);
-            if(!resKeys || resKeys=="" || resKeys ==null)
-            {
-                callback(undefined,"Already Cleared")
+    try {
+        client.KEYS(key, function (errKeys, resKeys) {
+            if (errKeys) {
+                console.log("Error in searching keys ", err);
+                callback(errKeys, undefined);
             }
-            else
-            {
-                console.log(resKeys);
-                var delKeys="";
-                /* for(var i=0;i<resKeys.length;i++)
-                 {
-                 delKeys=delKeys.concat(" ");
-                 delKeys=delKeys.concat(resKeys[i]);
+            else {
+                console.log("response in searching keys ", resKeys);
+                if (!resKeys || resKeys == "" || resKeys == null) {
+                    callback(undefined, "Already Cleared")
+                }
+                else {
+                    console.log(resKeys);
+                    client.del(resKeys,function (e,r) {
+                        callback(e,r);
+                    });
 
-                 if(i==resKeys.length-1)
-                 {
-                 //callback(undefined,delKeys);
-                 console.log("HIT");
-                 RemoveKeys(delKeys, function (e,r) {
-                 callback(e,r);
-                 })
-                 }
-                 }*/
-
-                client.del(resKeys, function (e,r) {
-                    callback(e,r);
-                })
-
+                }
             }
-        }
-    });
+        });
+    }
+    catch (e) {
+        callback(e,undefined);
+    }
 
 };
 
 RemoveKeys = function (keys,callback) {
 
-    client.del(keys, function (e,r) {
-        callback(e,r);
-    });
+    try {
+        client.del(keys, function (e, r) {
+            callback(e, r);
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 
 };
 
@@ -504,91 +498,89 @@ IsRegisteredClient = function (clientID,callback) {
     var key = "notification:loc:"+clientID+":*";
 
     console.log("Reg key "+key);
-    client.keys(key, function (errClient,resClient) {
+    try {
+        client.keys(key, function (errClient, resClient) {
 
-        if(errClient)
-        {
-            console.log("Error in checking Availability ",errClient);
-            callback(errClient,false,undefined);
-        }
-        else
-        {
-            console.log("checking Availability Result ",resClient);
-            if(!resClient || resClient=="" || resClient == null)
-            {
-                callback(undefined,false,undefined);
+            if (errClient) {
+                console.log("Error in checking Availability ", errClient);
+                callback(errClient, false, undefined);
             }
-            else
-            {
-                console.log("Reg clients "+resClient);
+            else {
+                console.log("checking Availability Result ", resClient);
+                if (!resClient || resClient == "" || resClient == null) {
+                    callback(undefined, false, undefined);
+                }
+                else {
+                    console.log("Reg clients " + resClient);
 
-                callback(undefined,true,resClient[0]);
+                    callback(undefined, true, resClient[0]);
+                }
+
+
             }
 
-
-        }
-
-    });
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 };
 
 BroadcastTopicObjectCreator = function (topicId,msgObj,clients,callback) {
 
-    var groupTopicId = "Group:"+topicId;
-    var direction = msgObj.Direction;
-    var sender = msgObj.From;
-    var callbackURL="";
-    if(direction=="STATEFUL")
-    {
-        callbackURL=msgObj.Callback;
-    }
-    if(!isNaN(msgObj.Timeout))
-    {
-        TTL =msgObj.Timeout;
-        console.log("TTL found "+TTL);
-    }
-
-    TokenObjectCreator(groupTopicId,clients,direction,sender,callbackURL,TTL, function (errTknCreate,resTknCreate) {
-
-        if(errTknCreate)
-        {
-            console.log("Group Token creation error ",errTknCreate);
-            callback(errTknCreate,undefined);
+    try {
+        var groupTopicId = "Group:" + topicId;
+        var direction = msgObj.Direction;
+        var sender = msgObj.From;
+        var callbackURL = "";
+        if (direction == "STATEFUL") {
+            callbackURL = msgObj.Callback;
         }
-        else
-        {
-            console.log("Token created ");
-            callback(undefined,resTknCreate);
+        if (!isNaN(msgObj.Timeout)) {
+            TTL = msgObj.Timeout;
+            console.log("TTL found " + TTL);
         }
 
-    });
+        TokenObjectCreator(groupTopicId, clients, direction, sender, callbackURL, TTL, function (errTknCreate, resTknCreate) {
+
+            if (errTknCreate) {
+                console.log("Group Token creation error ", errTknCreate);
+                callback(errTknCreate, undefined);
+            }
+            else {
+                console.log("Token created ");
+                callback(undefined, resTknCreate);
+            }
+
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 
 };
 
 ParamKeyGenerator = function (paramData) {
 
-    if(paramData)
-    {
-        var paramKey ="";
-        var keyObj=Object.keys(paramData);
-        for(var i=0;i<keyObj.length;i++)
-        {
-            if(i==0)
-            {
-                paramKey=keyObj[i]+"-"+paramData[keyObj[i]];
-            }
-            else
-            {
-                paramKey=paramKey+"-"+keyObj[i]+"-"+paramData[keyObj[i]];
-            }
+    try {
+        if (paramData) {
+            var paramKey = "";
+            var keyObj = Object.keys(paramData);
+            for (var i = 0; i < keyObj.length; i++) {
+                if (i == 0) {
+                    paramKey = keyObj[i] + "-" + paramData[keyObj[i]];
+                }
+                else {
+                    paramKey = paramKey + "-" + keyObj[i] + "-" + paramData[keyObj[i]];
+                }
 
-            if(i==keyObj.length-1)
-            {
-                return paramKey;
+                if (i == keyObj.length - 1) {
+                    return paramKey;
+                }
             }
         }
-    }
-    else
-    {
+        else {
+            return null;
+        }
+    } catch (e) {
         return null;
     }
 
@@ -597,185 +589,169 @@ ParamKeyGenerator = function (paramData) {
 
 QueryKeyGenerator = function (dataObj,clientID,callback) {
 
-    IsRegisteredClient(clientID, function (errAvbl,status,datakey) {
-        if(errAvbl)
-        {
-            console.log("error in searching client ",errAvbl);
-            callback(errAvbl,undefined,"ERROR");
-        }
-        else
-        {
-            if(!status && !datakey)
-            {
-                console.log("No client found ");
-                callback(new Error("No client found"),undefined,"ERROR");
+    try {
+        IsRegisteredClient(clientID, function (errAvbl, status, datakey) {
+            if (errAvbl) {
+                console.log("error in searching client ", errAvbl);
+                callback(errAvbl, undefined, "ERROR");
             }
-            else
-            {
-                var paramKey = ParamKeyGenerator(dataObj.FilterData);
-                console.log("param key "+paramKey);
-                if(paramKey)
-                {
-                    var key = "Query:"+dataObj.Query+":"+dataObj.Company+":"+dataObj.Tenant+":"+paramKey;
-
-                    QueryKeyAvailabilityChecker(key, function (errKeyAvbl,resKeyAvbl) {
-
-                        if(errKeyAvbl)
-                        {
-                            callback(errKeyAvbl,undefined,"ERROR");
-                        }
-                        else
-                        {
-                            if(!resKeyAvbl)
-                            {
-                                client.RPUSH(key,clientID, function (errKey,resKey) {
-                                    if(errKey)
-                                    {
-                                        console.log("Error in push");
-                                        callback(errKey,undefined,"ERROR");
-                                    }
-                                    else
-                                    {
-                                        console.log("Key "+key);
-                                        callback(undefined,resKey,"NEWKEY");
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                SubsQueryUserAvailabitityChecker(key,clientID, function (errChk,resChk) {
-
-                                    if(errChk)
-                                    {
-                                        console.log("Error in searching client subscription");
-                                        callback(errChk,undefined,"ERROR");
-                                    }
-                                    else
-                                    {
-                                        if(resChk)
-                                        {
-                                            client.RPUSH(key,clientID, function (errKey,resKey) {
-                                                if(errKey)
-                                                {
-                                                    console.log("Error in push");
-                                                    callback(errKey,undefined,"ERROR");
-                                                }
-                                                else
-                                                {
-                                                    console.log("Key "+key);
-                                                    callback(undefined,resKey,"REGEDKEY");
-                                                }
-                                            });
-                                        }
-                                        else
-                                        {
-                                            console.log("Already subscribed");
-                                            callback(undefined,false,"SUBEDUSER");
-                                        }
-
-                                    }
-                                });
-                            }
-                        }
-
-                    });
-
-
+            else {
+                if (!status && !datakey) {
+                    console.log("No client found ");
+                    callback(new Error("No client found"), undefined, "ERROR");
                 }
-                else
-                {
-                    console.log("Error in search");
-                    callback(new Error("Invalid param key"),undefined,"ERROR");
+                else {
+                    var paramKey = ParamKeyGenerator(dataObj.FilterData);
+                    console.log("param key " + paramKey);
+                    if (paramKey) {
+                        var key = "Query:" + dataObj.Query + ":" + dataObj.Company + ":" + dataObj.Tenant + ":" + paramKey;
+
+                        QueryKeyAvailabilityChecker(key, function (errKeyAvbl, resKeyAvbl) {
+
+                            if (errKeyAvbl) {
+                                callback(errKeyAvbl, undefined, "ERROR");
+                            }
+                            else {
+                                if (!resKeyAvbl) {
+                                    client.RPUSH(key, clientID, function (errKey, resKey) {
+                                        if (errKey) {
+                                            console.log("Error in push");
+                                            callback(errKey, undefined, "ERROR");
+                                        }
+                                        else {
+                                            console.log("Key " + key);
+                                            callback(undefined, resKey, "NEWKEY");
+                                        }
+                                    });
+                                }
+                                else {
+                                    SubsQueryUserAvailabitityChecker(key, clientID, function (errChk, resChk) {
+
+                                        if (errChk) {
+                                            console.log("Error in searching client subscription");
+                                            callback(errChk, undefined, "ERROR");
+                                        }
+                                        else {
+                                            if (resChk) {
+                                                client.RPUSH(key, clientID, function (errKey, resKey) {
+                                                    if (errKey) {
+                                                        console.log("Error in push");
+                                                        callback(errKey, undefined, "ERROR");
+                                                    }
+                                                    else {
+                                                        console.log("Key " + key);
+                                                        callback(undefined, resKey, "REGEDKEY");
+                                                    }
+                                                });
+                                            }
+                                            else {
+                                                console.log("Already subscribed");
+                                                callback(undefined, false, "SUBEDUSER");
+                                            }
+
+                                        }
+                                    });
+                                }
+                            }
+
+                        });
+
+
+                    }
+                    else {
+                        console.log("Error in search");
+                        callback(new Error("Invalid param key"), undefined, "ERROR");
+                    }
                 }
             }
-        }
-    });
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 
 
-    // client.RPUSH("key",)
 };
 
 SubsQueryUserAvailabitityChecker = function (queryKey,clientID,callback) {
 
-    client.LRANGE(queryKey,0,-1, function (errSubs,resSubs) {
+    try {
+        client.LRANGE(queryKey, 0, -1, function (errSubs, resSubs) {
 
-        if(errSubs)
-        {
-            console.log("Error Range ",errSubs);
-            callback(errSubs,undefined);
-        }
-        else
-        {
-            console.log("Done Range");
-            console.log(resSubs);
-            if(resSubs.indexOf(clientID)==-1)
-            {
+            if (errSubs) {
+                console.log("Error Range ", errSubs);
+                callback(errSubs, undefined);
+            }
+            else {
+                console.log("Done Range");
+                console.log(resSubs);
+                if (resSubs.indexOf(clientID) == -1) {
 
-                callback(undefined,true);
+                    callback(undefined, true);
+
+                }
+                else {
+
+                    callback(undefined, false);
+                }
+                // console.log(typeof (resSubs));
+                // callback(undefined,resSubs);
+
 
             }
-            else
-            {
-
-                callback(undefined,false);
-            }
-            // console.log(typeof (resSubs));
-            // callback(undefined,resSubs);
-
-
-
-        }
-    });
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 };
 
 QueryKeySubscriberPicker = function (queryKey,callback) {
 
-    client.LRANGE(queryKey,0,-1, function (errSubs,resSubs) {
+    try {
+        client.LRANGE(queryKey, 0, -1, function (errSubs, resSubs) {
 
-        if(errSubs)
-        {
-            console.log("Error in Query key checker ",errSubs);
-            callback(errSubs,undefined);
-        }
-        else
-        {
-
-            if(resSubs.length>0)
-            {
-                callback(undefined,resSubs);
+            if (errSubs) {
+                console.log("Error in Query key checker ", errSubs);
+                callback(errSubs, undefined);
             }
-            else
-            {
-                callback(undefined,false);
-            }
+            else {
 
-        }
-    });
+                if (resSubs.length > 0) {
+                    callback(undefined, resSubs);
+                }
+                else {
+                    callback(undefined, false);
+                }
+
+            }
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 };
 
 QueryKeyAvailabilityChecker = function (key,callback) {
 
-    client.keys(key, function (errKey,resKey) {
+    try {
+        client.keys(key, function (errKey, resKey) {
 
-        if(errKey)
-        {
-            callback(errKey,false);
-        }
-        else
-        {
-            if(!resKey || resKey=="" || resKey ==null)
-            {
-                callback(undefined,false);
+            if (errKey) {
+                callback(errKey, false);
             }
-            else
-            {
-                callback(undefined,true);
+            else {
+                if (!resKey || resKey == "" || resKey == null) {
+                    callback(undefined, false);
+                }
+                else {
+                    callback(undefined, true);
 
+                }
             }
-        }
-    });
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
 
-}
+};
 
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;

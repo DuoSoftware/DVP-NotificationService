@@ -99,7 +99,7 @@ RestServer.post('/DVP/API/'+version+'/CEPHandler/Notification/Publish', function
 */
 
 
-    var httpUrl = req.body.data.CallbackURL;
+    var httpUrl = req.body.CallbackURL;
     // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
     var options = {
         url : httpUrl,
