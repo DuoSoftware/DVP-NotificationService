@@ -104,7 +104,7 @@ RestServer.post('/DVP/API/'+version+'/CEPHandler/Notification/Publish', function
     var options = {
         url : httpUrl,
         method : 'POST',
-        json : req.body.Message
+        json : req.body
 
     };
 
@@ -113,16 +113,19 @@ RestServer.post('/DVP/API/'+version+'/CEPHandler/Notification/Publish', function
     {
         httpReq(options, function (error, response, body)
         {
+            console.log(response.statusCode);
             if (!error && response.statusCode == 200)
             {
                 console.log("no errrs in request 200 ok");
-                callback(undefined,response);
+                res.end("Success");
+                //callback(undefined,response);
 
             }
             else
             {
                 console.log("errrs in request  "+error);
-                callback(error,undefined);
+                res.end("Error");
+                //callback(error,undefined);
 
             }
         });
@@ -130,7 +133,7 @@ RestServer.post('/DVP/API/'+version+'/CEPHandler/Notification/Publish', function
     catch(ex)
     {
         console.log("ex..."+ex);
-        callback(ex,undefined);
+        //callback(ex,undefined);
 
     }
 
