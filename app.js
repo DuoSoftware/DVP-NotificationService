@@ -19,6 +19,7 @@ var validator = require('validator');
 var util = require('util');
 var DBController = require('./DBController.js');
 var async= require('async');
+var uuid = require('node-uuid');
 
 
 
@@ -29,7 +30,6 @@ var RestServer = restify.createServer({
 });
 
 var io = socketio.listen(RestServer.server);
-
 restify.CORS.ALLOW_HEADERS.push('authorization');
 
 RestServer.use(restify.CORS());
@@ -1560,9 +1560,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     }
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',function(req,res,next)
+/*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe',function(req,res,next)
 {
-    /* var clientID = req.params.username;
+    /!* var clientID = req.params.username;
 
      /!*var pp = [];
      // pp[0].push("a");
@@ -1714,9 +1714,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
      console.log(SubUsers[reqData.Query]);
      res.end();
      }
-     */
+     *!/
 
-    redisManager.QueryKeyGenerator(req.body,req.params.username, function (errKeygen,resKeygen,status) {
+    redisManager.QueryKeyGenerator(req.body,req.body.username, function (errKeygen,resKeygen,status) {
         console.log("hitt");
         if(errKeygen)
         {
@@ -1729,7 +1729,188 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
         {
             if(resKeygen && status=="NEWKEY")
             {
-                var ServerIP="127.0.0.1:8050";
+                console.log("Subs Key = "+resKeygen);
+                res.end(resKeygen);
+            }
+            else
+            {
+                if(status=="REGEDKEY")
+                {
+                    console.log("Registered Key, Successfully added");
+                    res.end();
+                }
+                else
+                {
+                    console.log("Already Subscribed user");
+                    res.end();
+                }
+
+            }
+
+        }
+    });
+
+    return next();
+});
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Query',function(req,res,next)
+{
+    /!* var clientID = req.params.username;
+
+     /!*var pp = [];
+     // pp[0].push("a");
+     pp["abc"]="tata";
+     console.log(pp);
+     var arr=[];
+     arr.push(pp["abc"]);
+     console.log(typeof(arr));
+     arr.push("lala");
+     pp["abc"]=arr;
+     console.log(pp);
+     console.log(pp["abc"]);
+     console.log(pp["abc"][0]);
+     console.log(pp["abcd"]);
+     console.log(pp["abc"][9]);*!/
+
+     var reqData = req.body;
+
+     /!*redisManager.GetClientsServer(clientID, function (errServer,resServer) {
+
+     if(errServer)
+     {
+     console.log("Error in Searching servers ",errServer);
+     res.end();
+     }
+     else
+     {
+     if(MyID==resServer)
+     {
+     if(Clients[clientID])
+     {
+     //SubRecords[clientID]=req.body;
+     var arrUsrs = [];
+
+     if(SubUsers[reqData.Query])
+     {
+
+     arrUsrs.push(SubUsers[reqData.Query]);
+
+     if(arrUsrs.indexOf(clientID))
+     {
+     arrUsrs.push(clientID);
+     SubUsers[reqData.Query]=arrUsrs;
+     console.log(SubUsers[reqData.Query]);
+     console.log("A");
+     res.end();
+     }
+     else
+     {
+     console.log("Already subscribed");
+     res.end();
+     }
+
+
+     }
+     else
+     {
+     SubUsers[reqData.Query]=clientID;
+     console.log(SubUsers[reqData.Query]);
+     console.log("B");
+     res.end();
+     }
+
+
+     }
+     else
+     {
+     console.log("Not an registered client ");
+     res.end();
+     }
+     }
+     else
+     {
+     DBController.ServerPicker(clientID, function (errServer,resServer) {
+
+     if(errServer)
+     {
+     console.log("No server record found ",errServer);
+     res.end();
+     }
+     else
+     {
+     var ServerIP = resServer.URL;
+     console.log(ServerIP);
+     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Subscribe/'+clientID, ServerIP, version);
+     var options = {
+     url : httpUrl,
+     method : 'POST',
+     json : req.body
+
+     };
+
+     console.log(options);
+     try
+     {
+     httpReq(options, function (error, response, body)
+     {
+     if (!error && response.statusCode == 200)
+     {
+     console.log("no errrs in request 200 ok");
+     callback(undefined,response.statusCode);
+
+     }
+     else
+     {
+     console.log("errrs in request  "+error);
+     callback(error,undefined);
+
+     }
+     });
+     }
+     catch(ex)
+     {
+     console.log("ex..."+ex);
+     callback(ex,undefined);
+
+     }
+     }
+
+     });
+     }
+     }
+
+     });*!/
+
+     if(SubUsers[reqData.Query]  )
+     {
+     if(SubUsers[reqData.Query][clientID])
+     {
+     console.log("in");
+     console.log(SubUsers[reqData.Query][clientID]);
+     res.end();
+     }
+     else
+     {
+     console.log("in2");
+     SubUsers[reqData.Query][clientID]= reqData;
+     console.log(SubUsers[reqData.Query]);
+     res.end();
+     }
+
+
+     }
+     else
+     {
+     console.log("out");
+     SubUsers[reqData.Query] = {};
+     SubUsers[reqData.Query][clientID]= reqData;
+     console.log(SubUsers[reqData.Query]);
+     res.end();
+     }
+     *!/
+
+
+           var ServerIP="127.0.0.1:8050";
                 var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
                 var msgObj=req.body;
                 // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
@@ -1764,25 +1945,101 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
                 catch(ex)
                 {
                     console.log("ex..."+ex);
+                    res.end("Exception");
                     //callback(ex,undefined);
 
                 }
+
+
+
+    return next();
+});*/
+
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',function(req,res,next)
+{
+    var userID= req.params.username;
+
+    redisManager.IsRegisteredClient(userID, function (errReg,status,resReg) {
+
+        if(errReg)
+        {
+            console.log("Error in client registration checking "+errReg);
+            res.end();
+        }
+        else
+        {
+            if(resReg && status)
+            {
+                var key = "Query:" + uuid.v1();
+
+                redisManager.QuerySubscriberRecorder(key,userID, function (errSubs,resSubs) {
+
+                    if(errSubs)
+                    {
+                        console.log("Subcriber record saving error "+errSubs);
+                        res.end();
+                    }
+                    else
+                    {
+                        if(!resSubs)
+                        {
+                            console.log("Unable to save subs record");
+                            res.end();
+                        }
+                        else
+                        {
+                            req.body.RefId=key;
+                            var ServerIP="127.0.0.1:8050";
+                            var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
+                            var msgObj=req.body;
+                            // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
+                            var options = {
+                                url : httpUrl,
+                                method : 'POST',
+                                json : msgObj
+
+                            };
+
+                            console.log(options);
+                            try
+                            {
+                                httpReq(options, function (error, response, body)
+                                {
+                                    if (!error && response.statusCode == 200)
+                                    {
+                                        console.log("no errrs in request 200 ok");
+                                        //callback(undefined,response.statusCode);
+                                        res.end("Success");
+
+                                    }
+                                    else
+                                    {
+                                        console.log("errrs in request  "+error);
+                                        res.end("Error");
+                                        //callback(error,undefined);
+
+                                    }
+                                });
+                            }
+                            catch(ex)
+                            {
+                                console.log("ex..."+ex);
+                                res.end("Exception");
+                                //callback(ex,undefined);
+
+                            }
+
+
+                        }
+                    }
+                });
             }
             else
             {
-                if(status=="REGEDKEY")
-                {
-                    console.log("Registered Key, Successfully added");
-                    res.end();
-                }
-                else
-                {
-                    console.log("Already Subscribed user");
-                    res.end();
-                }
-
+                console.log("Client ID  not found  "+userID);
+                res.end();
             }
-
         }
     });
 
@@ -1813,33 +2070,22 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                     }
                     else
                     {
-                        console.log(resSubs);
-                        var subsCount = resSubs.length;
-                        for(var i=0;i<resSubs.length;i++)
-                        {
-                            console.log("I ==== "+i);
-                            console.log("Length ==== "+resSubs.length);
-                            PublishToUser(resSubs[i],msgObj, function (errPublish,resPublish) {
+                        PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
 
-                                if(i==subsCount)
-                                {
-                                    console.log("End");
-                                    res.end("Done publish")
-                                }
+                            if(errPublish)
+                            {
+                                //res.end("Error");
+                                console.log(errPublish);
+                                res.end();
 
-                                if(errPublish)
-                                {
-                                    //res.end("Error");
-                                    console.log(errPublish);
-
-                                }
-                                else
-                                {
-                                    console.log("Success");
-                                    //res.end("Done");
-                                }
-                            });
-                        }
+                            }
+                            else
+                            {
+                                console.log("Success");
+                                //res.end("Done");
+                                res.end();
+                            }
+                        });
 
                     }
                 }
@@ -1849,7 +2095,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
         else
         {
             console.log("Invalid query key");
-            callback(new Error("Invalid query key"),undefined);
+            res.end();
 
         }
     }
@@ -1893,6 +2139,12 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:
 
     return next();
 });
+
+
+
+
+
+
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', function (req,res,next){
 

@@ -5,6 +5,7 @@ var redis=require('redis');
 var config = require('config');
 var port = config.Redis.port || 3000;
 var client = redis.createClient(config.Redis.port,config.Redis.ip);
+var uuid = require('node-uuid');
 //var io = require('socket.io')(config.Host.port);
 client.on("error", function (err) {
     console.log("Error " + err);
@@ -113,7 +114,7 @@ SocketStateChanger = function(TopicID,State,ttl,callback)
 
 TouchSession =function(TopicID,TTL)
 {
-        client.expire(TopicID, TTL);
+    client.expire(TopicID, TTL);
 };
 
 SocketObjectUpdater = function(TopicID,SocketID,callback)
@@ -589,6 +590,87 @@ ParamKeyGenerator = function (paramData) {
 
 QueryKeyGenerator = function (dataObj,clientID,callback) {
 
+    /* try {
+     IsRegisteredClient(clientID, function (errAvbl, status, datakey) {
+     if (errAvbl) {
+     console.log("error in searching client ", errAvbl);
+     callback(errAvbl, undefined, "ERROR");
+     }
+     else {
+     if (!status && !datakey) {
+     console.log("No client found ");
+     callback(new Error("No client found"), undefined, "ERROR");
+     }
+     else {
+     var paramKey = ParamKeyGenerator(dataObj.FilterData);
+     console.log("param key " + paramKey);
+     if (paramKey) {
+     var key = "Query:" + dataObj.Query + ":" + dataObj.Company + ":" + dataObj.Tenant + ":" + paramKey;
+
+     QueryKeyAvailabilityChecker(key, function (errKeyAvbl, resKeyAvbl) {
+
+     if (errKeyAvbl) {
+     callback(errKeyAvbl, undefined, "ERROR");
+     }
+     else {
+     if (!resKeyAvbl) {
+     client.RPUSH(key, clientID, function (errKey, resKey) {
+     if (errKey) {
+     console.log("Error in push");
+     callback(errKey, undefined, "ERROR");
+     }
+     else {
+     console.log("Key " + key);
+     callback(undefined, resKey, "NEWKEY");
+     }
+     });
+     }
+     else {
+     SubsQueryUserAvailabitityChecker(key, clientID, function (errChk, resChk) {
+
+     if (errChk) {
+     console.log("Error in searching client subscription");
+     callback(errChk, undefined, "ERROR");
+     }
+     else {
+     if (resChk) {
+     client.RPUSH(key, clientID, function (errKey, resKey) {
+     if (errKey) {
+     console.log("Error in push");
+     callback(errKey, undefined, "ERROR");
+     }
+     else {
+     console.log("Key " + key);
+     callback(undefined, resKey, "REGEDKEY");
+     }
+     });
+     }
+     else {
+     console.log("Already subscribed");
+     callback(undefined, false, "SUBEDUSER");
+     }
+
+     }
+     });
+     }
+     }
+
+     });
+
+
+     }
+     else {
+     console.log("Error in search");
+     callback(new Error("Invalid param key"), undefined, "ERROR");
+     }
+     }
+     }
+     });
+     } catch (e) {
+     callback(e,undefined);
+     }*/
+
+
     try {
         IsRegisteredClient(clientID, function (errAvbl, status, datakey) {
             if (errAvbl) {
@@ -601,72 +683,42 @@ QueryKeyGenerator = function (dataObj,clientID,callback) {
                     callback(new Error("No client found"), undefined, "ERROR");
                 }
                 else {
-                    var paramKey = ParamKeyGenerator(dataObj.FilterData);
-                    console.log("param key " + paramKey);
-                    if (paramKey) {
-                        var key = "Query:" + dataObj.Query + ":" + dataObj.Company + ":" + dataObj.Tenant + ":" + paramKey;
 
-                        QueryKeyAvailabilityChecker(key, function (errKeyAvbl, resKeyAvbl) {
+                    var key = "Query:" + uuid.v1();
 
-                            if (errKeyAvbl) {
-                                callback(errKeyAvbl, undefined, "ERROR");
+                    QueryKeyAvailabilityChecker(key, function (errKeyAvbl, resKeyAvbl) {
+
+                        if (errKeyAvbl) {
+                            callback(errKeyAvbl, undefined, "ERROR");
+                        }
+                        else {
+                            if (!resKeyAvbl) {
+                                client.SET(key, clientID, function (errKey, resKey) {
+                                    if (errKey) {
+                                        console.log("Error in push");
+                                        callback(errKey, undefined, "ERROR");
+                                    }
+                                    else {
+                                        console.log("Key " + key);
+                                        callback(undefined, key, "NEWKEY");
+                                    }
+                                });
                             }
                             else {
-                                if (!resKeyAvbl) {
-                                    client.RPUSH(key, clientID, function (errKey, resKey) {
-                                        if (errKey) {
-                                            console.log("Error in push");
-                                            callback(errKey, undefined, "ERROR");
-                                        }
-                                        else {
-                                            console.log("Key " + key);
-                                            callback(undefined, resKey, "NEWKEY");
-                                        }
-                                    });
-                                }
-                                else {
-                                    SubsQueryUserAvailabitityChecker(key, clientID, function (errChk, resChk) {
-
-                                        if (errChk) {
-                                            console.log("Error in searching client subscription");
-                                            callback(errChk, undefined, "ERROR");
-                                        }
-                                        else {
-                                            if (resChk) {
-                                                client.RPUSH(key, clientID, function (errKey, resKey) {
-                                                    if (errKey) {
-                                                        console.log("Error in push");
-                                                        callback(errKey, undefined, "ERROR");
-                                                    }
-                                                    else {
-                                                        console.log("Key " + key);
-                                                        callback(undefined, resKey, "REGEDKEY");
-                                                    }
-                                                });
-                                            }
-                                            else {
-                                                console.log("Already subscribed");
-                                                callback(undefined, false, "SUBEDUSER");
-                                            }
-
-                                        }
-                                    });
-                                }
+                                console.log("INVALIDKEY" + key);
+                                callback(new Error("Invalid Key"), undefined, "INVALIDKEY");
                             }
+                        }
 
-                        });
+                    });
 
 
-                    }
-                    else {
-                        console.log("Error in search");
-                        callback(new Error("Invalid param key"), undefined, "ERROR");
-                    }
+
                 }
             }
         });
     } catch (e) {
-        callback(e,undefined);
+        callback(e,undefined,undefined);
     }
 
 
@@ -707,7 +759,7 @@ SubsQueryUserAvailabitityChecker = function (queryKey,clientID,callback) {
 QueryKeySubscriberPicker = function (queryKey,callback) {
 
     try {
-        client.LRANGE(queryKey, 0, -1, function (errSubs, resSubs) {
+        client.GET(queryKey, function (errSubs, resSubs) {
 
             if (errSubs) {
                 console.log("Error in Query key checker ", errSubs);
@@ -715,7 +767,7 @@ QueryKeySubscriberPicker = function (queryKey,callback) {
             }
             else {
 
-                if (resSubs.length > 0) {
+                if (resSubs) {
                     callback(undefined, resSubs);
                 }
                 else {
@@ -753,6 +805,17 @@ QueryKeyAvailabilityChecker = function (key,callback) {
 
 };
 
+QuerySubscriberRecorder = function (key,userID,callback) {
+
+    client.set(key,userID, function (errKeyRec,resKeyRes) {
+
+        callback(errKeyRec,resKeyRes);
+
+    });
+
+
+};
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
@@ -775,6 +838,7 @@ module.exports.QueryKeyGenerator = QueryKeyGenerator;
 module.exports.UserServerUpdater = UserServerUpdater;
 module.exports.SubsQueryUserAvailabitityChecker = SubsQueryUserAvailabitityChecker;
 module.exports.QueryKeySubscriberPicker = QueryKeySubscriberPicker;
+module.exports.QuerySubscriberRecorder = QuerySubscriberRecorder;
 
 
 
