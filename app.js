@@ -939,6 +939,7 @@ io.sockets.on('connection', function (socket) {
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',function(req,res,next)
 {
+    console.log(typeof (req.body));
     console.log("New request form "+req.body.From);
     var clientID=req.body.To;
 
