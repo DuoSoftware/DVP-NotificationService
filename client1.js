@@ -22,24 +22,41 @@ function  onDisconnected(reason)
     console.log("Disconnected "+reason);
 };
 
-function  onMessage(Data)
+function  onMessageReceived(Data)
 {
     console.log("New Message "+JSON.stringify(Data));
     TopiCData=Data.TopicKey;
 
 };
 
-function  onBroadcastMessage(Data)
+
+function  onBroadcastMessageReceived(Data)
 {
     console.log("New Broadcast Message "+JSON.stringify(Data));
 };
 
-function  onPublishMessage(Data)
+function  onPublishMessageReceived(Data)
 {
     console.log("New Published Message "+JSON.stringify(Data));
 };
 
-clientSDK.ConfigClient("client1","127.0.0.1","8080",onDisconnected,onMessage,onBroadcastMessage,onPublishMessage);
+var configOptions =
+{
+    URL:"127.0.0.1:8080",
+    Callbacks:{
+        onDisconnected:onDisconnected,
+        onMessageReceived:onMessageReceived,
+        onBroadcastMessageReceived:onBroadcastMessageReceived,
+        onPublishMessageReceived:onPublishMessageReceived
+
+    },
+    jwt:""
+
+};
+
+
+
+clientSDK.ConfigClient(configOptions);
 
 
 
@@ -103,28 +120,31 @@ function ConfigCollector(status)
          var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: false });*/
 
         //////////////////////////////////////////////////////////////////////////////
-          var queryObj = {
-         "QueryId":"1",
-         "Query":"select * from Agents"
-         }
 
-         var filterData = "Company=1,Tenant=3";
 
-         var rangeData="AnswerCount>1000";
+        var QueryOptions =
+        {
+            queryObj:{
+                "QueryId":"1",
+                "Query":"select * from Agents"
+            },
+            filterData:"Company=1,Tenant=3",
+            rangeData:"AnswerCount>1000"
 
-         var CallbackURL="http://192.168.0.88:8080/DVP/API/6.0/NotificationService/Notification/Publish";
 
-         clientSDK.SubscribeToEvent(queryObj,filterData,rangeData,CallbackURL, function (errSubs,resSubs) {
+        }
 
-         if(errSubs)
-         {
-         console.log("ErrorSubs "+errSubs);
-         }
-         else
-         {
-         console.log("ResSubs "+resSubs);
-         }
-         });
+        clientSDK.SubscribeToEvent(QueryOptions, function (errSubs,resSubs) {
+
+            if(errSubs)
+            {
+                console.log("ErrorSubs "+errSubs);
+            }
+            else
+            {
+                console.log("ResSubs "+resSubs);
+            }
+        });
         /* socket.on('disconnect', function(reason) {
          if(reason != "io server disconnect")
          {

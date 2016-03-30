@@ -70,7 +70,7 @@ function ConfigCollector(status)
 
         console.log("====================================");
 
-        var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: false });
+        var socket = io(IP, {'forceNew': true, reconnect: false });
 
         socket.on('disconnect', function(reason)
         {
@@ -129,6 +129,10 @@ function ConfigCollector(status)
             //socket.disconnect();
         });
         socket.on('publish', function(data){
+            console.log(data);
+            //socket.disconnect();
+        });
+        socket.on('IdGen', function(data){
             console.log(data);
             //socket.disconnect();
         });

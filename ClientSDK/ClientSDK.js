@@ -8,18 +8,20 @@ var ClientID;
 var io = require('socket.io-client');
 var httpReq = require('request');
 var util = require('util');
+var AgentEventStatus=false;
 
-function ConfigClient (clientID,serverIp,serverPort,onDisconnected,onMessage,onBroadcastMessage,onPublishMessage)
+
+function ConfigClient (URL,jwt)
 {
-    console.log("HIt");
-    ClientID=clientID;
-    var serverLoc= "http://"+serverIp+":"+serverPort;
-    socket = io(serverLoc, { query: "myid="+clientID , 'forceNew': true, reconnect: false });
+    //console.log("HIt");
+    var serverLoc= URL;
+    socket = io(serverLoc, { 'forceNew': true, reconnect: false });
 
     socketObj.onDisconnected = onDisconnected;
     socketObj.onMessage = onMessage;
     socketObj.onBroadcastMessage = onBroadcastMessage;
     socketObj.onPublishMessage = onPublishMessage;
+
 
 
     socket.on('disconnect', function(reason)
@@ -109,9 +111,9 @@ function SendReply(Message,topicKey)
     socket.emit('reply',msgObj);
 };
 
-function  SubscribeToEvent (queryObj,filterData,rangeData,callbackURL,callback)
+function  SubscribeToEvent (QuertyOptions,callback)
 {
-    var msgObj= SubscribeDataObjectCreator(queryObj,filterData,rangeData,callbackURL);
+    var msgObj= SubscribeDataObjectCreator(QuertyOptions.queryObj,QuertyOptions.filterData,QuertyOptions.rangeData);
     //socket.emit('subscribe',msgObj);
     var ServerIP="127.0.0.1:8080";
     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Subscribe/%s', ServerIP,"6.0",ClientID);
@@ -149,7 +151,7 @@ function GetQueryData (callback)
 
 }
 
-function SubscribeDataObjectCreator (quaryObj,filterData,rangeData,callbackURL)
+function SubscribeDataObjectCreator (quaryObj,filterData,rangeData)
 {
     var subObj =
     {
@@ -159,13 +161,92 @@ function SubscribeDataObjectCreator (quaryObj,filterData,rangeData,callbackURL)
             FilterBy:filterData,
             RangeBy:rangeData
         },
-        RefId : "",
-        CallbackURL:callbackURL
+        RefId : ""
     };
 
     return subObj;
 }
 
+
+function ClientConfiguration(eventObj)
+{
+    socket = io.connect(eventObj.URL);
+
+    socketObj.onDisconnected = eventObj.onDisconnected;
+    socketObj.onMessage = eventObj.onMessage;
+    socketObj.onBroadcastMessage = eventObj.onBroadcastMessage;
+    socketObj.onPublishMessage = eventObj.onPublishMessage;
+    socketObj.agent_found=eventObj.agent_found;
+    socketObj.agent_connected=eventObj.agent_connected;
+    socketObj.agent_disconnected=eventObj.agent_disconnected;
+
+    socket.on('connect',function() {
+
+
+        socket
+            .on('authenticated', function () {
+                //do other things
+            })
+            .emit('authenticate', {token: eventObj.jwt});
+
+
+        console.log('Client has connected to the server!');
+    });
+
+    socket.on('disconnect', function(reason)
+    {
+        socketObj.onDisconnected(reason);
+    });
+
+    socket.on('message', function(reason)
+    {
+        if(AgentEventStatus)
+        {
+            socketObj.agent_found=agentNotifyObj.agent_found;
+            socketObj.agent_connected=agentNotifyObj.agent_connected;
+            socketObj.agent_disconnected=agentNotifyObj.agent_disconnected;
+        }
+        else
+        {
+            socketObj.onMessage(reason);
+        }
+
+    });
+
+    socket.on('broadcast', function(data){
+        socketObj.onBroadcastMessage(data);
+        //socket.disconnect();
+    });
+
+    socket.on('publish', function(data){
+        socketObj.onPublishMessage(data);
+        //socket.disconnect();
+    });
+
+    socket.on('agent_found', function (data) {
+        socketObj.agent_found(data);
+    });
+    socket.on('agent_connected', function (data) {
+        socketObj.agent_connected(data);
+    });
+    socket.on('agent_disconnected', function (data) {
+        socketObj.agent_disconnected(data);
+    });
+
+
+}
+
+function  RegisterAgentNotification(agentNotifyObj)
+{
+
+
+    AgentEventStatus=true;
+    return AgentEventStatus;
+
+}
+
 module.exports.ConfigClient = ConfigClient;
 module.exports.SendReply = SendReply;
 module.exports.SubscribeToEvent = SubscribeToEvent;
+module.exports.ClientConfiguration = ClientConfiguration;
+module.exports.RegisterAgentNotification = RegisterAgentNotification;
