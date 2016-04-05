@@ -22,6 +22,9 @@ var async= require('async');
 var uuid = require('node-uuid');
 var authorization = require('dvp-common/Authentication/Authorization.js');
 var socketioJwt =  require("socketio-jwt");
+var jwt = require('restify-jwt');
+var secret = require('dvp-common/Authentication/Secret.js');
+var authorization = require('dvp-common/Authentication/Authorization.js');
 
 
 
@@ -53,6 +56,7 @@ RestServer.use(restify.bodyParser());
 RestServer.use(restify.acceptParser(RestServer.acceptable));
 RestServer.use(restify.queryParser());
 restify.CORS.ALLOW_HEADERS.push('authorization');
+RestServer.use(jwt({secret: secret.Secret}));
 
 
 

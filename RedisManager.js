@@ -7,17 +7,20 @@ var port = config.Redis.port || 3000;
 var client = redis.createClient(config.Redis.port,config.Redis.ip);
 var uuid = require('node-uuid');
 //var io = require('socket.io')(config.Host.port);
+
+client.auth(config.Redis.password, function (error,reply) {
+    console.log("Redis Auth Error : "+error);
+    console.log("Redis Auth Result : "+reply);
+});
 client.on("error", function (err) {
     console.log("Error " + err);
 });
 
 client.on("connect", function (err) {
-    client.select(config.Redis.db, redis.print);
-});
-
-client.select(9, function () {
 
 });
+
+
 
 
 SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,state,ttl,callback)
