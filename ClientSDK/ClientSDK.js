@@ -202,9 +202,9 @@ function ClientConfiguration(eventObj)
     {
         if(AgentEventStatus)
         {
-            socketObj.agent_found=agentNotifyObj.agent_found;
-            socketObj.agent_connected=agentNotifyObj.agent_connected;
-            socketObj.agent_disconnected=agentNotifyObj.agent_disconnected;
+            socketObj.agent_found=eventObj.agent_found;
+            socketObj.agent_connected=eventObj.agent_connected;
+            socketObj.agent_disconnected=eventObj.agent_disconnected;
         }
         else
         {
