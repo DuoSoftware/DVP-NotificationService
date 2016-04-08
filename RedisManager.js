@@ -4,20 +4,20 @@
 var redis=require('redis');
 var config = require('config');
 var port = config.Redis.port || 3000;
-var client = redis.createClient(config.Redis.port,config.Redis.ip);
+var client = redis.createClient(port,config.Redis.ip);
 var uuid = require('node-uuid');
 //var io = require('socket.io')(config.Host.port);
 
 client.auth(config.Redis.password, function (error,reply) {
     console.log("Redis Auth Error : "+error);
-    console.log("Redis Auth Result : "+reply);
+    
 });
 client.on("error", function (err) {
     console.log("Error " + err);
 });
 
-client.on("connect", function (err) {
-
+client.on("connect", function (result) {
+    console.log("Redis connection established ");
 });
 
 
