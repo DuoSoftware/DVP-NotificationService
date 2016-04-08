@@ -10,7 +10,7 @@ var uuid = require('node-uuid');
 
 client.auth(config.Redis.password, function (error,reply) {
     console.log("Redis Auth Error : "+error);
-    
+
 });
 client.on("error", function (err) {
     console.log("Error " + err);
