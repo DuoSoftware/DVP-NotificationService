@@ -6,7 +6,7 @@
 #CMD ["nodejs", "/usr/local/src/notificationservice/app.js"]
 
 #EXPOSE 8833
-FROM node:argon
+FROM node:5.10.0
 RUN git clone git://github.com/DuoSoftware/DVP-NotificationService.git /usr/local/src/notificationservice
 RUN cd /usr/local/src/notificationservice;
 WORKDIR /usr/local/src/notificationservice
