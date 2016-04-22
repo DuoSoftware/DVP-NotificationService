@@ -5,27 +5,27 @@
 var config=require('config');
 var restify = require('restify');
 var socketio = require('socket.io');
-var redisManager=require('./RedisManager.js');
-var port = config.Host.port || 3000;
-var version=config.Host.version;
-var uuid = require('node-uuid');
-var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
-var validator = require('validator');
-var TTL = config.TTL.ttl;
-var MyID = config.ID;
 var DbConn = require('dvp-dbmodels');
 var httpReq = require('request');
-var validator = require('validator');
 var util = require('util');
-var DBController = require('./DBController.js');
-var async= require('async');
 var uuid = require('node-uuid');
-var authorization = require('dvp-common/Authentication/Authorization.js');
+
+
+var port = config.Host.port || 3000;
+var version=config.Host.version;
+
+var redisManager=require('./RedisManager.js');
+var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
+var DBController = require('./DBController.js');
+
+var TTL = config.TTL.ttl;
+var MyID = config.ID;
+
+
+var secret = require('dvp-common/Authentication/Secret.js');
 var socketioJwt =  require("socketio-jwt");
 var jwt = require('restify-jwt');
-var secret = require('dvp-common/Authentication/Secret.js');
 var authorization = require('dvp-common/Authentication/Authorization.js');
-
 
 
 
@@ -39,9 +39,16 @@ restify.CORS.ALLOW_HEADERS.push('authorization');
 
 RestServer.use(restify.CORS());
 RestServer.use(restify.fullResponse());
+RestServer.use(restify.bodyParser());
+RestServer.use(restify.acceptParser(RestServer.acceptable));
+RestServer.use(restify.queryParser());
+
+restify.CORS.ALLOW_HEADERS.push('authorization');
+RestServer.use(jwt({secret: secret.Secret}));
 
 var Clients ={};//=new Array();
 var Refs=new Array();
+
 
 
 //Server listen
@@ -52,25 +59,23 @@ RestServer.listen(port, function () {
 
 });
 
-RestServer.use(restify.bodyParser());
-RestServer.use(restify.acceptParser(RestServer.acceptable));
-RestServer.use(restify.queryParser());
-restify.CORS.ALLOW_HEADERS.push('authorization');
-RestServer.use(jwt({secret: secret.Secret}));
 
 
 
-io.sockets.on('connection',authorization({resource:"notification", action:"write"}),function (socket) {
 
+io.sockets.on('connection',socketioJwt.authorize({
+    secret:  secret.Secret,
+    timeout: 15000 // 15 seconds to send the authentication message
+})).on('authenticated',function (socket) {
 
+    console.log("httt");
+    var clientID = socket.decoded_token.iss;
+    console.log(clientID);
 
 //get client's identity
 
-    if(req.user.client)
+    if(clientID)
     {
-        var clientID = req.user.client;
-        console.log(clientID);
-
 
 
         redisManager.IsRegisteredClient(clientID, function (errReg,status,dataKey) {
@@ -856,6 +861,9 @@ io.sockets.on('connection',authorization({resource:"notification", action:"write
                     var direction = resURL[0];
                     var URL =resURL[1];
 
+                    console.log("URL "+URL);
+                    console.log("DIRECTION "+direction);
+
                     if(direction=="STATELESS" )
                     {
 
@@ -954,178 +962,173 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
     redisManager.CheckClientAvailability(clientID, function (errAvbl,resAvbl) {
 
         console.log("Checking result "+resAvbl);
-        if(resAvbl && req.body.Persistency)
+        if(errAvbl)
         {
             console.log("Client is not available.......................");
-            if(errAvbl)
-            {
-                console.log("Error in Checking Availability ",errAvbl);
-                res.end();
+            console.log("Error in Checking Availability ",errAvbl);
+            res.end();
 
-            }
-
-
-            DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
-
-                if(errSave)
-                {
-                    console.log("Error in Message Saving ",errSave);
-                    res.end();
-                }
-                else
-                {
-                    console.log("Message saving succeeded ",resSave);
-                    res.end();
-                }
-            });
         }
+
         else
         {
-            if(!isNaN(req.body.Timeout))
-            {
-                TTL =req.body.Timeout;
-                console.log("TTL found "+TTL);
-            }
-            console.log(clientID);
-
-            if(Clients[clientID])
+            if(resAvbl && req.body.Persistency)
             {
 
-                var socket=Clients[clientID];
+                DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
 
-                console.log("Destination available");
-                try
-                {
-                    var callbackURL="";
-                    var topicID=TopicIdGenerator();
-                    var direction=req.body.Direction;
-                    var callbackURL="";
-                    var message=req.body.Message;
-                    var ref=req.body.Ref;
-
-                    Refs[topicID]=ref;
-
-                    if(direction=="STATEFUL")
+                    if(errSave)
                     {
-                        callbackURL=req.body.Callback;
-                    }
-                    var sender = req.body.From;
-
-
-
-                }
-                catch(ex)
-                {
-                    console.log("Error in request body "+ex);
-                    res.end("Error in request body "+ex);
-                }
-
-
-                redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
-                {
-                    if(errTobj)
-                    {
-                        console.log("Error in TokenObject creation "+errTobj);
-                        res.end("Error in TokenObject creation "+errTobj);
+                        console.log("Error in Message Saving ",errSave);
+                        res.end();
                     }
                     else
                     {
-
-                        /*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
-                         {
-                         if(errSet)
-                         {
-                         console.log("Resource object creation failed "+errSet);
-                         res.end("Resource object creation failed "+errSet);
-                         }
-                         else
-                         {
-                         console.log("Resource object creation Succeeded "+resSet);*/
-                        var msgObj={
-
-                            "Message":message,
-                            "TopicKey":topicID
-                        };
-                        socket.emit('message',msgObj);
-                        res.end(topicID);
-
-                        /*    }
-
-                         });*/
-
+                        console.log("Message saving succeeded ",resSave);
+                        res.end();
                     }
                 });
-
             }
             else
             {
-                redisManager.GetClientsServer(clientID, function (errGet,resGet) {
+                if(!isNaN(req.body.Timeout))
+                {
+                    TTL =req.body.Timeout;
+                    console.log("TTL found "+TTL);
+                }
+                console.log(clientID);
 
-                    if(errGet)
+                if(Clients[clientID])
+                {
+
+                    var socket=Clients[clientID];
+
+                    console.log("Destination available");
+                    console.log("Body "+req.body);
+                    try
                     {
-                        console.log("error in getting client server");
-                        console.log("Destination user not found");
-                        res.status(400);
-                        res.end("No user found "+clientID);
+                        var callbackURL=req.body.CallbackURL;
+                        var topicID=TopicIdGenerator();
+                        var direction=req.body.Direction;
+                        var message=req.body.Message;
+                        var ref=req.body.Ref;
+
+                        Refs[topicID]=ref;
+
+                        if(direction=="STATEFUL")
+                        {
+                            callbackURL=req.body.CallbackURL;
+                        }
+                        var sender = req.body.From;
+
+
+
                     }
-                    else
+                    catch(ex)
                     {
-                        console.log("SERVER "+resGet);
-                        console.log("My ID "+MyID);
-                        DBController.ServerPicker(resGet, function (errPick,resPick) {
-
-                            if(errPick)
-                            {
-                                console.log("error in Picking server from DB");
-                                console.log("Destination user not found");
-                                console.log("error "+errPick);
-                                res.status(400);
-                                res.end("No user found "+clientID);
-                            }
-                            else
-                            {
-                                var ServerIP = resPick.URL;
-                                console.log(ServerIP);
+                        console.log("Error in request body "+ex);
+                        res.end("Error in request body "+ex);
+                    }
 
 
-                                var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate', ServerIP, version);
-                                var options = {
-                                    url : httpUrl,
-                                    method : 'POST',
-                                    json : req.body
+                    redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
+                    {
+                        if(errTobj)
+                        {
+                            console.log("Error in TokenObject creation "+errTobj);
+                            res.end("Error in TokenObject creation "+errTobj);
+                        }
+                        else
+                        {
 
-                                };
 
-                                console.log(options);
-                                try
+                            var msgObj={
+
+                                "Message":message,
+                                "TopicKey":topicID
+                            };
+                            socket.emit('message',msgObj);
+                            res.end(topicID);
+
+                            /*    }
+
+                             });*/
+
+                        }
+                    });
+
+                }
+                else
+                {
+                    redisManager.GetClientsServer(clientID, function (errGet,resGet) {
+
+                        if(errGet)
+                        {
+                            console.log("error in getting client server");
+                            console.log("Destination user not found");
+                            res.status(400);
+                            res.end("No user found "+clientID);
+                        }
+                        else
+                        {
+                            console.log("SERVER "+resGet);
+                            console.log("My ID "+MyID);
+                            DBController.ServerPicker(resGet, function (errPick,resPick) {
+
+                                if(errPick)
                                 {
-                                    httpReq(options, function (error, response, body)
+                                    console.log("error in Picking server from DB");
+                                    console.log("Destination user not found");
+                                    console.log("error "+errPick);
+                                    res.status(400);
+                                    res.end("No user found "+clientID);
+                                }
+                                else
+                                {
+                                    var ServerIP = resPick.URL;
+                                    console.log(ServerIP);
+
+
+                                    var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate', ServerIP, version);
+                                    var options = {
+                                        url : httpUrl,
+                                        method : 'POST',
+                                        json : req.body
+
+                                    };
+
+                                    console.log(options);
+                                    try
                                     {
-                                        if (!error && response.statusCode == 200)
+                                        httpReq(options, function (error, response, body)
                                         {
-                                            console.log("no errrs");
-                                            console.log(JSON.stringify(response));
-                                            res.end(response.body);
-                                        }
-                                        else
-                                        {
-                                            console.log("errrs  "+error);
-                                            res.end();
-                                        }
-                                    });
-                                }
-                                catch(ex)
-                                {
-                                    console.log("ex..."+ex);
-                                    res.end();
-                                }
+                                            if (!error && response.statusCode == 200)
+                                            {
+                                                console.log("no errrs");
+                                                console.log(JSON.stringify(response));
+                                                res.end(response.body);
+                                            }
+                                            else
+                                            {
+                                                console.log("errrs  "+error);
+                                                res.end();
+                                            }
+                                        });
+                                    }
+                                    catch(ex)
+                                    {
+                                        console.log("ex..."+ex);
+                                        res.end();
+                                    }
 
-                            }
-                        });
-                    }
-                });
+                                }
+                            });
+                        }
+                    });
+                }
             }
         }
+
 
     });
 

@@ -12,6 +12,7 @@ var Sip;
 var clentID;
 var Tokens=new Array();
 
+var jwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdWtpdGhhIiwianRpIjoiMTdmZTE4M2QtM2QyNC00NjQwLTg1NTgtNWFkNGQ5YzVlMzE1Iiwic3ViIjoiNTZhOWU3NTlmYjA3MTkwN2EwMDAwMDAxMjVkOWU4MGI1YzdjNGY5ODQ2NmY5MjExNzk2ZWJmNDMiLCJjbGllbnQiOiIxIiwiZXhwIjoxODkzMzAyNzUzLCJ0ZW5hbnQiOjEsImNvbXBhbnkiOjMsInNjb3BlIjpbeyJyZXNvdXJjZSI6ImFsbCIsImFjdGlvbnMiOiJhbGwifV0sImlhdCI6MTQ2MTI5OTE1M30._M8u4ElZESTdJtkQSEtr58kE97s0KiHeIaeWsoVc8Ho";
 
 
 var path=ConfigCollector(1);
@@ -69,8 +70,15 @@ function ConfigCollector(status)
         //var fakeip="http://notificationservice.104.131.67.21.xip.io";
 
         console.log("====================================");
+console.log(IP);
+         var socket = io.connect(IP);
 
-        var socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: false });
+        socket
+            .on('authenticated', function () {
+                //do other things
+            })
+            .emit('authenticate', {token: jwt}); //send the jwt
+
 
         socket.on('disconnect', function(reason)
         {
@@ -89,8 +97,6 @@ function ConfigCollector(status)
 
             //
         });
-
-
 
         socket.on('message', function(data){
             //socket.disconnect();
@@ -136,3 +142,4 @@ function ConfigCollector(status)
 
     });
 }
+

@@ -168,9 +168,11 @@ function SubscribeDataObjectCreator (quaryObj,filterData,rangeData)
 }
 
 
-function ClientConfiguration(eventObj)
+function ClientConfiguration(eventObj, token)
 {
-    socket = io.connect(eventObj.URL);
+    socket = io.connect(eventObj.URL
+
+    );
 
     socketObj.onDisconnected = eventObj.onDisconnected;
     socketObj.onMessage = eventObj.onMessage;
@@ -180,7 +182,7 @@ function ClientConfiguration(eventObj)
     socketObj.agent_connected=eventObj.agent_connected;
     socketObj.agent_disconnected=eventObj.agent_disconnected;
 
-    socket.on('connect',function() {
+    socket.on('connect',function(socket) {
 
 
         socket
