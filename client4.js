@@ -11,8 +11,8 @@ var Sport;
 var Sip;
 var clentID;
 var Tokens=new Array();
-var socket;
 
+var jwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiIxIiwianRpIjoiMTdmZTE4M2QtM2QyNC00NjQwLTg1NTgtNWFkNGQ5YzVlMzE1Iiwic3ViIjoiNTZhOWU3NTlmYjA3MTkwN2EwMDAwMDAxMjVkOWU4MGI1YzdjNGY5ODQ2NmY5MjExNzk2ZWJmNDMiLCJjbGllbnQiOiIyIiwiZXhwIjoxODkzMzAyNzUzLCJ0ZW5hbnQiOjEsImNvbXBhbnkiOjMsInNjb3BlIjpbeyJyZXNvdXJjZSI6ImFsbCIsImFjdGlvbnMiOiJhbGwifV0sImlhdCI6MTQ2MTI5OTE1M30.ptDiG8lNY3gm3MfzB_OxAYBuVM7ZWRBKjb-7h7gjM-o";
 
 
 var path=ConfigCollector(1);
@@ -71,7 +71,14 @@ function ConfigCollector(status)
 
         console.log("====================================");
         console.log(IP);
-        socket = io(IP, { query: "myid="+clentID , 'forceNew': true, reconnect: false });
+        var socket = io.connect(IP);
+
+        socket
+            .on('authenticated', function () {
+                //do other things
+            })
+            .emit('authenticate', {token: jwt}); //send the jwt
+
 
         socket.on('disconnect', function(reason)
         {
@@ -90,8 +97,6 @@ function ConfigCollector(status)
 
             //
         });
-
-
 
         socket.on('message', function(data){
             //socket.disconnect();

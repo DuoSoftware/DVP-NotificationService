@@ -317,30 +317,35 @@ UserServerUpdater = function (clientName,server,myID,callback)
 {
     console.log("Client "+clientName);
     console.log("server "+server);
-    console.log("myID "+myID);
+    console.log("ID of this Server "+myID);
     try {
         var key = "notification:loc:" + clientName + ":" + server;//notification:loc....
         var newKey = "notification:loc:" + clientName + ":" + myID;
         console.log("key " + key);
-        console.log("newkey " + newKey);
+        console.log("New key " + newKey);
+
         client.rename(key, newKey, function (errRename, resRename) {
             if (errRename) {
-                cosole.log("Renam error ", errRename);
+                cosole.log("Error in Client Renaming "+ errRename);
                 callback(errRename, undefined);
             }
             else {
                 client.set(newKey, myID, function (errSet, resSet) {
-                    if (errSet) {
-                        console.log("Error serever uodate ", errSet);
+                    if (errSet)
+                    {
+                        console.log("Error Server updating "+ errSet);
                         callback(errSet, undefined);
                     }
-                    else {
-                        if (resSet == "" || !resSet || resSet == "NULL") {
-                            console.log("invalid key to set");
-                            callback(new Error("Invalid key to set "), undefined);
+                    else
+                    {
+                        if (resSet == "" || !resSet || resSet == "NULL")
+                        {
+                            console.log("invalid key to set "+newKey);
+                            callback(new Error("Invalid key to set "+newKey), undefined);
                         }
-                        else {
-                            console.log("done ", resSet);
+                        else
+                        {
+                            console.log("Server updated "+newKey);
                             callback(undefined, resSet);
                         }
                     }
