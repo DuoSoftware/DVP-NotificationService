@@ -70,6 +70,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     console.log('authenticated received ');
     var clientID = socket.decoded_token.client;
+    socket.emit('clientdetails',clientID);
     console.log(clientID);
 
 //get client's identity
