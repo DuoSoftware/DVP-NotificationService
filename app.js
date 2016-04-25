@@ -387,10 +387,24 @@ io.sockets.on('connection',socketioJwt.authorize({
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',function(req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     console.log("New request form "+req.body.From);
     var clientID=req.body.To;
+    var eventName=req.headers.eventname;
+    var eventUuid=req.headers.eventuuid;
+
+
+
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+
 
     redisManager.CheckClientAvailability(clientID, function (errAvbl,resAvbl) {
 
@@ -478,23 +492,28 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                             var msgObj={
 
                                 "Message":message,
-                                "TopicKey":topicID
+                                "TopicKey":topicID,
+                                "eventName":eventName,
+                                "eventUuid":eventUuid,
+                                "Company":Company,
+                                "Tenant":Tenant
+
                             };
-                            if(message=="agent_connected")
+                            if(eventName=="agent_connected")
                             {
                                 socket.emit('agent_connected',msgObj);
                                 console.log("Event notification sent : "+JSON.stringify(msgObj));
                             }
                             else
                             {
-                                if(message=="agent_disconnected")
+                                if(eventName=="agent_disconnected")
                                 {
                                     socket.emit('agent_disconnected',msgObj);
                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
                                 }
                                 else
                                 {
-                                    if(message=="agent_found")
+                                    if(eventName=="agent_found")
                                     {
                                         socket.emit('agent_found',msgObj);
                                         console.log("Event notification sent : "+JSON.stringify(msgObj));
@@ -594,7 +613,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/:Topic',function(req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/:Topic',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     //console.log("New request form "+req.body.From);
     /*
@@ -693,6 +712,14 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
     var message= Obj.Message;
     var topicKey = req.params.Topic;
     var Persistency = req.body.Persistency;
+
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
 
 
 
@@ -839,9 +866,16 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/DisconnectSession/:Topic',function(req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/DisconnectSession/:Topic',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     var topicKey = req.params.Topic;
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
 
     redisManager.TopicObjectPicker(topicKey,TTL, function (errTopic,resTopic) {
 
@@ -958,8 +992,16 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
     return next();
 });
 
-RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id/Availability',function(req,res,next)
+RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id/Availability',authorization({resource:"notification", action:"read"}),function(req,res,next)
 {
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
     res.status(200);
     res.end(true);
 
@@ -967,8 +1009,16 @@ RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id
 });
 
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast',function(req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
     var clientData = req.body.Clients;
 
 
@@ -1005,8 +1055,16 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast/:userName',function(req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast/:userName',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
     var user = req.params.userName;
     var userData = req.body;
 
@@ -1045,404 +1103,16 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     }
 });
 
-/*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe',function(req,res,next)
- {
- /!* var clientID = req.params.username;
-
- /!*var pp = [];
- // pp[0].push("a");
- pp["abc"]="tata";
- console.log(pp);
- var arr=[];
- arr.push(pp["abc"]);
- console.log(typeof(arr));
- arr.push("lala");
- pp["abc"]=arr;
- console.log(pp);
- console.log(pp["abc"]);
- console.log(pp["abc"][0]);
- console.log(pp["abcd"]);
- console.log(pp["abc"][9]);*!/
-
- var reqData = req.body;
-
- /!*redisManager.GetClientsServer(clientID, function (errServer,resServer) {
-
- if(errServer)
- {
- console.log("Error in Searching servers ",errServer);
- res.end();
- }
- else
- {
- if(MyID==resServer)
- {
- if(Clients[clientID])
- {
- //SubRecords[clientID]=req.body;
- var arrUsrs = [];
-
- if(SubUsers[reqData.Query])
- {
-
- arrUsrs.push(SubUsers[reqData.Query]);
-
- if(arrUsrs.indexOf(clientID))
- {
- arrUsrs.push(clientID);
- SubUsers[reqData.Query]=arrUsrs;
- console.log(SubUsers[reqData.Query]);
- console.log("A");
- res.end();
- }
- else
- {
- console.log("Already subscribed");
- res.end();
- }
-
-
- }
- else
- {
- SubUsers[reqData.Query]=clientID;
- console.log(SubUsers[reqData.Query]);
- console.log("B");
- res.end();
- }
-
-
- }
- else
- {
- console.log("Not an registered client ");
- res.end();
- }
- }
- else
- {
- DBController.ServerPicker(clientID, function (errServer,resServer) {
-
- if(errServer)
- {
- console.log("No server record found ",errServer);
- res.end();
- }
- else
- {
- var ServerIP = resServer.URL;
- console.log(ServerIP);
- var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Subscribe/'+clientID, ServerIP, version);
- var options = {
- url : httpUrl,
- method : 'POST',
- json : req.body
-
- };
-
- console.log(options);
- try
- {
- httpReq(options, function (error, response, body)
- {
- if (!error && response.statusCode == 200)
- {
- console.log("no errrs in request 200 ok");
- callback(undefined,response.statusCode);
-
- }
- else
- {
- console.log("errrs in request  "+error);
- callback(error,undefined);
-
- }
- });
- }
- catch(ex)
- {
- console.log("ex..."+ex);
- callback(ex,undefined);
-
- }
- }
-
- });
- }
- }
-
- });*!/
-
- if(SubUsers[reqData.Query]  )
- {
- if(SubUsers[reqData.Query][clientID])
- {
- console.log("in");
- console.log(SubUsers[reqData.Query][clientID]);
- res.end();
- }
- else
- {
- console.log("in2");
- SubUsers[reqData.Query][clientID]= reqData;
- console.log(SubUsers[reqData.Query]);
- res.end();
- }
-
-
- }
- else
- {
- console.log("out");
- SubUsers[reqData.Query] = {};
- SubUsers[reqData.Query][clientID]= reqData;
- console.log(SubUsers[reqData.Query]);
- res.end();
- }
- *!/
-
- redisManager.QueryKeyGenerator(req.body,req.body.username, function (errKeygen,resKeygen,status) {
- console.log("hitt");
- if(errKeygen)
- {
- console.log("req error");
- console.log(errKeygen);
-
- res.end();
- }
- else
- {
- if(resKeygen && status=="NEWKEY")
- {
- console.log("Subs Key = "+resKeygen);
- res.end(resKeygen);
- }
- else
- {
- if(status=="REGEDKEY")
- {
- console.log("Registered Key, Successfully added");
- res.end();
- }
- else
- {
- console.log("Already Subscribed user");
- res.end();
- }
-
- }
-
- }
- });
-
- return next();
- });
-
- RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Query',function(req,res,next)
- {
- /!* var clientID = req.params.username;
-
- /!*var pp = [];
- // pp[0].push("a");
- pp["abc"]="tata";
- console.log(pp);
- var arr=[];
- arr.push(pp["abc"]);
- console.log(typeof(arr));
- arr.push("lala");
- pp["abc"]=arr;
- console.log(pp);
- console.log(pp["abc"]);
- console.log(pp["abc"][0]);
- console.log(pp["abcd"]);
- console.log(pp["abc"][9]);*!/
-
- var reqData = req.body;
-
- /!*redisManager.GetClientsServer(clientID, function (errServer,resServer) {
-
- if(errServer)
- {
- console.log("Error in Searching servers ",errServer);
- res.end();
- }
- else
- {
- if(MyID==resServer)
- {
- if(Clients[clientID])
- {
- //SubRecords[clientID]=req.body;
- var arrUsrs = [];
-
- if(SubUsers[reqData.Query])
- {
-
- arrUsrs.push(SubUsers[reqData.Query]);
-
- if(arrUsrs.indexOf(clientID))
- {
- arrUsrs.push(clientID);
- SubUsers[reqData.Query]=arrUsrs;
- console.log(SubUsers[reqData.Query]);
- console.log("A");
- res.end();
- }
- else
- {
- console.log("Already subscribed");
- res.end();
- }
-
-
- }
- else
- {
- SubUsers[reqData.Query]=clientID;
- console.log(SubUsers[reqData.Query]);
- console.log("B");
- res.end();
- }
-
-
- }
- else
- {
- console.log("Not an registered client ");
- res.end();
- }
- }
- else
- {
- DBController.ServerPicker(clientID, function (errServer,resServer) {
-
- if(errServer)
- {
- console.log("No server record found ",errServer);
- res.end();
- }
- else
- {
- var ServerIP = resServer.URL;
- console.log(ServerIP);
- var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Subscribe/'+clientID, ServerIP, version);
- var options = {
- url : httpUrl,
- method : 'POST',
- json : req.body
-
- };
-
- console.log(options);
- try
- {
- httpReq(options, function (error, response, body)
- {
- if (!error && response.statusCode == 200)
- {
- console.log("no errrs in request 200 ok");
- callback(undefined,response.statusCode);
-
- }
- else
- {
- console.log("errrs in request  "+error);
- callback(error,undefined);
-
- }
- });
- }
- catch(ex)
- {
- console.log("ex..."+ex);
- callback(ex,undefined);
-
- }
- }
-
- });
- }
- }
-
- });*!/
-
- if(SubUsers[reqData.Query]  )
- {
- if(SubUsers[reqData.Query][clientID])
- {
- console.log("in");
- console.log(SubUsers[reqData.Query][clientID]);
- res.end();
- }
- else
- {
- console.log("in2");
- SubUsers[reqData.Query][clientID]= reqData;
- console.log(SubUsers[reqData.Query]);
- res.end();
- }
-
-
- }
- else
- {
- console.log("out");
- SubUsers[reqData.Query] = {};
- SubUsers[reqData.Query][clientID]= reqData;
- console.log(SubUsers[reqData.Query]);
- res.end();
- }
- *!/
-
-
- var ServerIP="127.0.0.1:8050";
- var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
- var msgObj=req.body;
- // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
- var options = {
- url : httpUrl,
- method : 'POST',
- json : msgObj
-
- };
-
- console.log(options);
- try
- {
- httpReq(options, function (error, response, body)
- {
- if (!error && response.statusCode == 200)
- {
- console.log("no errrs in request 200 ok");
- //callback(undefined,response.statusCode);
- res.end("Success");
-
- }
- else
- {
- console.log("errrs in request  "+error);
- res.end("Error");
- //callback(error,undefined);
-
- }
- });
- }
- catch(ex)
- {
- console.log("ex..."+ex);
- res.end("Exception");
- //callback(ex,undefined);
-
- }
-
-
-
- return next();
- });*/
-
-
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',function(req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
     var userID= req.params.username;
 
     redisManager.IsRegisteredClient(userID, function (errReg,status,resReg) {
@@ -1532,10 +1202,18 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish', function (req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
     try
     {
+        if(!req.user.company || !req.user.tenant)
+        {
+            throw new Error("Invalid company or tenant");
+        }
+
+        var Company=req.user.company;
+        var Tenant=req.user.tenant;
+
         var queryKey = req.body.refID;
         var msgObj = req.body;
         if(queryKey)
@@ -1590,12 +1268,20 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
         console.log(e);
         res.end();
     }
+    return next();
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username', function (req,res,next) {
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
     console.log("HIT publish");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
     var clientID=req.params.username;
     if(Clients[clientID])
     {
@@ -1625,12 +1311,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:
 
     return next();
 });
-
-
-
-
-
-
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', function (req,res,next){
 
