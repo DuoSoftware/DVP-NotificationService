@@ -504,31 +504,22 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                 socket.emit('agent_connected',msgObj);
                                 console.log("Event notification sent : "+JSON.stringify(msgObj));
                             }
+                            else if(eventName=="agent_disconnected")
+                            {
+                                socket.emit('agent_disconnected',msgObj);
+                                console.log("Event notification sent : "+JSON.stringify(msgObj));
+                            }
+                            else if(eventName=="agent_found") {
+                                socket.emit('agent_found',msgObj);
+                                console.log("Event notification sent : "+JSON.stringify(msgObj));
+                            }
                             else
                             {
-                                if(eventName=="agent_disconnected")
-                                {
-                                    socket.emit('agent_disconnected',msgObj);
-                                    console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                }
-                                else
-                                {
-                                    if(eventName=="agent_found")
-                                    {
-                                        socket.emit('agent_found',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else
-                                    {
-                                        socket.emit('message',msgObj);
-                                        console.log("Message sent : "+JSON.stringify(msgObj));
-
-                                    }
-                                }
+                                socket.emit('message',msgObj);
+                                console.log("Message sent : "+JSON.stringify(msgObj));
                             }
 
                             res.end(topicID);
-
 
                         }
                     });
