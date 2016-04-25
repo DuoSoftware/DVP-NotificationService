@@ -480,12 +480,36 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                 "Message":message,
                                 "TopicKey":topicID
                             };
-                            socket.emit('message',msgObj);
+                            if(message=="agent_connected")
+                            {
+                                socket.emit('agent_connected',msgObj);
+                                console.log("Message sent : "+msgObj);
+                            }
+                            else
+                            {
+                                if(message=="agent_disconnected")
+                                {
+                                    socket.emit('agent_disconnected',msgObj);
+                                    console.log("Message sent : "+msgObj);
+                                }
+                                else
+                                {
+                                    if(message=="agent_found")
+                                    {
+                                        socket.emit('agent_found',msgObj);
+                                        console.log("Message sent : "+msgObj);
+                                    }
+                                    else
+                                    {
+                                        socket.emit('message',msgObj);
+                                        console.log("Message sent : "+msgObj);
+
+                                    }
+                                }
+                            }
+
                             res.end(topicID);
 
-                            /*    }
-
-                             });*/
 
                         }
                     });
