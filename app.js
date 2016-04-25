@@ -483,26 +483,26 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                             if(message=="agent_connected")
                             {
                                 socket.emit('agent_connected',msgObj);
-                                console.log("Message sent : "+msgObj);
+                                console.log("Event notification sent : "+JSON.stringify(msgObj));
                             }
                             else
                             {
                                 if(message=="agent_disconnected")
                                 {
                                     socket.emit('agent_disconnected',msgObj);
-                                    console.log("Message sent : "+msgObj);
+                                    console.log("Event notification sent : "+JSON.stringify(msgObj));
                                 }
                                 else
                                 {
                                     if(message=="agent_found")
                                     {
                                         socket.emit('agent_found',msgObj);
-                                        console.log("Message sent : "+msgObj);
+                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
                                     }
                                     else
                                     {
                                         socket.emit('message',msgObj);
-                                        console.log("Message sent : "+msgObj);
+                                        console.log("Message sent : "+JSON.stringify(msgObj));
 
                                     }
                                 }

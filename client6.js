@@ -22,15 +22,15 @@ function  onMessageReceived(Data)
 };
 function  onAgentFound(reason)
 {
-    console.log("AgentFound "+reason);
+    console.log("Agent Found "+JSON.stringify(reason));
 };
 function  onAgentConnected(reason)
 {
-    console.log("Agent Conneccted "+reason);
+    console.log("Agent Connected "+JSON.stringify(reason));
 };
 function  onAgentDisconnected(reason)
 {
-    console.log("Agent Disconnected "+reason);
+    console.log("Agent Disconnected "+JSON.stringify(reason));
 };
 
 
@@ -43,7 +43,7 @@ function onClientdetailsRecieved(Data)
 
 var configOptions =
 {
-    URL:"http://notificationservice.104.131.67.21.xip.io",
+    URL:"http://127.0.0.1:8087",
     Callbacks:{
         onDisconnected:onDisconnected,
         onMessageReceived:onMessageReceived,
