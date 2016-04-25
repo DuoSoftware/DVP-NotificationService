@@ -1273,6 +1273,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+
     var clientID=req.params.username;
     if(Clients[clientID])
     {
