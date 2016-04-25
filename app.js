@@ -277,55 +277,6 @@ io.sockets.on('connection',socketioJwt.authorize({
 
         console.log("Token key from Client "+clientTopic);
 
-        /* redisManager.ResourceObjectPicker(clientID,clientTopic,TTL,function(errGet,resGet)
-         {
-         console.log(resGet);
-         if(errGet)
-         {
-         console.log("Searching key Error "+errGet);
-         }
-         else
-         {
-         if(resGet=="STATELESS")
-         {
-         console.log("Resource object found "+resGet + " No reply expected");
-         }
-         else
-         {
-         console.log("Resource object found "+resGet);
-         var replyObj={
-         Reply:data,
-         Ref:Refs[clientTopic]
-         };
-
-         console.log("Reply to sender .... "+JSON.stringify(replyObj));
-
-         var optionsX = {url: resGet, method: "POST", json: replyObj};
-         request(optionsX, function (errorX, responseX, dataX) {
-
-         if(errorX)
-         {
-         console.log("ERROR "+errorX);
-         }
-
-         else if (!errorX && responseX != undefined ) {
-
-         //logger.debug('[DVP-HTTPProgrammingAPIDEBUG] - [%s] - [SOCKET] - Socket Disconnection request sends successfully   ',JSON.stringify(responseX.body));
-         // socket.send(responseX.body);
-         console.log("Sent "+data+" To "+resGet);
-
-
-         }
-         else
-         {
-         console.log("Nooooooo");
-         }
-         });
-         }
-
-
-         }
-         });*/
 
         redisManager.ResponseUrlPicker(clientTopic,TTL, function (errURL,resURL) {
 
@@ -393,11 +344,11 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     });
     socket.on('disconnect',function(reason)
-    {
+    { var ClientID=ClientID;
         console.log("Disconnected "+socket.id+" Reason "+reason);
         console.log("Socket ID ",socket.id);
         console.log("ClientID "+ClientID);
-        var ClientID=ClientID;
+
 
         redisManager.ClientLocationDataRemover(ClientID,MyID, function (e,r) {
             if(e)
