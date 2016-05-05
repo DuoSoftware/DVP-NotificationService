@@ -1,0 +1,20 @@
+{
+  "name": "dvp-cephandler",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "config": "^1.19.0",
+    "dvp-common": "0.0.17",
+    "dvp-dbmodels": "0.0.49",
+    "request": "^2.69.0",
+    "restify": "^4.0.4",
+    "util": "^0.10.3"
+  },
+  "devDependencies": {},
+  "description": ""
+}
