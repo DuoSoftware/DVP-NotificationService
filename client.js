@@ -32,6 +32,10 @@ function  onAgentDisconnected(reason)
 {
     console.log("Agent Disconnected "+JSON.stringify(reason));
 };
+function  onAgentRejected(reason)
+{
+    console.log("Agent Rejected "+JSON.stringify(reason));
+};
 
 
 
@@ -43,14 +47,15 @@ function onClientdetailsRecieved(Data)
 
 var configOptions =
 {
-    URL:"http://127.0.0.1:8087",
+    URL:"http://notificationservice.104.131.67.21.xip.io",
     Callbacks:{
         onDisconnected:onDisconnected,
         onMessageReceived:onMessageReceived,
         onAgentFound:onAgentFound,
         onAgentConnected:onAgentConnected,
         onAgentDisconnected:onAgentDisconnected,
-        onClientdetailsRecieved:onClientdetailsRecieved
+        onClientdetailsRecieved:onClientdetailsRecieved,
+        onAgentRejected:onAgentRejected
 
     },
     jwt:token

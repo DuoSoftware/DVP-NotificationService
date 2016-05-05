@@ -1002,6 +1002,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         insSocket.emit('agent_found',msgObj);
                                         console.log("Event notification sent : "+JSON.stringify(msgObj));
                                     }
+                                    else if(eventName=="agent_rejected")
+                                    {
+                                        insSocket.emit('agent_rejected',msgObj);
+                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                    }
                                     else
                                     {
                                         insSocket.emit('message',msgObj);
@@ -1911,6 +1916,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
                 insSocket.emit('agent_found',msgObj);
                 console.log("Event notification sent : "+JSON.stringify(msgObj));
             }
+            else if(eventName=="agent_rejected")
+            {
+                insSocket.emit('agent_rejected',msgObj);
+                console.log("Event notification sent : "+JSON.stringify(msgObj));
+            }
             else
             {
                 insSocket.emit('message',msgObj);
@@ -2048,6 +2058,11 @@ QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
                     }
                     else if(eventName=="agent_found") {
                         socket.emit('agent_found',msgObj);
+                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                    }
+                    else if(eventName=="agent_rejected")
+                    {
+                        socket.emit('agent_rejected',msgObj);
                         console.log("Event notification sent : "+JSON.stringify(msgObj));
                     }
                     else
