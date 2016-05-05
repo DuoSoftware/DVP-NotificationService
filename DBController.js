@@ -43,7 +43,9 @@ PersistenceMessageRecorder = function (Obj,callback) {
             Direction: dataBody.Direction,
             Topic: topic,
             CallbackURL: dataBody.Callback,
-            MessageType: "GENERAL"
+            MessageType: "GENERAL",
+            eventName:Obj.headers.eventname,
+            eventUuid:Obj.headers.eventuuid
         };
         try {
             var newMessageObject = DbConn.PersistenceMessages

@@ -1998,6 +1998,9 @@ QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
             callbackURL = "";
             var message = Message;
             var ref = Ref;
+            var eventName=callbackObj.eventName;
+            var eventUuid=callbackObj.eventUuid;
+
 
             Refs[topicID] = ref;
 
@@ -2026,11 +2029,36 @@ QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
                      {
                      console.log("Resource object creation Succeeded "+resSet);*/
                     var msgObj={
+
                         "Message":message,
-                        "TopicKey":topicID
+                        "TopicKey":topicID,
+                        "eventName":eventName,
+                        "eventUuid":eventUuid
+
                     };
-                    socket.emit('message',msgObj);
+                    if(eventName=="agent_connected")
+                    {
+                        socket.emit('agent_connected',msgObj);
+                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                    }
+                    else if(eventName=="agent_disconnected")
+                    {
+                        socket.emit('agent_disconnected',msgObj);
+                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                    }
+                    else if(eventName=="agent_found") {
+                        socket.emit('agent_found',msgObj);
+                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                    }
+                    else
+                    {
+                        socket.emit('message',msgObj);
+                        console.log("Message sent : "+JSON.stringify(msgObj));
+                    }
+
                     callback(undefined,topicID);
+
+
                     /*    }
 
                      });*/
