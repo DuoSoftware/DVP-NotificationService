@@ -473,7 +473,8 @@ io.sockets.on('connection',socketioJwt.authorize({
         {
             redisManager.ClientLocationDataRemover(ClientID,MyID, function (e,r) {
 
-                delete Clients[ClientID].indexOf(socket);
+                var index = Clients[ClientID].indexOf(socket);
+                Clients[ClientID].splice(index, 1);
                 if(e)
                 {
                     console.log("Error in Client Location removing "+e);
@@ -2053,82 +2054,82 @@ QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
 
         /*redisManager.CheckClientAvailability(clientID, function (errAvbl, resAvbl) {
 
-            console.log("Checking result " + resAvbl);
-            if (resAvbl && Persistency) {
-                console.log("Client is not available.......................");
-                if (errAvbl)
-                {
-                    console.log("Error in Checking Availability ", errAvbl);
+         console.log("Checking result " + resAvbl);
+         if (resAvbl && Persistency) {
+         console.log("Client is not available.......................");
+         if (errAvbl)
+         {
+         console.log("Error in Checking Availability ", errAvbl);
 
-                }
+         }
 
-            }
-            else {
-                if (!isNaN(Timeout))
-                {
-                    TTL = Timeout;
-                    console.log("TTL found " + TTL);
-                }
-                console.log(clientID);
+         }
+         else {
+         if (!isNaN(Timeout))
+         {
+         TTL = Timeout;
+         console.log("TTL found " + TTL);
+         }
+         console.log(clientID);
 
-                if (Clients[clientID]) {
+         if (Clients[clientID]) {
 
-                    var socket = Clients[clientID];
+         var socket = Clients[clientID];
 
-                    console.log("Destination available");
-                    try {
-
-
+         console.log("Destination available");
+         try {
 
 
-                    }
-                    catch (ex) {
-                        console.log("Error in request body " + ex);
-                        callback(ex, undefined);
-                    }
 
 
-                    redisManager.TokenObjectCreator(topicID, clientID, direction, sender, callbackURL, TTL, function (errTobj, resTobj) {
-                        if (errTobj) {
-                            console.log("Error in TokenObject creation " + errTobj);
-                            //res.end("Error in TokenObject creation "+errTobj);
-                            callback(errTobj, undefined);
-                        }
-                        else
-                        {
-                            /!*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
-                             {
-                             if(errSet)
-                             {
-                             console.log("Resource object creation failed "+errSet);
-                             res.end("Resource object creation failed "+errSet);
-                             }
-                             else
-                             {
-                             console.log("Resource object creation Succeeded "+resSet);*!/
-                            var msgObj={
-                                "Message":message,
-                                "TopicKey":topicID
-                            };
-                            socket.emit('message',msgObj);
-                            callback(undefined,topicID);
-                            /!*    }
+         }
+         catch (ex) {
+         console.log("Error in request body " + ex);
+         callback(ex, undefined);
+         }
 
-                             });*!/
 
-                        }
-                    });
+         redisManager.TokenObjectCreator(topicID, clientID, direction, sender, callbackURL, TTL, function (errTobj, resTobj) {
+         if (errTobj) {
+         console.log("Error in TokenObject creation " + errTobj);
+         //res.end("Error in TokenObject creation "+errTobj);
+         callback(errTobj, undefined);
+         }
+         else
+         {
+         /!*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
+         {
+         if(errSet)
+         {
+         console.log("Resource object creation failed "+errSet);
+         res.end("Resource object creation failed "+errSet);
+         }
+         else
+         {
+         console.log("Resource object creation Succeeded "+resSet);*!/
+         var msgObj={
+         "Message":message,
+         "TopicKey":topicID
+         };
+         socket.emit('message',msgObj);
+         callback(undefined,topicID);
+         /!*    }
 
-                }
-                else
-                {
-                    callback(new Error
-                    ("Invlid Client data"+
-                        clientID),undefined);
-                }
-            }
+         });*!/
 
-        });*/
+         }
+         });
+
+         }
+         else
+         {
+         callback(new Error
+         ("Invlid Client data"+
+         clientID),undefined);
+         }
+         }
+
+         });*/
 
     } catch (e) {
         callback(e,undefined);
