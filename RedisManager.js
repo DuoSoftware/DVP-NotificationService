@@ -384,12 +384,14 @@ GetClientsServer = function (clientName,callback) {
 
 TopicObjectPicker = function (topicId,ttl,callback) {
 
-    try {
+    try
+    {
         TouchSession(topicId, ttl);
-        var key = "notification:" + topicId;
-        client.hgetall(key, function (errTkn, resTkn) {
-            callback(errTkn, resTkn);
 
+        var key = "notification:" + topicId;
+        client.hgetall(key, function (errTkn, resTkn)
+        {
+            callback(errTkn, resTkn);
         });
     } catch (e)
     {
@@ -846,7 +848,9 @@ module.exports.ResourceObjectPicker = ResourceObjectPicker;
 module.exports.ResponseUrlPicker = ResponseUrlPicker;
 module.exports.RecordUserServer = RecordUserServer;
 module.exports.GetClientsServer = GetClientsServer;
-module.exports.TopicObjectPicker = TopicObjectPicker;
+
+
+
 module.exports.ClientLocationDataRemover = ClientLocationDataRemover;
 module.exports.SessionRemover = SessionRemover;
 //module.exports.CheckClientAvailability = CheckClientAvailability;

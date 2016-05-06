@@ -1856,14 +1856,20 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', fu
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/fromRemoteserver', function (req,res,next){
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next){
 
     var clientID= req.body.To;
     var eventName=req.headers.eventname;
     var eventUuid=req.headers.eventuuid;
-    var Company=1;
-    var Tenant =1;
     var topic = req.headers.topic;
+
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
 
     if(!isNaN(req.body.Timeout))
     {
@@ -2179,7 +2185,8 @@ QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
     }
 
 };
-QueuedContinueMessageSender = function (messageObj,callback) {
+
+QueuedContinueMessageSender = function (messageObj,socketObj,callback) {
 
 
     try
@@ -2187,53 +2194,102 @@ QueuedContinueMessageSender = function (messageObj,callback) {
         var callbackObj = JSON.parse(messageObj);
         var message = callbackObj.Message;
         var topicKey = callbackObj.Topic;
-        var Persistency = true;
+        var eventName=callbackObj.eventName;
+        var eventUuid=callbackObj.eventUuid;
 
 
         redisManager.TopicObjectPicker(topicKey, TTL, function (e, r) {
 
-            if (e) {
+            if (e)
+            {
                 console.log(e);
                 callback(e, undefined);
             }
-            else {
-                if (r == null || r == "") {
+            else
+            {
+                if (r == null || r == "")
+                {
                     console.log("Invalid or Expired Token given, Please try from initial step");
                     callback(new Error("Invalid Topic"), undefined);
                 }
                 else {
                     // console.log("Got token Data "+r);
-                    redisManager.CheckClientAvailability(r.Client, function (errAvbl, resAvbl) {
+                    /* redisManager.CheckClientAvailability(r.Client, function (errAvbl, resAvbl) {
 
-                        console.log("Checking result " + resAvbl);
+                     console.log("Checking result " + resAvbl);
 
-                        if (resAvbl && Persistency) {
-                            console.log("Client is not available.......................");
-                            if (errAvbl) {
-                                console.log("Error in Checking Availability ", errAvbl);
-                                callback(errAvbl, undefined);
+                     if (resAvbl && Persistency) {
+                     console.log("Client is not available.......................");
+                     if (errAvbl)
+                     {
+                     console.log("Error in Checking Availability ", errAvbl);
+                     callback(errAvbl, undefined);
 
-                            }
+                     }
 
+                     }
+                     else {
+                     if (Clients[r.Client]) {
+                     var socket = Clients[r.Client];
+                     var msgObj = {
+
+                     "Message": message,
+                     "TopicKey": topicKey
+                     };
+                     socket.emit('message', msgObj);
+                     callback(undefined, topicKey);
+                     }
+                     else {
+                     callback(new Error("Client unavailable " + r.Client), undefined);
+                     }
+                     }
+
+
+                     });*/
+                    if(Clients[r.Client])
+                    {
+                        socket=socketObj;
+                        console.log("Destination available");
+
+                        var msgObj={
+
+                            "Message":message,
+                            "TopicKey":topicKey,
+                            "eventName":eventName,
+                            "eventUuid":eventUuid
+
+                        };
+                        if(eventName=="agent_connected")
+                        {
+                            socket.emit('agent_connected',msgObj);
+                            console.log("Event notification sent : "+JSON.stringify(msgObj));
                         }
-                        else {
-                            if (Clients[r.Client]) {
-                                var socket = Clients[r.Client];
-                                var msgObj = {
-
-                                    "Message": message,
-                                    "TopicKey": topicKey
-                                };
-                                socket.emit('message', msgObj);
-                                callback(undefined, topicKey);
-                            }
-                            else {
-                                callback(new Error("Client unavailable " + r.Client), undefined);
-                            }
+                        else if(eventName=="agent_disconnected")
+                        {
+                            socket.emit('agent_disconnected',msgObj);
+                            console.log("Event notification sent : "+JSON.stringify(msgObj));
+                        }
+                        else if(eventName=="agent_found") {
+                            socket.emit('agent_found',msgObj);
+                            console.log("Event notification sent : "+JSON.stringify(msgObj));
+                        }
+                        else if(eventName=="agent_rejected")
+                        {
+                            socket.emit('agent_rejected',msgObj);
+                            console.log("Event notification sent : "+JSON.stringify(msgObj));
+                        }
+                        else
+                        {
+                            socket.emit('message',msgObj);
+                            console.log("Message sent : "+JSON.stringify(msgObj));
                         }
 
-
-                    });
+                        callback(undefined,"Success");
+                    }
+                    else
+                    {
+                        callback(new Error("No Instance found"),undefined);
+                    }
 
 
                 }
@@ -2347,7 +2403,7 @@ QueuedMessageOperator = function (msgObj,socketObj) {
         {
             console.log("Continues Messages");
 
-            QueuedContinueMessageSender(msgObj.Callback, function (errConMsg, resConMsg) {
+            QueuedContinueMessageSender(msgObj.Callback,socketObj, function (errConMsg, resConMsg) {
 
                 if (errConMsg)
                 {
