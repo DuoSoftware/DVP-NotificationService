@@ -47,7 +47,7 @@ function onClientdetailsRecieved(Data)
 
 var configOptions =
 {
-    URL:"http://notificationservice.104.131.67.21.xip.io",
+    URL:"http://127.0.0.1:8087",
     Callbacks:{
         onDisconnected:onDisconnected,
         onMessageReceived:onMessageReceived,

@@ -4,12 +4,22 @@
 
 var config=require('config');
 var restify = require('restify');
-var socketio = require('socket.io');
 var DbConn = require('dvp-dbmodels');
 var httpReq = require('request');
 var util = require('util');
 var uuid = require('node-uuid');
 var async= require('async');
+
+
+var opt = {
+    pingTimeout: 3000,
+    pingInterval: 3000,
+    transports: ['websocket'],
+    allowUpgrades: false,
+    cookie: false
+};
+
+var socketio = require('socket.io',opt);
 
 
 var port = config.Host.port || 3000;
