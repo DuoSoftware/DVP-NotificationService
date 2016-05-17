@@ -27,6 +27,7 @@ function  ClientConfiguration(eventObj,jwt)
     socketObj.agent_found=eventObj.Callbacks.onAgentFound;
     socketObj.agent_connected=eventObj.Callbacks.onAgentConnected;
     socketObj.agent_disconnected=eventObj.Callbacks.onAgentDisconnected;
+    socketObj.agent_rejected=eventObj.Callbacks.onAgentRejected;
     socketObj.onClientdetailsRecieved=eventObj.Callbacks.onClientdetailsRecieved;
 
     socket
@@ -47,7 +48,7 @@ function  ClientConfiguration(eventObj,jwt)
 
     socket.on('message', function(reason)
     {
-            socketObj.onMessageReceived(reason);
+        socketObj.onMessageReceived(reason);
     });
 
     socket.on('broadcast', function(data){
@@ -68,6 +69,9 @@ function  ClientConfiguration(eventObj,jwt)
     });
     socket.on('agent_disconnected', function (data) {
         socketObj.agent_disconnected(data);
+    });
+    socket.on('agent_rejected', function (data) {
+        socketObj.agent_rejected(data);
     });
 
 

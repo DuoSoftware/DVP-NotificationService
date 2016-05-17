@@ -166,7 +166,7 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
 
 TokenObjectCreator = function(topicID,clientID,direction,sender,resURL,ttl,callback)
 {
-    console.log("Token Object creating");
+    console.log("Token Object creation started");
     try {
         var key = "notification:" + topicID;
 //notification:topic
@@ -292,19 +292,16 @@ RecordUserServer = function (clientName,server,callback)
     console.log("Client "+clientName);
     console.log("server "+server);
     try {
-        var key = "notification:loc:" + clientName + ":" + server;//notification:loc....
+        var key = "notification:loc:" + clientName;//notification:loc....
 
-        client.set(key, server, function (errSet, resSet) {
-            if (errSet) {
+        client.lpush(key, server, function (errSet, resSet) {
+            if (errSet)
+            {
                 callback(errSet, undefined);
             }
-            else {
-                if (resSet == "" || !resSet || resSet == "NULL") {
-                    callback(new Error("Invalid key to set "), undefined);
-                }
-                else {
-                    callback(undefined, resSet);
-                }
+            else
+            {
+                callback(undefined, resSet);
             }
         });
     } catch (e)
@@ -387,12 +384,14 @@ GetClientsServer = function (clientName,callback) {
 
 TopicObjectPicker = function (topicId,ttl,callback) {
 
-    try {
+    try
+    {
         TouchSession(topicId, ttl);
-        var key = "notification:" + topicId;
-        client.hgetall(key, function (errTkn, resTkn) {
-            callback(errTkn, resTkn);
 
+        var key = "notification:" + topicId;
+        client.hgetall(key, function (errTkn, resTkn)
+        {
+            callback(errTkn, resTkn);
         });
     } catch (e)
     {
@@ -404,8 +403,8 @@ TopicObjectPicker = function (topicId,ttl,callback) {
 ClientLocationDataRemover = function (clientID,server,callback) {
 
     try {
-        var key = "notification:loc:" + clientID + ":" + server;
-        client.del(key, function (e, r) {
+        var key = "notification:loc:" + clientID;
+        client.lrem(key,1,server, function (e, r) {
             callback(e, r);
         })
     } catch (e)
@@ -427,7 +426,7 @@ SessionRemover = function (topicKey,callback) {
     }
 };
 
-CheckClientAvailability = function (clientId,callback) {
+/*CheckClientAvailability = function (clientId,callback) {
 
     var key = "notification:loc:"+clientId+":*";
 
@@ -457,7 +456,7 @@ CheckClientAvailability = function (clientId,callback) {
     {
         callback(e,undefined);
     }
-};
+};*/
 
 ResetServerData = function (serverID,callback) {
 
@@ -502,9 +501,9 @@ RemoveKeys = function (keys,callback) {
 
 };
 
-IsRegisteredClient = function (clientID,callback) {
+/*IsRegisteredClient = function (clientID,callback) {
 
-    var key = "notification:loc:"+clientID+":*";
+    var key = "notification:loc:"+clientID;
 
     console.log("Reg key "+key);
     try {
@@ -532,7 +531,7 @@ IsRegisteredClient = function (clientID,callback) {
     } catch (e) {
         callback(e,undefined);
     }
-};
+};*/
 
 BroadcastTopicObjectCreator = function (topicId,msgObj,clients,callback) {
 
@@ -824,6 +823,21 @@ QuerySubscriberRecorder = function (key,userID,callback) {
 
 };
 
+LocationListPicker = function (clientId,callback) {
+
+    var key = "notification:loc:" + clientId;
+    client.lrange(key,0,-1, function (errList,resList) {
+        if(errList)
+        {
+            callback(errList,undefined);
+        }
+        else
+        {
+            callback(undefined,resList);
+        }
+    });
+};
+
 module.exports.SocketObjectManager = SocketObjectManager;
 module.exports.SocketFinder = SocketFinder;
 module.exports.SocketStateChanger = SocketStateChanger;
@@ -834,12 +848,14 @@ module.exports.ResourceObjectPicker = ResourceObjectPicker;
 module.exports.ResponseUrlPicker = ResponseUrlPicker;
 module.exports.RecordUserServer = RecordUserServer;
 module.exports.GetClientsServer = GetClientsServer;
-module.exports.TopicObjectPicker = TopicObjectPicker;
+
+
+
 module.exports.ClientLocationDataRemover = ClientLocationDataRemover;
 module.exports.SessionRemover = SessionRemover;
-module.exports.CheckClientAvailability = CheckClientAvailability;
+//module.exports.CheckClientAvailability = CheckClientAvailability;
 module.exports.ResetServerData = ResetServerData;
-module.exports.IsRegisteredClient = IsRegisteredClient;
+//module.exports.IsRegisteredClient = IsRegisteredClient;
 module.exports.BroadcastTopicObjectCreator = BroadcastTopicObjectCreator;
 module.exports.ParamKeyGenerator = ParamKeyGenerator;
 module.exports.QueryKeyGenerator = QueryKeyGenerator;
@@ -847,6 +863,8 @@ module.exports.UserServerUpdater = UserServerUpdater;
 module.exports.SubsQueryUserAvailabitityChecker = SubsQueryUserAvailabitityChecker;
 module.exports.QueryKeySubscriberPicker = QueryKeySubscriberPicker;
 module.exports.QuerySubscriberRecorder = QuerySubscriberRecorder;
+module.exports.LocationListPicker = LocationListPicker;
+
 
 
 

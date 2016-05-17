@@ -36,7 +36,8 @@ module.exports = {
     {
         "ttl":"SYS_TTL"
     },
-    "ID":"SYS_NS_ID"
+    "ID":"SYS_NS_ID",
+    "Token":"HOST_TOKEN"
 };
 
 //NODE_CONFIG_DIR

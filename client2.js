@@ -1,6 +1,10 @@
 /**
+ * Created by Pawan on 5/2/2016.
+ */
+/**
  * Created by Pawan on 4/24/2016.
  */
+    //
 var config=require('config');
 var clientSDK= require('./ClientSDK/ClientSDK.js');
 var token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdWtpdGhhIiwianRpIjoiMTdmZTE4M2QtM2QyNC00NjQwLTg1NTgtNWFkNGQ5YzVlMzE1Iiwic3ViIjoiNTZhOWU3NTlmYjA3MTkwN2EwMDAwMDAxMjVkOWU4MGI1YzdjNGY5ODQ2NmY5MjExNzk2ZWJmNDMiLCJjbGllbnQiOiIxIiwiZXhwIjoxODkzMzAyNzUzLCJ0ZW5hbnQiOjEsImNvbXBhbnkiOjMsInNjb3BlIjpbeyJyZXNvdXJjZSI6ImFsbCIsImFjdGlvbnMiOiJhbGwifV0sImlhdCI6MTQ2MTI5OTE1M30._M8u4ElZESTdJtkQSEtr58kE97s0KiHeIaeWsoVc8Ho";
@@ -32,10 +36,6 @@ function  onAgentDisconnected(reason)
 {
     console.log("Agent Disconnected "+JSON.stringify(reason));
 };
-function  onAgentRejected(reason)
-{
-    console.log("Agent Rejected "+JSON.stringify(reason));
-};
 
 
 
@@ -54,8 +54,7 @@ var configOptions =
         onAgentFound:onAgentFound,
         onAgentConnected:onAgentConnected,
         onAgentDisconnected:onAgentDisconnected,
-        onClientdetailsRecieved:onClientdetailsRecieved,
-        onAgentRejected:onAgentRejected
+        onClientdetailsRecieved:onClientdetailsRecieved
 
     },
     jwt:token

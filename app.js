@@ -4,15 +4,29 @@
 
 var config=require('config');
 var restify = require('restify');
-var socketio = require('socket.io');
 var DbConn = require('dvp-dbmodels');
 var httpReq = require('request');
 var util = require('util');
 var uuid = require('node-uuid');
+var async= require('async');
+var gcm = require('node-gcm');
+
+
+var opt = {
+    pingTimeout: 3000,
+    pingInterval: 3000,
+    transports: ['websocket'],
+    allowUpgrades: false,
+    cookie: false
+};
+
+var socketio = require('socket.io',opt);
 
 
 var port = config.Host.port || 3000;
 var version=config.Host.version;
+var token=config.Token;
+var Sender = new gcm.Sender(config.SENDER);
 
 var redisManager=require('./RedisManager.js');
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
@@ -55,7 +69,25 @@ var Refs=new Array();
 
 RestServer.listen(port, function () {
     console.log('%s listening at %s', RestServer.name, RestServer.url);
+    redisManager.LocationListPicker("aps", function (e,r) {
 
+        if(typeof r !== 'undefined' && r.length > 0)
+        {
+            console.log(r);
+            if(r.indexOf(MyID)==-1)
+            {
+                console.log("new");
+            }
+            else
+            {
+                console.log("new Instance");
+            }
+        }
+        else
+        {
+            console.log("Empty");
+        }
+    });
 
 });
 
@@ -79,18 +111,85 @@ io.sockets.on('connection',socketioJwt.authorize({
     {
         console.log('authenticated Client :- '+clientID);
 
-        redisManager.IsRegisteredClient(clientID, function (errReg,status,dataKey) {
+        if(Clients[clientID])
+        {
+            console.log("New Instance");
+            var curSockArray=[];
+            curSockArray=Clients[clientID];
+            curSockArray.push(socket);
+            Clients[clientID]= curSockArray;
+        }
+        else
+        {
+            console.log("new Client");
+            var curSockArray=[];
+            curSockArray.push(socket);
+            Clients[clientID]=curSockArray;
 
-            if(errReg )
+        }
+
+
+
+        redisManager.LocationListPicker(clientID, function (errList,resList) {
+
+            if(errList)
             {
-                console.log("Error in Checking Register status of "+clientID,errReg);
+                console.log("Error in Checking Register status of "+clientID,errList);
             }
             else
             {
-                if(!status && !dataKey)
+
+
+                if(typeof resList !== 'undefined' && resList.length > 0)
                 {
-                    // does not exist\
-                    Clients[clientID]=socket;
+
+                    // console.log("New Client instance Added");
+                    if(resList.indexOf(MyID)==-1)
+                    {
+                        console.log("New user for This server");
+                        redisManager.RecordUserServer(clientID,MyID, function (errSet,resSet) {
+                            if(errSet)
+                            {
+                                console.log("Error in Client registration, Client : "+clientID+" Error : "+errSet);
+                            }
+                            else
+                            {
+
+                                console.log("New Client Registered : "+clientID);
+
+                                /*DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+
+                                 if(errMsg)
+                                 {
+                                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+                                 }
+                                 else
+                                 {
+                                 console.log(resMsg.length+" Messages found for Client : "+clientID);
+                                 for(i=0 ;i<resMsg.length;i++)
+                                 {
+                                 QueuedMessageOperator(resMsg[i]);
+                                 }
+
+
+
+
+
+                                 }
+                                 });*/
+                            }
+                        });
+                    }
+                    else
+                    {
+                        console.log("New user instance for This server");
+
+                    }
+                }
+                else
+                {
+
+                    console.log("New user for This server for first time");
 
                     redisManager.RecordUserServer(clientID,MyID, function (errSet,resSet) {
                         if(errSet)
@@ -100,171 +199,195 @@ io.sockets.on('connection',socketioJwt.authorize({
                         else
                         {
 
-                            console.log("New Client Registered : "+clientID);
+                            console.log("New Client Registered FirstTime : "+clientID);
 
-                            DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+                            /*DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
 
-                                if(errMsg)
-                                {
-                                    console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                                }
-                                else
-                                {
-                                    console.log(resMsg.length+" Messages found for Client : "+clientID);
-                                    for(i=0 ;i<resMsg.length;i++)
-                                    {
-                                        QueuedMessageOperator(resMsg[i]);
-                                    }
-
-
+                             if(errMsg)
+                             {
+                             console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+                             }
+                             else
+                             {
+                             console.log(resMsg.length+" Messages found for Client : "+clientID);
+                             for(i=0 ;i<resMsg.length;i++)
+                             {
+                             QueuedMessageOperator(resMsg[i]);
+                             }
 
 
 
-                                }
-                            });
+
+
+                             }
+                             });*/
                         }
                     });
+
+
                 }
-                else
-                {
-                    console.log("KEY "+dataKey);
-                    var serverID = dataKey.split(":")[3];
-                    console.log("Server ID "+serverID);
-                    if(serverID==MyID)
+
+                DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+
+                    if(errMsg)
                     {
-                        console.log("Registered Client on This server Client : "+clientID);
-
-                        Clients[clientID]=socket;
-
-                        DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg)
-                        {
-
-                            if(errMsg)
-                            {
-                                console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                            }
-                            else
-                            {
-
-                                for(var i=0 ;i<resMsg.length;i++)
-                                {
-
-                                    QueuedMessageOperator(resMsg[i]);
-
-                                }
-
-
-
-
-                            }
-                        });
+                        console.log("Error in queued messages searching for Client : "+clientID,errMsg);
                     }
                     else
                     {
-                        console.log("Not registered client in this server");
-
-                        DBController.ServerPicker(serverID, function (errPick,resPick) {
-
-                            if(errPick)
-                            {
-                                console.log("Error in Searching Server IP "+errPick);
-                            }
-                            else
-                            {
-                                console.log("Server record found  "+JSON.stringify(resPick));
-                                var URL="http://"+resPick.URL+"/DVP/API/"+version+"/NotificationService/Notification/Server/"+serverID+"/Availability";
-                                console.log(URL);
-                                var optionsX = {url: URL, method: "GET"};
-                                httpReq(optionsX, function (errorX, responseX, dataX) {
+                        console.log(resMsg.length+" Messages found for Client : "+clientID);
+                        for(i=0 ;i<resMsg.length;i++)
+                        {
+                            QueuedMessageOperator(resMsg[i],socket);
+                        }
 
 
-                                    if(errorX )
-                                    {
-                                        console.log("ERROR in searching server location "+errorX);
-
-                                        redisManager.UserServerUpdater(clientID,serverID,MyID,function (errRecord,resRecord)
-                                        {
-                                            if(errRecord)
-                                            {
-                                                console.log("Error in client data : "+clientID+" saving with server : "+serverID,errRecord);
-                                            }
-                                            else
-                                            {
-                                                Clients[clientID]=socket;
-                                                console.log("Client registered to Server ID : "+MyID);
-
-                                                DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
-
-                                                    if(errMsg)
-                                                    {
-                                                        console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                                                    }
-                                                    else
-                                                    {
-                                                        for(var i=0 ;i<resMsg.length;i++)
-                                                        {
-                                                            QueuedMessageOperator(resMsg[i]);
-                                                        }
-
-                                                    }
-                                                });
-
-
-
-                                            }
-
-                                        });
-
-                                    }
-
-                                    else if (!errorX && responseX.statusCode  == 200 ) {
-
-
-                                        console.log("Client is already registered in another Active server, Try with another client");
-
-                                    }
-                                    else
-                                    {
-                                        redisManager.RecordUserServer(clientID,serverID, function (errRecord,resRecord) {
-
-                                            if(errRecord)
-                                            {
-                                                console.log("Error in client data : "+clientID+" saving with server : "+serverID,errRecord);
-                                            }
-                                            else
-                                            {
-                                                Clients[clientID]=socket;
-                                                console.log("Client registered successfully "+clientID);
-
-                                                DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
-
-                                                    if(errMsg)
-                                                    {
-                                                        console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                                                    }
-                                                    else
-                                                    {
-
-                                                        console.log(resMsg.length+" Messages found ");
-                                                        for(var i=0 ;i<resMsg.length;i++)
-                                                        {
-                                                            QueuedMessageOperator(resMsg[i]);
-                                                        }
-
-                                                    }
-                                                });
-                                            }
-
-                                        });
-                                    }
-                                });
-                            }
-
-                        });
                     }
+                });
 
-                }
 
+                /*
+                 else
+                 {
+
+                 console.log("KEY "+dataKey);
+                 var serverID = dataKey.split(":")[3];
+                 console.log("Server ID "+serverID);
+                 if(serverID==MyID)
+                 {
+                 console.log("Registered Client on This server Client : "+clientID);
+
+                 Clients[clientID]=socket;
+
+                 DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg)
+                 {
+
+                 if(errMsg)
+                 {
+                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+                 }
+                 else
+                 {
+
+                 for(var i=0 ;i<resMsg.length;i++)
+                 {
+
+                 QueuedMessageOperator(resMsg[i]);
+
+                 }
+
+
+
+
+                 }
+                 });
+                 }
+                 else
+                 {
+                 console.log("Not registered client in this server");
+
+                 DBController.ServerPicker(serverID, function (errPick,resPick) {
+
+                 if(errPick)
+                 {
+                 console.log("Error in Searching Server IP "+errPick);
+                 }
+                 else
+                 {
+                 console.log("Server record found  "+JSON.stringify(resPick));
+                 var URL="http://"+resPick.URL+"/DVP/API/"+version+"/NotificationService/Notification/Server/"+serverID+"/Availability";
+                 console.log(URL);
+                 var optionsX = {url: URL, method: "GET"};
+                 httpReq(optionsX, function (errorX, responseX, dataX) {
+
+
+                 if(errorX )
+                 {
+                 console.log("ERROR in searching server location "+errorX);
+
+                 redisManager.UserServerUpdater(clientID,serverID,MyID,function (errRecord,resRecord)
+                 {
+                 if(errRecord)
+                 {
+                 console.log("Error in client data : "+clientID+" saving with server : "+serverID,errRecord);
+                 }
+                 else
+                 {
+                 Clients[clientID]=socket;
+                 console.log("Client registered to Server ID : "+MyID);
+
+                 DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+
+                 if(errMsg)
+                 {
+                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+                 }
+                 else
+                 {
+                 for(var i=0 ;i<resMsg.length;i++)
+                 {
+                 QueuedMessageOperator(resMsg[i]);
+                 }
+
+                 }
+                 });
+
+
+
+                 }
+
+                 });
+
+                 }
+
+                 else if (!errorX && responseX.statusCode  == 200 ) {
+
+
+                 console.log("Client is already registered in another Active server, Try with another client");
+
+                 }
+                 else
+                 {
+                 redisManager.RecordUserServer(clientID,serverID, function (errRecord,resRecord) {
+
+                 if(errRecord)
+                 {
+                 console.log("Error in client data : "+clientID+" saving with server : "+serverID,errRecord);
+                 }
+                 else
+                 {
+                 Clients[clientID]=socket;
+                 console.log("Client registered successfully "+clientID);
+
+                 DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+
+                 if(errMsg)
+                 {
+                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
+                 }
+                 else
+                 {
+
+                 console.log(resMsg.length+" Messages found ");
+                 for(var i=0 ;i<resMsg.length;i++)
+                 {
+                 QueuedMessageOperator(resMsg[i]);
+                 }
+
+                 }
+                 });
+                 }
+
+                 });
+                 }
+                 });
+                 }
+
+                 });
+                 }
+
+                 }
+                 */
             }
 
         });
@@ -345,27 +468,42 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     });
     socket.on('disconnect',function(reason)
-    { var ClientID=ClientID;
+    { var ClientID=socket.decoded_token.client;
         console.log("Disconnected "+socket.id+" Reason "+reason);
         console.log("Socket ID ",socket.id);
         console.log("ClientID "+ClientID);
 
+        if(typeof Clients[ClientID] !== 'undefined' && Clients[ClientID].length >1)
+        {
 
-        redisManager.ClientLocationDataRemover(ClientID,MyID, function (e,r) {
-            if(e)
-            {
-                console.log("Error in Client Location removing "+e);
-                delete Clients[ClientID];
-                //  res.end();
-            }
-            else
-            {
-                console.log("Client Location removed "+r);
-                delete Clients[ClientID];
+            var index = Clients[ClientID].indexOf(socket);
+            Clients[ClientID].splice(index, 1);
+            //delete Clients[ClientID][Clients[ClientID].indexOf(socket)];
+            console.log("Client Id instance disconnected ",socket.id);
+        }
+        else
+        {
+            redisManager.ClientLocationDataRemover(ClientID,MyID, function (e,r) {
 
-                //res.end();
-            }
-        });
+                var index = Clients[ClientID].indexOf(socket);
+                Clients[ClientID].splice(index, 1);
+                if(e)
+                {
+                    console.log("Error in Client Location removing "+e);
+
+                    console.log("Client Id instance disconnected from server ",socket.id);
+                    //  res.end();
+                }
+                else
+                {
+                    console.log("Client Location removed "+r);
+                    console.log("Client Id instance disconnected ",socket.id);
+
+                    //res.end();
+                }
+            });
+        }
+
 
 
     });
@@ -389,10 +527,405 @@ io.sockets.on('connection',socketioJwt.authorize({
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
+
+    /*var clientID=req.body.To;
+     var eventName=req.headers.eventname;
+     var eventUuid=req.headers.eventuuid;
+     var msgSenderArray=[];
+     var Company =1;
+     var Tenant=1;
+
+     redisManager.LocationListPicker(clientID, function (errList,resList) {
+
+     console.log("Checking Location result "+resList);
+     if(errList)
+     {
+     console.log("Client is not available.......................");
+     console.log("Error in Checking Availability ",errList);
+     res.end();
+
+     }
+
+     else
+     {
+     if(typeof resList !== 'undefined' && resList.length > 0)
+     {
+     if(!isNaN(req.body.Timeout))
+     {
+     TTL =req.body.Timeout;
+     console.log("TTL found "+TTL);
+     }
+
+     var callbackURL=req.body.CallbackURL;
+     var topicID=TopicIdGenerator();
+     var direction=req.body.Direction;
+     var message=req.body.Message;
+     var ref=req.body.Ref;
+
+     Refs[topicID]=ref;
+
+     if(direction=="STATEFUL")
+     {
+     callbackURL=req.body.CallbackURL;
+     }
+     var sender = req.body.From;
+
+
+     var msgObj={
+
+     "Message":message,
+     "TopicKey":topicID,
+     "eventName":eventName,
+     "eventUuid":eventUuid,
+     "Company":Company,
+     "Tenant":Tenant
+
+     };
+
+
+
+     redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
+     {
+     resList.forEach(function (serverId) {
+
+     console.log("hit");
+     msgSenderArray.push(function createContact(callback)
+     {
+     if(serverId==MyID)
+     {
+     if(Clients[clientID])
+     {
+     var insArray =Clients[clientID];
+     for(var i=0;i<insArray.length;i++)
+     {
+     var insSocket=insArray[i];
+
+
+     if(eventName=="agent_connected")
+     {
+     insSocket.emit('agent_connected',msgObj);
+     console.log("Event notification sent : "+JSON.stringify(msgObj));
+     }
+     else if(eventName=="agent_disconnected")
+     {
+     insSocket.emit('agent_disconnected',msgObj);
+     console.log("Event notification sent : "+JSON.stringify(msgObj));
+     }
+     else if(eventName=="agent_found") {
+     insSocket.emit('agent_found',msgObj);
+     console.log("Event notification sent : "+JSON.stringify(msgObj));
+     }
+     else
+     {
+     insSocket.emit('message',msgObj);
+     console.log("Message sent : "+JSON.stringify(msgObj));
+     }
+
+     if(i==insArray.length-1)
+     {
+     //res.end();
+     callback(undefined,"Success");
+     }
+     }
+
+     }
+     }
+     else
+     {
+     DBController.ServerPicker(serverId, function (errServ,resServ) {
+     if(errServ)
+     {
+     console.log("Error in server picking");
+     callback(errServ,undefined);
+     }
+     else if(!resServ)
+     {
+     console.log("Invalid server ID");
+     callback(new Error("Invalid Server ID"),undefined);
+     }
+     else
+     {
+     var ServerIP = resServ.URL;
+     console.log(ServerIP);
+
+
+     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
+     var options = {
+     url : httpUrl,
+     method : 'POST',
+     json : req.body,
+     headers:{
+     'eventName':req.headers.eventname,
+     'eventUuid':req.headers.eventuuid,
+     'authorization':'bearer '+token,
+     'topic':topicID
+     }
+
+     };
+
+
+     httpReq(options, function (error, response, body)
+     {
+     if (!error && response.statusCode == 200)
+     {
+     console.log("no errrs");
+     console.log(JSON.stringify(response));
+     callback(undefined,"Success")
+     }
+     else
+     {
+     console.log("errrs  "+error);
+     callback(error,undefined);
+     }
+     });
+     }
+     });
+     }
+
+
+     });
+
+
+
+     });
+     async.parallel(msgSenderArray, function (errBulkSend,resSend) {
+
+     console.log(errBulkSend);
+     console.log(resSend);
+     if(errTobj)
+     {
+     res.end(new Error("Topic key delievering Error "+errTobj));
+     }
+     else
+     {
+     res.end(topicID);
+     }
+
+     });
+
+     });
+
+
+
+     }
+     else
+     {
+     if(req.body.Persistency)
+     {
+
+     DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+
+     if(errSave)
+     {
+     console.log("Error in Message Saving ",errSave);
+     res.end();
+     }
+     else
+     {
+     console.log("Message saving succeeded ",resSave);
+     res.end();
+     }
+     });
+     }
+     else
+     {
+     console.log("Client is not available.......................");
+     res.end();
+     }
+
+     }
+
+
+
+     ///////////////////////////////////////////////////////////////////////////////////
+
+     /!*if(resAvbl && req.body.Persistency)
+     {
+
+     DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+
+     if(errSave)
+     {
+     console.log("Error in Message Saving ",errSave);
+     res.end();
+     }
+     else
+     {
+     console.log("Message saving succeeded ",resSave);
+     res.end();
+     }
+     });
+     }
+     else
+     {
+     if(!isNaN(req.body.Timeout))
+     {
+     TTL =req.body.Timeout;
+     console.log("TTL found "+TTL);
+     }
+     console.log(clientID);
+
+     if(Clients[clientID])
+     {
+     console.log("Client "+clientID+" is registered in this server");
+     var socket=Clients[clientID];
+
+     console.log("Destination available");
+     console.log("Body "+req.body);
+     try
+     {
+     var callbackURL=req.body.CallbackURL;
+     var topicID=TopicIdGenerator();
+     var direction=req.body.Direction;
+     var message=req.body.Message;
+     var ref=req.body.Ref;
+
+     Refs[topicID]=ref;
+
+     if(direction=="STATEFUL")
+     {
+     callbackURL=req.body.CallbackURL;
+     }
+     var sender = req.body.From;
+
+
+
+     }
+     catch(ex)
+     {
+     console.log("Error in request body "+ex);
+     res.end("Error in request body "+ex);
+     }
+
+
+     redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
+     {
+     if(errTobj)
+     {
+     console.log("Error in TokenObject creation "+errTobj);
+     res.end("Error in TokenObject creation "+errTobj);
+     }
+     else
+     {
+
+
+     var msgObj={
+
+     "Message":message,
+     "TopicKey":topicID,
+     "eventName":eventName,
+     "eventUuid":eventUuid,
+     "Company":Company,
+     "Tenant":Tenant
+
+     };
+     if(eventName=="agent_connected")
+     {
+     socket.emit('agent_connected',msgObj);
+     console.log("Event notification sent : "+JSON.stringify(msgObj));
+     }
+     else if(eventName=="agent_disconnected")
+     {
+     socket.emit('agent_disconnected',msgObj);
+     console.log("Event notification sent : "+JSON.stringify(msgObj));
+     }
+     else if(eventName=="agent_found") {
+     socket.emit('agent_found',msgObj);
+     console.log("Event notification sent : "+JSON.stringify(msgObj));
+     }
+     else
+     {
+     socket.emit('message',msgObj);
+     console.log("Message sent : "+JSON.stringify(msgObj));
+     }
+
+     res.end(topicID);
+
+     }
+     });
+
+     }
+     else
+     {
+     console.log("Client "+clientID+" is not registered in this server");
+     redisManager.GetClientsServer(clientID, function (errGet,resGet) {
+
+     if(errGet)
+     {
+     console.log("error in getting client server");
+     console.log("Destination user not found");
+     res.status(400);
+     res.end("No user found "+clientID);
+     }
+     else
+     {
+     console.log("SERVER "+resGet);
+     console.log("My ID "+MyID);
+     DBController.ServerPicker(resGet, function (errPick,resPick) {
+
+     if(errPick)
+     {
+     console.log("error in Picking server from DB");
+     console.log("Destination user not found");
+     console.log("error "+errPick);
+     res.status(400);
+     res.end("No user found "+clientID);
+     }
+     else
+     {
+     var ServerIP = resPick.URL;
+     console.log(ServerIP);
+
+
+     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate', ServerIP, version);
+     var options = {
+     url : httpUrl,
+     method : 'POST',
+     json : req.body
+
+     };
+
+     console.log(options);
+     try
+     {
+     httpReq(options, function (error, response, body)
+     {
+     if (!error && response.statusCode == 200)
+     {
+     console.log("no errrs");
+     console.log(JSON.stringify(response));
+     res.end(response.body);
+     }
+     else
+     {
+     console.log("errrs  "+error);
+     res.end();
+     }
+     });
+     }
+     catch(ex)
+     {
+     console.log("ex..."+ex);
+     res.end();
+     }
+
+     }
+     });
+     }
+     });
+     }
+     }*!/
+     }
+
+
+     });*/
+
     console.log("New request form "+req.body.From);
+
     var clientID=req.body.To;
     var eventName=req.headers.eventname;
     var eventUuid=req.headers.eventuuid;
+    var msgSenderArray=[];
 
 
 
@@ -406,21 +939,193 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
 
 
-    redisManager.CheckClientAvailability(clientID, function (errAvbl,resAvbl) {
+    redisManager.LocationListPicker(clientID, function (errList,resList) {
 
-        console.log("Checking result "+resAvbl);
-        if(errAvbl)
+        console.log("Checking Availability of Client :  "+clientID);
+
+        if(errList)
         {
             console.log("Client is not available.......................");
-            console.log("Error in Checking Availability ",errAvbl);
+            console.log("Error in Checking Availability ",errList);
             res.end();
+        }
+        else if(typeof resList !== 'undefined' && resList.length > 0)
+        {
+            if(!isNaN(req.body.Timeout))
+            {
+                TTL =req.body.Timeout;
+                console.log("TTL found "+TTL);
+            }
+
+            var callbackURL=req.body.CallbackURL;
+            var topicID=TopicIdGenerator();
+            var direction=req.body.Direction;
+            var message=req.body.Message;
+            var ref=req.body.Ref;
+
+            Refs[topicID]=ref;
+
+            if(direction=="STATEFUL")
+            {
+                callbackURL=req.body.CallbackURL;
+            }
+            var sender = req.body.From;
+
+
+            var msgObj={
+
+                "Message":message,
+                "TopicKey":topicID,
+                "eventName":eventName,
+                "eventUuid":eventUuid,
+                "Company":Company,
+                "Tenant":Tenant
+
+            };
+            GooglePushMessageSender(clientID,msgObj, function (e,r) {
+                console.log(e);
+                console.log(r);
+
+            });
+
+            redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
+            {
+                resList.forEach(function (serverId) {
+
+                    console.log("hit");
+                    msgSenderArray.push(function createContact(callback)
+                    {
+                        if(serverId==MyID)
+                        {
+                            if(Clients[clientID])
+                            {
+                                var insArray =Clients[clientID];
+                                for(var i=0;i<insArray.length;i++)
+                                {
+                                    var insSocket=insArray[i];
+
+
+                                    if(eventName=="agent_connected")
+                                    {
+                                        insSocket.emit('agent_connected',msgObj);
+                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                    }
+                                    else if(eventName=="agent_disconnected")
+                                    {
+                                        insSocket.emit('agent_disconnected',msgObj);
+                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                    }
+                                    else if(eventName=="agent_found") {
+                                        insSocket.emit('agent_found',msgObj);
+                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                    }
+                                    else if(eventName=="agent_rejected")
+                                    {
+                                        insSocket.emit('agent_rejected',msgObj);
+                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                    }
+                                    else
+                                    {
+                                        insSocket.emit('message',msgObj);
+                                        console.log("Message sent : "+JSON.stringify(msgObj));
+                                    }
+
+                                    if(i==insArray.length-1)
+                                    {
+                                        //res.end();
+                                        callback(undefined,"Success");
+                                    }
+                                }
+
+                            }
+                        }
+                        else
+                        {
+                            DBController.ServerPicker(serverId, function (errServ,resServ) {
+                                if(errServ)
+                                {
+                                    console.log("Error in server picking");
+                                    callback(errServ,undefined);
+                                }
+                                else if(!resServ)
+                                {
+                                    console.log("Invalid server ID");
+                                    callback(new Error("Invalid Server ID"),undefined);
+                                }
+                                else
+                                {
+                                    var ServerIP = resServ.URL;
+                                    console.log(ServerIP);
+
+
+                                    var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
+                                    var options = {
+                                        url : httpUrl,
+                                        method : 'POST',
+                                        json : req.body,
+                                        headers:{
+                                            'eventName':req.headers.eventname,
+                                            'eventUuid':req.headers.eventuuid,
+                                            'authorization':'bearer '+token,
+                                            'topic':topicID
+                                        }
+
+                                    };
+
+
+                                    httpReq(options, function (error, response, body)
+                                    {
+                                        if (!error && response.statusCode == 200)
+                                        {
+                                            console.log("no errrs");
+                                            console.log(JSON.stringify(response));
+                                            callback(undefined,"Success")
+                                        }
+                                        else
+                                        {
+                                            console.log("errrs  "+error);
+                                            callback(error,undefined);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
+
+                    });
+
+
+
+                });
+                async.parallel(msgSenderArray, function (errBulkSend,resSend) {
+
+                    console.log(errBulkSend);
+                    console.log(resSend);
+                    if(errTobj)
+                    {
+                        res.end(new Error("Topic key delievering Error "+errTobj));
+                    }
+                    else
+                    {
+                        res.end(topicID);
+                    }
+
+                });
+
+            });
+
+
+
+
+
 
         }
-
         else
         {
-            if(resAvbl && req.body.Persistency)
+            console.log("No client found.....................");
+            if(req.body.Persistency)
             {
+                console.log("No client found,  backing up messages ");
 
                 DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
 
@@ -438,167 +1143,14 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
             }
             else
             {
-                if(!isNaN(req.body.Timeout))
-                {
-                    TTL =req.body.Timeout;
-                    console.log("TTL found "+TTL);
-                }
-                console.log(clientID);
-
-                if(Clients[clientID])
-                {
-                    console.log("Client "+clientID+" is registered in this server");
-                    var socket=Clients[clientID];
-
-                    console.log("Destination available");
-                    console.log("Body "+req.body);
-                    try
-                    {
-                        var callbackURL=req.body.CallbackURL;
-                        var topicID=TopicIdGenerator();
-                        var direction=req.body.Direction;
-                        var message=req.body.Message;
-                        var ref=req.body.Ref;
-
-                        Refs[topicID]=ref;
-
-                        if(direction=="STATEFUL")
-                        {
-                            callbackURL=req.body.CallbackURL;
-                        }
-                        var sender = req.body.From;
-
-
-
-                    }
-                    catch(ex)
-                    {
-                        console.log("Error in request body "+ex);
-                        res.end("Error in request body "+ex);
-                    }
-
-
-                    redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
-                    {
-                        if(errTobj)
-                        {
-                            console.log("Error in TokenObject creation "+errTobj);
-                            res.end("Error in TokenObject creation "+errTobj);
-                        }
-                        else
-                        {
-
-
-                            var msgObj={
-
-                                "Message":message,
-                                "TopicKey":topicID,
-                                "eventName":eventName,
-                                "eventUuid":eventUuid,
-                                "Company":Company,
-                                "Tenant":Tenant
-
-                            };
-                            if(eventName=="agent_connected")
-                            {
-                                socket.emit('agent_connected',msgObj);
-                                console.log("Event notification sent : "+JSON.stringify(msgObj));
-                            }
-                            else if(eventName=="agent_disconnected")
-                            {
-                                socket.emit('agent_disconnected',msgObj);
-                                console.log("Event notification sent : "+JSON.stringify(msgObj));
-                            }
-                            else if(eventName=="agent_found") {
-                                socket.emit('agent_found',msgObj);
-                                console.log("Event notification sent : "+JSON.stringify(msgObj));
-                            }
-                            else
-                            {
-                                socket.emit('message',msgObj);
-                                console.log("Message sent : "+JSON.stringify(msgObj));
-                            }
-
-                            res.end(topicID);
-
-                        }
-                    });
-
-                }
-                else
-                {
-                    console.log("Client "+clientID+" is not registered in this server");
-                    redisManager.GetClientsServer(clientID, function (errGet,resGet) {
-
-                        if(errGet)
-                        {
-                            console.log("error in getting client server");
-                            console.log("Destination user not found");
-                            res.status(400);
-                            res.end("No user found "+clientID);
-                        }
-                        else
-                        {
-                            console.log("SERVER "+resGet);
-                            console.log("My ID "+MyID);
-                            DBController.ServerPicker(resGet, function (errPick,resPick) {
-
-                                if(errPick)
-                                {
-                                    console.log("error in Picking server from DB");
-                                    console.log("Destination user not found");
-                                    console.log("error "+errPick);
-                                    res.status(400);
-                                    res.end("No user found "+clientID);
-                                }
-                                else
-                                {
-                                    var ServerIP = resPick.URL;
-                                    console.log(ServerIP);
-
-
-                                    var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate', ServerIP, version);
-                                    var options = {
-                                        url : httpUrl,
-                                        method : 'POST',
-                                        json : req.body
-
-                                    };
-
-                                    console.log(options);
-                                    try
-                                    {
-                                        httpReq(options, function (error, response, body)
-                                        {
-                                            if (!error && response.statusCode == 200)
-                                            {
-                                                console.log("no errrs");
-                                                console.log(JSON.stringify(response));
-                                                res.end(response.body);
-                                            }
-                                            else
-                                            {
-                                                console.log("errrs  "+error);
-                                                res.end();
-                                            }
-                                        });
-                                    }
-                                    catch(ex)
-                                    {
-                                        console.log("ex..."+ex);
-                                        res.end();
-                                    }
-
-                                }
-                            });
-                        }
-                    });
-                }
+                console.log("No client found, Operation ends without backing up messages");
+                res.end();
             }
+
         }
-
-
     });
+
+
 
     return next();
 
@@ -1321,6 +1873,121 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', fu
 
 });
 
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next){
+
+    var clientID= req.body.To;
+    var eventName=req.headers.eventname;
+    var eventUuid=req.headers.eventuuid;
+    var topic = req.headers.topic;
+
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    if(!isNaN(req.body.Timeout))
+    {
+        TTL =req.body.Timeout;
+        console.log("TTL found "+TTL);
+    }
+
+    var callbackURL=req.body.CallbackURL;
+    var topicID=topic;
+    var direction=req.body.Direction;
+    var message=req.body.Message;
+    var ref=req.body.Ref;
+
+    Refs[topicID]=ref;
+
+    if(direction=="STATEFUL")
+    {
+        callbackURL=req.body.CallbackURL;
+    }
+    var msgObj={
+
+        "Message":message,
+        "TopicKey":topicID,
+        "eventName":eventName,
+        "eventUuid":eventUuid,
+        "Company":Company,
+        "Tenant":Tenant
+
+    };
+
+
+    if(Clients[clientID])
+    {
+        var insArray =Clients[clientID];
+        for(var i=0;i<insArray.length;i++)
+        {
+            var insSocket=insArray[i];
+
+            if(eventName=="agent_connected")
+            {
+                insSocket.emit('agent_connected',msgObj);
+                console.log("Event notification sent : "+JSON.stringify(msgObj));
+            }
+            else if(eventName=="agent_disconnected")
+            {
+                insSocket.emit('agent_disconnected',msgObj);
+                console.log("Event notification sent : "+JSON.stringify(msgObj));
+            }
+            else if(eventName=="agent_found") {
+                insSocket.emit('agent_found',msgObj);
+                console.log("Event notification sent : "+JSON.stringify(msgObj));
+            }
+            else if(eventName=="agent_rejected")
+            {
+                insSocket.emit('agent_rejected',msgObj);
+                console.log("Event notification sent : "+JSON.stringify(msgObj));
+            }
+            else
+            {
+                insSocket.emit('message',msgObj);
+                console.log("Message sent : "+JSON.stringify(msgObj));
+            }
+
+
+            if(i==insArray.length-1)
+            {
+                //res.end();
+                callback(undefined,"Success");
+            }
+        }
+
+    }
+    else
+    {
+        if(req.body.Persistency)
+        {
+            DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+
+                if(errSave)
+                {
+                    console.log("Error in Message Saving ",errSave);
+                    res.end();
+                }
+                else
+                {
+                    console.log("Message saving succeeded ");
+                    res.end();
+                }
+            });
+        }
+        else
+        {
+            console.log("No clien found");
+            res.end();
+        }
+    }
+
+    return next();
+});
+
+
 TopicIdGenerator = function ()
 {
 
@@ -1331,7 +1998,7 @@ TopicIdGenerator = function ()
 
 };
 
-QueuedInitiateMessageSender = function (messageObj,callback) {
+QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
 
     try {
         var clientID = messageObj.To;
@@ -1343,101 +2010,200 @@ QueuedInitiateMessageSender = function (messageObj,callback) {
         var Ref = callbackObj.Ref;
         var callbackURL = "";
         var From = messageObj.From;
+        var socket;
 
 
-        redisManager.CheckClientAvailability(clientID, function (errAvbl, resAvbl) {
 
-            console.log("Checking result " + resAvbl);
-            if (resAvbl && Persistency) {
-                console.log("Client is not available.......................");
-                if (errAvbl) {
-                    console.log("Error in Checking Availability ", errAvbl);
+        if (!isNaN(Timeout))
+        {
+            TTL = Timeout;
+            console.log("TTL found " + TTL);
+        }
+        console.log(clientID);
 
-                }
+        if (Clients[clientID])
+        {
+            socket=socketObj;
+            console.log("Destination available");
 
+            var topicID = TopicIdGenerator();
+            var direction = Direction;
+            callbackURL = "";
+            var message = Message;
+            var ref = Ref;
+            var eventName=callbackObj.eventName;
+            var eventUuid=callbackObj.eventUuid;
+
+
+            Refs[topicID] = ref;
+
+            if (direction == "STATEFUL") {
+                callbackURL = callbackObj.CallbackURL;
             }
-            else {
-                if (!isNaN(Timeout)) {
-                    TTL = Timeout;
-                    console.log("TTL found " + TTL);
-                }
-                console.log(clientID);
-
-                if (Clients[clientID]) {
-
-                    var socket = Clients[clientID];
-
-                    console.log("Destination available");
-                    try {
-
-                        var topicID = TopicIdGenerator();
-                        var direction = Direction;
-                        callbackURL = "";
-                        var message = Message;
-                        var ref = Ref;
-
-                        Refs[topicID] = ref;
-
-                        if (direction == "STATEFUL") {
-                            callbackURL = callbackObj.CallbackURL;
-                        }
-                        var sender = From;
+            var sender = From;
 
 
-                    }
-                    catch (ex) {
-                        console.log("Error in request body " + ex);
-                        callback(ex, undefined);
-                    }
-
-
-                    redisManager.TokenObjectCreator(topicID, clientID, direction, sender, callbackURL, TTL, function (errTobj, resTobj) {
-                        if (errTobj) {
-                            console.log("Error in TokenObject creation " + errTobj);
-                            //res.end("Error in TokenObject creation "+errTobj);
-                            callback(errTobj, undefined);
-                        }
-                        else {
-                            /*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
-                             {
-                             if(errSet)
-                             {
-                             console.log("Resource object creation failed "+errSet);
-                             res.end("Resource object creation failed "+errSet);
-                             }
-                             else
-                             {
-                             console.log("Resource object creation Succeeded "+resSet);*/
-                            var msgObj={
-                                "Message":message,
-                                "TopicKey":topicID
-                            };
-                            socket.emit('message',msgObj);
-                            callback(
-                                undefined,topicID);
-                            /*    }
-
-                             });*/
-
-                        }
-                    });
-
+            redisManager.TokenObjectCreator(topicID, clientID, direction, sender, callbackURL, TTL, function (errTobj, resTobj) {
+                if (errTobj) {
+                    console.log("Error in TokenObject creation " + errTobj);
+                    //res.end("Error in TokenObject creation "+errTobj);
+                    callback(errTobj, undefined);
                 }
                 else
                 {
-                    callback(new Error
-                    ("Invlid Client data"+
-                        clientID),undefined);
-                }
-            }
+                    /*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
+                     {
+                     if(errSet)
+                     {
+                     console.log("Resource object creation failed "+errSet);
+                     res.end("Resource object creation failed "+errSet);
+                     }
+                     else
+                     {
+                     console.log("Resource object creation Succeeded "+resSet);*/
+                    var msgObj={
 
-        });
+                        "Message":message,
+                        "TopicKey":topicID,
+                        "eventName":eventName,
+                        "eventUuid":eventUuid
+
+                    };
+                    if(eventName=="agent_connected")
+                    {
+                        socket.emit('agent_connected',msgObj);
+                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                    }
+                    else if(eventName=="agent_disconnected")
+                    {
+                        socket.emit('agent_disconnected',msgObj);
+                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                    }
+                    else if(eventName=="agent_found") {
+                        socket.emit('agent_found',msgObj);
+                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                    }
+                    else if(eventName=="agent_rejected")
+                    {
+                        socket.emit('agent_rejected',msgObj);
+                        console.log("Event notification sent : "+JSON.stringify(msgObj));
+                    }
+                    else
+                    {
+                        socket.emit('message',msgObj);
+                        console.log("Message sent : "+JSON.stringify(msgObj));
+                    }
+
+                    callback(undefined,topicID);
+
+
+                    /*    }
+
+                     });*/
+
+                }
+            });
+
+
+
+
+
+        }
+        else
+        {
+            console.log("Invalid destination")
+        }
+
+
+
+
+
+        /*redisManager.CheckClientAvailability(clientID, function (errAvbl, resAvbl) {
+
+         console.log("Checking result " + resAvbl);
+         if (resAvbl && Persistency) {
+         console.log("Client is not available.......................");
+         if (errAvbl)
+         {
+         console.log("Error in Checking Availability ", errAvbl);
+
+         }
+
+         }
+         else {
+         if (!isNaN(Timeout))
+         {
+         TTL = Timeout;
+         console.log("TTL found " + TTL);
+         }
+         console.log(clientID);
+
+         if (Clients[clientID]) {
+
+         var socket = Clients[clientID];
+
+         console.log("Destination available");
+         try {
+
+
+
+
+         }
+         catch (ex) {
+         console.log("Error in request body " + ex);
+         callback(ex, undefined);
+         }
+
+
+         redisManager.TokenObjectCreator(topicID, clientID, direction, sender, callbackURL, TTL, function (errTobj, resTobj) {
+         if (errTobj) {
+         console.log("Error in TokenObject creation " + errTobj);
+         //res.end("Error in TokenObject creation "+errTobj);
+         callback(errTobj, undefined);
+         }
+         else
+         {
+         /!*redisManager.ResourceObjectCreator(clientID,topicID,TTL,function(errSet,resSet)
+         {
+         if(errSet)
+         {
+         console.log("Resource object creation failed "+errSet);
+         res.end("Resource object creation failed "+errSet);
+         }
+         else
+         {
+         console.log("Resource object creation Succeeded "+resSet);*!/
+         var msgObj={
+         "Message":message,
+         "TopicKey":topicID
+         };
+         socket.emit('message',msgObj);
+         callback(undefined,topicID);
+         /!*    }
+
+         });*!/
+
+         }
+         });
+
+         }
+         else
+         {
+         callback(new Error
+         ("Invlid Client data"+
+         clientID),undefined);
+         }
+         }
+
+         });*/
+
     } catch (e) {
         callback(e,undefined);
     }
 
 };
-QueuedContinueMessageSender = function (messageObj,callback) {
+
+QueuedContinueMessageSender = function (messageObj,socketObj,callback) {
 
 
     try
@@ -1445,53 +2211,102 @@ QueuedContinueMessageSender = function (messageObj,callback) {
         var callbackObj = JSON.parse(messageObj);
         var message = callbackObj.Message;
         var topicKey = callbackObj.Topic;
-        var Persistency = true;
+        var eventName=callbackObj.eventName;
+        var eventUuid=callbackObj.eventUuid;
 
 
         redisManager.TopicObjectPicker(topicKey, TTL, function (e, r) {
 
-            if (e) {
+            if (e)
+            {
                 console.log(e);
                 callback(e, undefined);
             }
-            else {
-                if (r == null || r == "") {
+            else
+            {
+                if (r == null || r == "")
+                {
                     console.log("Invalid or Expired Token given, Please try from initial step");
                     callback(new Error("Invalid Topic"), undefined);
                 }
                 else {
                     // console.log("Got token Data "+r);
-                    redisManager.CheckClientAvailability(r.Client, function (errAvbl, resAvbl) {
+                    /* redisManager.CheckClientAvailability(r.Client, function (errAvbl, resAvbl) {
 
-                        console.log("Checking result " + resAvbl);
+                     console.log("Checking result " + resAvbl);
 
-                        if (resAvbl && Persistency) {
-                            console.log("Client is not available.......................");
-                            if (errAvbl) {
-                                console.log("Error in Checking Availability ", errAvbl);
-                                callback(errAvbl, undefined);
+                     if (resAvbl && Persistency) {
+                     console.log("Client is not available.......................");
+                     if (errAvbl)
+                     {
+                     console.log("Error in Checking Availability ", errAvbl);
+                     callback(errAvbl, undefined);
 
-                            }
+                     }
 
+                     }
+                     else {
+                     if (Clients[r.Client]) {
+                     var socket = Clients[r.Client];
+                     var msgObj = {
+
+                     "Message": message,
+                     "TopicKey": topicKey
+                     };
+                     socket.emit('message', msgObj);
+                     callback(undefined, topicKey);
+                     }
+                     else {
+                     callback(new Error("Client unavailable " + r.Client), undefined);
+                     }
+                     }
+
+
+                     });*/
+                    if(Clients[r.Client])
+                    {
+                        socket=socketObj;
+                        console.log("Destination available");
+
+                        var msgObj={
+
+                            "Message":message,
+                            "TopicKey":topicKey,
+                            "eventName":eventName,
+                            "eventUuid":eventUuid
+
+                        };
+                        if(eventName=="agent_connected")
+                        {
+                            socket.emit('agent_connected',msgObj);
+                            console.log("Event notification sent : "+JSON.stringify(msgObj));
                         }
-                        else {
-                            if (Clients[r.Client]) {
-                                var socket = Clients[r.Client];
-                                var msgObj = {
-
-                                    "Message": message,
-                                    "TopicKey": topicKey
-                                };
-                                socket.emit('message', msgObj);
-                                callback(undefined, topicKey);
-                            }
-                            else {
-                                callback(new Error("Client unavailable " + r.Client), undefined);
-                            }
+                        else if(eventName=="agent_disconnected")
+                        {
+                            socket.emit('agent_disconnected',msgObj);
+                            console.log("Event notification sent : "+JSON.stringify(msgObj));
+                        }
+                        else if(eventName=="agent_found") {
+                            socket.emit('agent_found',msgObj);
+                            console.log("Event notification sent : "+JSON.stringify(msgObj));
+                        }
+                        else if(eventName=="agent_rejected")
+                        {
+                            socket.emit('agent_rejected',msgObj);
+                            console.log("Event notification sent : "+JSON.stringify(msgObj));
+                        }
+                        else
+                        {
+                            socket.emit('message',msgObj);
+                            console.log("Message sent : "+JSON.stringify(msgObj));
                         }
 
-
-                    });
+                        callback(undefined,"Success");
+                    }
+                    else
+                    {
+                        callback(new Error("No Instance found"),undefined);
+                    }
 
 
                 }
@@ -1520,7 +2335,7 @@ QueuedMessagesPicker = function (clientID,callback) {
 
 };
 
-QueuedMessageOperator = function (msgObj) {
+QueuedMessageOperator = function (msgObj,socketObj) {
 
     try {
         var topicKey = JSON.parse(msgObj.Callback).Topic;
@@ -1532,7 +2347,7 @@ QueuedMessageOperator = function (msgObj) {
         {
             if (MessageType == "GENERAL")
             {
-                QueuedInitiateMessageSender(msgObj, function (errInitiate, resInitiate) {
+                QueuedInitiateMessageSender(msgObj,socketObj, function (errInitiate, resInitiate) {
                     if (errInitiate) {
                         console.log("Error in Queued Message Sending " + errInitiate);
                     }
@@ -1605,7 +2420,7 @@ QueuedMessageOperator = function (msgObj) {
         {
             console.log("Continues Messages");
 
-            QueuedContinueMessageSender(msgObj.Callback, function (errConMsg, resConMsg) {
+            QueuedContinueMessageSender(msgObj.Callback,socketObj, function (errConMsg, resConMsg) {
 
                 if (errConMsg)
                 {
@@ -2030,7 +2845,18 @@ InitiateSubscriber = function (clientID,msgObj,callback) {
             }
         }
     });
-}
+};
+
+GooglePushMessageSender = function (clientId,msgObj,callback) {
+    var regToken=DBController.GoogleNotificationKeyPicker(clientId);
+    var message = new gcm.Message();
+    message.addData(msgObj.eventName, msgObj);
+
+    Sender.send(message, { registrationTokens: regToken }, function (err, response) {
+        callback(err,response);
+    });
+
+};
 
 function Crossdomain(req,res,next){
 

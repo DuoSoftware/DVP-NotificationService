@@ -32,11 +32,12 @@ module.exports = {
   },
   "Socket":
   {
-        "port":"8001"
+    "port":"8001"
   },
   "TTL":
   {
     "ttl":"1000"
   },
-  "ID":"1"
+  "ID":"1",
+  "SENDER":"260058487091"
 };
