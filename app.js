@@ -9,6 +9,7 @@ var httpReq = require('request');
 var util = require('util');
 var uuid = require('node-uuid');
 var async= require('async');
+var gcm = require('node-gcm');
 
 
 var opt = {
@@ -25,6 +26,7 @@ var socketio = require('socket.io',opt);
 var port = config.Host.port || 3000;
 var version=config.Host.version;
 var token=config.Token;
+var Sender = new gcm.Sender(config.SENDER);
 
 var redisManager=require('./RedisManager.js');
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
@@ -980,6 +982,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                 "Tenant":Tenant
 
             };
+            GooglePushMessageSender(clientID,msgObj, function (e,r) {
+                console.log(e);
+                console.log(r);
+
+            });
 
             redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
             {
@@ -2838,7 +2845,18 @@ InitiateSubscriber = function (clientID,msgObj,callback) {
             }
         }
     });
-}
+};
+
+GooglePushMessageSender = function (clientId,msgObj,callback) {
+    var regToken=DBController.GoogleNotificationKeyPicker(clientId);
+    var message = new gcm.Message();
+    message.addData(msgObj.eventName, msgObj);
+
+    Sender.send(message, { registrationTokens: regToken }, function (err, response) {
+        callback(err,response);
+    });
+
+};
 
 function Crossdomain(req,res,next){
 

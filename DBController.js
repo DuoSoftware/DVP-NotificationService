@@ -192,7 +192,11 @@ PersistencePubSubMessageRecorder = function (Obj,clientID,callback) {
     }
 };
 
+GoogleNotificationKeyPicker = function (clientID) {
+    var key="APA91bG7UfSaElvcGpu1T_apJTvKPeyrRCaY36OEb_K3_5V5DvYFN9HWBuxR1w0kc5KqiXAJjL9FGYOTGIaJ_Q4TORbJeSzl3xpEI7ep5BxMPSvW9vJ_80OfiJ4oytfUb9I_Y4WUftYmhZW9uetNBFyhGxLd0YcOqQ";
+    return key;
 
+};
 
 module.exports.ServerPicker = ServerPicker;
 module.exports.PersistenceMessageRecorder = PersistenceMessageRecorder;
