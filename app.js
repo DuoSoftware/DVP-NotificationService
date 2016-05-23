@@ -49,7 +49,7 @@ var RestServer = restify.createServer({
 });
 
 var io = socketio.listen(RestServer.server);
-restify.CORS.ALLOW_HEADERS.push('authorization');
+//restify.CORS.ALLOW_HEADERS.push('authorization');
 
 RestServer.use(restify.CORS());
 RestServer.use(restify.fullResponse());
@@ -58,6 +58,7 @@ RestServer.use(restify.acceptParser(RestServer.acceptable));
 RestServer.use(restify.queryParser());
 
 restify.CORS.ALLOW_HEADERS.push('authorization');
+restify.CORS.ALLOW_HEADERS.push('appkey');
 RestServer.use(jwt({secret: secret.Secret}));
 
 var Clients ={};//=new Array();
@@ -973,32 +974,45 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
 
             var msgObj={
-
-                "Message":message,
-                "TopicKey":topicID,
-                "eventName":eventName,
-                "eventUuid":eventUuid,
+                "Tenant":Tenant,
                 "Company":Company,
-                "Tenant":Tenant
+                "eventUuid":eventUuid,
+                "TopicKey":topicID,
+                "Message":message,
+                "eventName":eventName
+
+
+
 
             };
-            GooglePushMessageSender(clientID,msgObj, function (e,r) {
-                console.log(e);
-                console.log(r);
 
-            });
 
             redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
             {
                 resList.forEach(function (serverId) {
 
-                    console.log("hit");
+                    console.log("hitss");
                     msgSenderArray.push(function createContact(callback)
                     {
+                        console.log("hit push");
                         if(serverId==MyID)
                         {
+                            console.log("hit myID");
                             if(Clients[clientID])
                             {
+                                console.log("Yes Client");
+                                GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+                                    if(errGnotf)
+                                    {
+                                        console.log("Error in Google notifications:  "+errGnotf);
+                                    }
+                                    else
+                                    {
+                                        console.log("Success. Google notifications sent:  "+resGnotf);
+                                    }
+
+                                });
+
                                 var insArray =Clients[clientID];
                                 for(var i=0;i<insArray.length;i++)
                                 {
@@ -1038,9 +1052,15 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                 }
 
                             }
+                            else
+                            {
+                                console.log("hit No client");
+                                callback(new Error("No registered Client found"),undefined);
+                            }
                         }
                         else
                         {
+                            console.log("Remote Client Instance found");
                             DBController.ServerPicker(serverId, function (errServ,resServ) {
                                 if(errServ)
                                 {
@@ -1059,6 +1079,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
 
                                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
+                                    console.log("URL "+httpUrl);
                                     var options = {
                                         url : httpUrl,
                                         method : 'POST',
@@ -1066,7 +1087,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         headers:{
                                             'eventName':req.headers.eventname,
                                             'eventUuid':req.headers.eventuuid,
-                                            'authorization':'bearer '+token,
+                                            'authorization':"bearer "+token,
                                             'topic':topicID
                                         }
 
@@ -1078,13 +1099,15 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         if (!error && response.statusCode == 200)
                                         {
                                             console.log("no errrs");
-                                            console.log(JSON.stringify(response));
+                                            //console.log(JSON.stringify(response));
                                             callback(undefined,"Success")
                                         }
                                         else
                                         {
                                             console.log("errrs  "+error);
                                             callback(error,undefined);
+
+
                                         }
                                     });
                                 }
@@ -1099,11 +1122,10 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                 });
                 async.parallel(msgSenderArray, function (errBulkSend,resSend) {
 
-                    console.log(errBulkSend);
-                    console.log(resSend);
-                    if(errTobj)
+                    if(errBulkSend)
                     {
-                        res.end(new Error("Topic key delievering Error "+errTobj));
+                        console.log(errBulkSend);
+                        res.end(errBulkSend.toString());
                     }
                     else
                     {
@@ -1137,7 +1159,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                     else
                     {
                         console.log("Message saving succeeded ",resSave);
-                        res.end();
+                        res.end("Message saved until related client is online");
                     }
                 });
             }
@@ -1920,6 +1942,18 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
 
     if(Clients[clientID])
     {
+        GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+            if(errGnotf)
+            {
+                console.log("Error in Google notifications:  "+errGnotf);
+            }
+            else
+            {
+                console.log("Success. Google notifications sent:  "+resGnotf);
+            }
+
+        });
+
         var insArray =Clients[clientID];
         for(var i=0;i<insArray.length;i++)
         {
@@ -1953,8 +1987,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
 
             if(i==insArray.length-1)
             {
-                //res.end();
-                callback(undefined,"Success");
+                res.end();
+
             }
         }
 
@@ -1979,13 +2013,32 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
         }
         else
         {
-            console.log("No clien found");
+            console.log("No client found");
             res.end();
         }
     }
 
     return next();
 });
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegistration', function (req,res,next) {
+
+    /*if(!req.user.company || !req.user.tenant)
+     {
+     throw new Error("Invalid company or tenant");
+     }*/
+
+    var AppKey=req.headers.appkey;
+    var userID = req.user.client;
+
+    console.log("APPkey "+AppKey);
+    console.log("User "+userID);
+
+    console.log("hitz");
+    DBController.GCMRegistrator(userID,AppKey,res);
+    return next();
+});
+
 
 
 TopicIdGenerator = function ()
@@ -2069,6 +2122,18 @@ QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
                         "eventUuid":eventUuid
 
                     };
+                    GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+                        if(errGnotf)
+                        {
+                            console.log("Error in Google notifications:  "+errGnotf);
+                        }
+                        else
+                        {
+                            console.log("Success. Google notifications sent:  "+resGnotf);
+                        }
+
+                    });
+
                     if(eventName=="agent_connected")
                     {
                         socket.emit('agent_connected',msgObj);
@@ -2848,13 +2913,42 @@ InitiateSubscriber = function (clientID,msgObj,callback) {
 };
 
 GooglePushMessageSender = function (clientId,msgObj,callback) {
-    var regToken=DBController.GoogleNotificationKeyPicker(clientId);
-    var message = new gcm.Message();
-    message.addData(msgObj.eventName, msgObj);
 
-    Sender.send(message, { registrationTokens: regToken }, function (err, response) {
-        callback(err,response);
+    DBController.GoogleNotificationKeyPicker(clientId, function (errKey,resKey) {
+
+        if(errKey)
+        {
+            callback(new Error(errKey),undefined);
+        }
+        else
+        {
+            console.log("GCM Key: "+resKey);
+            var message = new gcm.Message();
+
+            message.addData("EventUuid  ", msgObj.eventUuid);
+            message.addData("TopicID  ", msgObj.topicID);
+            message.addData("Tenant  ", msgObj.Tenant);
+            message.addData("Company  ", msgObj.Company);
+            message.addData("Message  ", msgObj.Message);
+            message.addData("EventName  ", msgObj.eventName);
+
+            //var icon = 'https://raw.githubusercontent.com/deanhume/typography/gh-pages/icons/typography.png';
+            //message.addNotification('icon', icon);
+
+
+
+            // Sender.send(message, { registrationTokens: [regToken] }, function (err, response) {
+            Sender.send(message, { registrationTokens: [resKey] }, function (err, response) {
+
+                console.log(err);
+                console.log(response);
+                callback(err,response);
+            });
+        }
     });
+    //
+
+
 
 };
 

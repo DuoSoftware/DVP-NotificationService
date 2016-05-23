@@ -120,21 +120,18 @@ PersistenceGroupMessageRecorder = function (Obj,callback) {
         };
 
         console.log("Saving " + CallbackObj);
-        try {
-            var newMessageObject = DbConn.PersistenceMessages
-                .build(
-                {
-                    From: dataBody.From,
-                    To: dataBody.To,
-                    Time: Date.now(),
-                    Callback: JSON.stringify(CallbackObj)
 
-                }
-            )
-        }
-        catch (e) {
-            callback(e, undefined);
-        }
+        var newMessageObject = DbConn.PersistenceMessages
+            .build(
+            {
+                From: dataBody.From,
+                To: dataBody.To,
+                Time: Date.now(),
+                Callback: JSON.stringify(CallbackObj)
+
+            }
+        );
+
 
         newMessageObject.save().then(function (resSave) {
             callback(undefined, resSave)
@@ -192,9 +189,58 @@ PersistencePubSubMessageRecorder = function (Obj,clientID,callback) {
     }
 };
 
-GoogleNotificationKeyPicker = function (clientID) {
-    var key="APA91bG7UfSaElvcGpu1T_apJTvKPeyrRCaY36OEb_K3_5V5DvYFN9HWBuxR1w0kc5KqiXAJjL9FGYOTGIaJ_Q4TORbJeSzl3xpEI7ep5BxMPSvW9vJ_80OfiJ4oytfUb9I_Y4WUftYmhZW9uetNBFyhGxLd0YcOqQ";
-    return key;
+GCMRegistrator = function (clientID,regKey,res) {
+
+    try {
+        var gcmKey = DbConn.GCMKeys
+            .build(
+            {
+                ClientID: clientID,
+                GCMKey: regKey
+
+            }
+        );
+
+
+        gcmKey.save().then(function (resSave) {
+
+            console.log("GCM record successfully saved");
+            res.end("Success");
+
+        }).catch(function (errSave) {
+            console.log("GCM record insertion failed");
+            res.end(JSON.stringify(errSave));
+        });
+    } catch (ex) {
+        console.log("Exception in GCM Recorder");
+        res.end(JSON.stringify(ex));
+    }
+
+
+};
+
+GoogleNotificationKeyPicker = function (clientID,callback) {
+
+    DbConn.GCMKeys.find({where:{ClientID:clientID}}).then(function (resKeys) {
+
+        console.log("key : "+resKeys.GCMKey);
+        if(resKeys)
+        {
+            callback(undefined,resKeys.GCMKey)
+        }
+        else
+        {
+            console.log("Key not found");
+            callback("Key not found",undefined);
+
+        }
+
+    }).catch(function (errKeys) {
+        console.log("Error in key searching ",errKeys);
+        callback("Error in key searching "+errKeys,undefined);
+    });
+
+
 
 };
 
@@ -204,3 +250,5 @@ module.exports.QueuedMessagesPicker = QueuedMessagesPicker;
 module.exports.PersistenceMessageRemover = PersistenceMessageRemover;
 module.exports.PersistenceGroupMessageRecorder = PersistenceGroupMessageRecorder;
 module.exports.PersistencePubSubMessageRecorder = PersistencePubSubMessageRecorder;
+module.exports.GoogleNotificationKeyPicker = GoogleNotificationKeyPicker;
+module.exports.GCMRegistrator = GCMRegistrator;
