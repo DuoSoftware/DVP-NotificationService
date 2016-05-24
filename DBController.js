@@ -221,7 +221,7 @@ GCMRegistrator = function (clientID,regKey,res) {
 
 GoogleNotificationKeyPicker = function (clientID,callback) {
 
-    DbConn.GCMKeys.find({where:{ClientID:clientID}}).then(function (resKeys) {
+    DbConn.GCMKeys.findAll({where:{ClientID:clientID}}).then(function (resKeys) {
 
         console.log("key : "+resKeys.GCMKey);
         if(resKeys)

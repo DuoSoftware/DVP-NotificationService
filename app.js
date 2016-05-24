@@ -991,16 +991,16 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
             {
                 resList.forEach(function (serverId) {
 
-                    console.log("hitss");
+
                     msgSenderArray.push(function createContact(callback)
                     {
-                        console.log("hit push");
+
                         if(serverId==MyID)
                         {
-                            console.log("hit myID");
+
                             if(Clients[clientID])
                             {
-                                console.log("Yes Client");
+
                                 GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
                                     if(errGnotf)
                                     {
