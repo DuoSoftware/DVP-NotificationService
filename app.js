@@ -2021,7 +2021,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegistration', function (req,res,next) {
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
     /*if(!req.user.company || !req.user.tenant)
      {
@@ -2922,15 +2922,17 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
         }
         else
         {
-            console.log("GCM Key: "+resKey);
+            console.log("type: "+typeof (resKey));
             var message = new gcm.Message();
 
-            message.addData("EventUuid  ", msgObj.eventUuid);
-            message.addData("TopicID  ", msgObj.topicID);
-            message.addData("Tenant  ", msgObj.Tenant);
-            message.addData("Company  ", msgObj.Company);
-            message.addData("Message  ", msgObj.Message);
-            message.addData("EventName  ", msgObj.eventName);
+            /*message.addData("EventUuid  ", msgObj.eventUuid);
+             message.addData("TopicID  ", msgObj.topicID);
+             message.addData("Tenant  ", msgObj.Tenant);
+             message.addData("Company  ", msgObj.Company);
+             message.addData("Message  ", msgObj.Message);
+             message.addData("EventName  ", msgObj.eventName);*/
+
+            message.addNotification(msgObj);
 
             //var icon = 'https://raw.githubusercontent.com/deanhume/typography/gh-pages/icons/typography.png';
             //message.addNotification('icon', icon);
@@ -2938,7 +2940,8 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
 
 
             // Sender.send(message, { registrationTokens: [regToken] }, function (err, response) {
-            Sender.send(message, { registrationTokens: [resKey] }, function (err, response) {
+            Sender.send(message, { registrationTokens: resKey }, function (err, response) {
+
 
                 console.log(err);
                 console.log(response);

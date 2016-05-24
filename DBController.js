@@ -221,12 +221,21 @@ GCMRegistrator = function (clientID,regKey,res) {
 
 GoogleNotificationKeyPicker = function (clientID,callback) {
 
-    DbConn.GCMKeys.findAll({where:{ClientID:clientID}}).then(function (resKeys) {
+    DbConn.GCMKeys.findAll({attributes: ['GCMKey'],where:{ClientID:clientID}}).then(function (resKeys) {
 
         console.log("key : "+resKeys.GCMKey);
         if(resKeys)
         {
-            callback(undefined,resKeys.GCMKey)
+            var GCMkeys=[];
+            for(var i=0;i<resKeys.length;i++)
+            {
+                GCMkeys[i]=resKeys[i].GCMKey;
+                if(i==resKeys.length-1)
+                {
+                    callback(undefined,GCMkeys)
+                }
+            }
+
         }
         else
         {
