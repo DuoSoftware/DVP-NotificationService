@@ -49,7 +49,7 @@ function registerOnServer(registrationId,secureKey)
 {
     var xmlHttp = null;
     xmlHttp = new XMLHttpRequest();
-    xmlHttp.open("POST", "http://127.0.0.1:8089/DVP/API/1.0.0.0/NotificationService/Notification/GCMRegistration", true);
+    xmlHttp.open("POST", "http://notificationservice.104.131.67.21.xip.io/DVP/API/1.0.0.0/NotificationService/Notification/GCMRegistration", true);
     xmlHttp.setRequestHeader("authorization", "bearer "+secureKey);
     xmlHttp.setRequestHeader("appkey", registrationId);
     xmlHttp.send();
