@@ -102,6 +102,7 @@ function firstTimeRegistration() {
 // Set up a listener for GCM message event.
 chrome.gcm.onMessage.addListener(messageReceived);
 
+
 // Set up listeners to trigger the first time registration.
 chrome.runtime.onInstalled.addListener(firstTimeRegistration);
 chrome.runtime.onStartup.addListener(firstTimeRegistration);
