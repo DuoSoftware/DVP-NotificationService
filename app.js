@@ -1125,12 +1125,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                     if(errBulkSend)
                     {
                         console.log(errBulkSend);
-                        res.end(errBulkSend.toString());
+                        //res.end(errBulkSend.toString());
                     }
-                    else
-                    {
-                        res.end(topicID);
-                    }
+
 
                 });
 
@@ -1139,6 +1136,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
 
 
+            res.end(topicID);
 
 
         }
