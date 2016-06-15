@@ -45,6 +45,32 @@ function onClientdetailsRecieved(Data)
     console.log("ClientID "+ClientID);
 }
 
+function  onConferenceCreate(reason)
+{
+    console.log("ConferenceCreate "+JSON.stringify(reason));
+};
+
+function  onConferenceDestroy(reason)
+{
+    console.log("ConferenceDestroy "+JSON.stringify(reason));
+};
+
+function  onConferenceMemberJoined(reason)
+{
+    console.log("ConferenceMemberJoined "+JSON.stringify(reason));
+};
+
+function  onConferenceMemberLeft(reason)
+{
+    console.log("ConferenceMemberLeft "+JSON.stringify(reason));
+};
+
+function  ConferenceMemberStatus(reason)
+{
+    console.log("ConferenceMemberStatus "+JSON.stringify(reason));
+};
+
+
 var configOptions =
 {
     URL:"http://127.0.0.1:8089",
@@ -55,7 +81,13 @@ var configOptions =
         onAgentConnected:onAgentConnected,
         onAgentDisconnected:onAgentDisconnected,
         onClientdetailsRecieved:onClientdetailsRecieved,
-        onAgentRejected:onAgentRejected
+        onAgentRejected:onAgentRejected,
+        onConferenceCreate:onConferenceCreate,
+        onConferenceDestroy:onConferenceDestroy,
+        onConferenceMemberJoined:onConferenceMemberJoined,
+        onConferenceMemberLeft:onConferenceMemberLeft,
+        ConferenceMemberStatus:ConferenceMemberStatus,
+
 
     },
     jwt:token

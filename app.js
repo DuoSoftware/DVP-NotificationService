@@ -102,7 +102,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 })).on('authenticated',function (socket) {
 
     console.log('authenticated received ');
-    var clientID = socket.decoded_token.client;
+    var clientID = socket.decoded_token.iss;
     socket.emit('clientdetails',clientID);
     console.log(clientID);
 
@@ -128,8 +128,6 @@ io.sockets.on('connection',socketioJwt.authorize({
             Clients[clientID]=curSockArray;
 
         }
-
-
 
         redisManager.LocationListPicker(clientID, function (errList,resList) {
 
@@ -1666,6 +1664,104 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     }
 });
 
+/*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
+ {
+ if(!req.user.company || !req.user.tenant)
+ {
+ throw new Error("Invalid company or tenant");
+ }
+
+ var Company=req.user.company;
+ var Tenant=req.user.tenant;
+
+ var userID= req.params.username;
+
+ redisManager.IsRegisteredClient(userID, function (errReg,status,resReg) {
+
+ if(errReg)
+ {
+ console.log("Error in client registration checking "+errReg);
+ res.end();
+ }
+ else
+ {
+ if(resReg && status)
+ {
+ var key = req.body.querykey;
+
+ redisManager.QuerySubscriberRecorder(key,userID, function (errSubs,resSubs) {
+
+ if(errSubs)
+ {
+ console.log("Subcriber record saving error "+errSubs);
+ res.end();
+ }
+ else
+ {
+ if(!resSubs)
+ {
+ console.log("Unable to save subs record");
+ res.end();
+ }
+ else
+ {
+ req.body.RefId=key;
+ var ServerIP="127.0.0.1:8050";
+ var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
+ var msgObj=req.body;
+ // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
+ msgObj.CallbackURL="http://192.168.0.88:8080/DVP/API/6.0/NotificationService/Notification/Publish";
+ var options = {
+ url : httpUrl,
+ method : 'POST',
+ json : msgObj
+
+ };
+
+ console.log(options);
+ try
+ {
+ httpReq(options, function (error, response, body)
+ {
+ if (!error && response.statusCode == 200)
+ {
+ console.log("no errrs in request 200 ok");
+ //callback(undefined,response.statusCode);
+ res.end(key);
+
+ }
+ else
+ {
+ console.log("errrs in request  "+error);
+ res.end("Error");
+ //callback(error,undefined);
+
+ }
+ });
+ }
+ catch(ex)
+ {
+ console.log("ex..."+ex);
+ res.end("Exception");
+ //callback(ex,undefined);
+
+ }
+
+
+ }
+ }
+ });
+ }
+ else
+ {
+ console.log("Client ID  not found  "+userID);
+ res.end();
+ }
+ }
+ });
+
+ return next();
+ });*/
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
@@ -1677,95 +1773,71 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
     var Tenant=req.user.tenant;
 
     var userID= req.params.username;
+    console.log(req.body.querykey);
 
-    redisManager.IsRegisteredClient(userID, function (errReg,status,resReg) {
+    redisManager.QuerySubscriberRecorder("CONFERENCE:TESTCONF",userID, function (errSubs,resSubs) {
 
-        if(errReg)
+
+        if(errSubs)
         {
-            console.log("Error in client registration checking "+errReg);
+            console.log("Subcriber record saving error "+errSubs);
             res.end();
         }
+
         else
         {
-            if(resReg && status)
-            {
-                var key = "Query:" + uuid.v1();
+            /*req.body.RefId=key;
+             var ServerIP="127.0.0.1:8050";
+             var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
+             var msgObj=req.body;
+             // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
+             msgObj.CallbackURL="http://192.168.0.88:8080/DVP/API/6.0/NotificationService/Notification/Publish";
+             var options = {
+             url : httpUrl,
+             method : 'POST',
+             json : msgObj
 
-                redisManager.QuerySubscriberRecorder(key,userID, function (errSubs,resSubs) {
+             };
 
-                    if(errSubs)
-                    {
-                        console.log("Subcriber record saving error "+errSubs);
-                        res.end();
-                    }
-                    else
-                    {
-                        if(!resSubs)
-                        {
-                            console.log("Unable to save subs record");
-                            res.end();
-                        }
-                        else
-                        {
-                            req.body.RefId=key;
-                            var ServerIP="127.0.0.1:8050";
-                            var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
-                            var msgObj=req.body;
-                            // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
-                            msgObj.CallbackURL="http://192.168.0.88:8080/DVP/API/6.0/NotificationService/Notification/Publish";
-                            var options = {
-                                url : httpUrl,
-                                method : 'POST',
-                                json : msgObj
+             console.log(options);
+             try
+             {
+             httpReq(options, function (error, response, body)
+             {
+             if (!error && response.statusCode == 200)
+             {
+             console.log("no errrs in request 200 ok");
+             //callback(undefined,response.statusCode);
+             res.end(key);
 
-                            };
+             }
+             else
+             {
+             console.log("errrs in request  "+error);
+             res.end("Error");
+             //callback(error,undefined);
 
-                            console.log(options);
-                            try
-                            {
-                                httpReq(options, function (error, response, body)
-                                {
-                                    if (!error && response.statusCode == 200)
-                                    {
-                                        console.log("no errrs in request 200 ok");
-                                        //callback(undefined,response.statusCode);
-                                        res.end(key);
+             }
+             });
+             }
+             catch(ex)
+             {
+             console.log("ex..."+ex);
+             res.end("Exception");
+             //callback(ex,undefined);
 
-                                    }
-                                    else
-                                    {
-                                        console.log("errrs in request  "+error);
-                                        res.end("Error");
-                                        //callback(error,undefined);
+             }*/
+            console.log("Successfully subscribed User "+userID);
+            res.end();
 
-                                    }
-                                });
-                            }
-                            catch(ex)
-                            {
-                                console.log("ex..."+ex);
-                                res.end("Exception");
-                                //callback(ex,undefined);
-
-                            }
-
-
-                        }
-                    }
-                });
-            }
-            else
-            {
-                console.log("Client ID  not found  "+userID);
-                res.end();
-            }
         }
+
     });
 
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
+/*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
     try
     {
@@ -1825,6 +1897,314 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
             res.end();
 
         }
+    }
+    catch (e)
+    {
+        console.log(e);
+        res.end();
+    }
+    return next();
+
+});*/
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
+    console.log("Hit");
+    var subscriberArray=[];
+    var eventName=req.headers.eventname;
+    var eventUuid=req.headers.eventuuid;
+
+    try
+    {
+        if(!req.user.company || !req.user.tenant)
+        {
+            throw new Error("Invalid company or tenant");
+        }
+
+        var Company=req.user.company;
+        var Tenant=req.user.tenant;
+
+        //var queryKey = req.body.querykey;
+        var queryKey = "CONFERENCE:TESTCONF";
+        var msgObj = "Done";
+
+        if(queryKey)
+        {
+            redisManager.QueryKeySubscriberPicker(queryKey, function (errSubscribers,resSubscribers)
+            {
+                if(errSubscribers)
+                {
+                    console.log(errSubscribers);
+                    res.end();
+                }
+                else
+                {
+                    if(!resSubscribers)
+                    {
+                        console.log("No Subscribers found");
+                        res.end();
+                    }
+                    else
+                    {
+                        resSubscribers.forEach(function (clientID) {
+
+                            subscriberArray.push(function createContact(callback)
+                            {
+
+                                redisManager.LocationListPicker(clientID, function (errList,resList)
+                                {
+
+                                    if(resList)
+                                    {
+                                        if(resList.indexOf(MyID)!=-1 && resList.length==1)
+                                        {
+                                            if(Clients[clientID])
+                                            {
+                                                var instanceArray = Clients[clientID];
+                                                for(var i=0;i<instanceArray.length;i++)
+                                                {
+                                                    var instanceSocket = instanceArray[i];
+                                                    instanceSocket.emit(eventName,msgObj);
+
+                                                    if(i==instanceArray.length-1)
+                                                    {
+                                                        callback(undefined,"Success");
+                                                    }
+
+                                                }
+                                            }
+                                        }
+                                        else if(resList.indexOf(MyID)!=-1 && resList.length>1)
+                                        {
+                                            for(var i=0;i<resList.length;i++)
+                                            {
+                                                if(resList[i]!==MyID)
+                                                {
+                                                    DBController.ServerPicker(resList[i], function (errServ,resServ) {
+                                                        if(errServ)
+                                                        {
+
+                                                        }
+                                                        else if(!resServ)
+                                                        {
+
+                                                        }
+                                                        else
+                                                        {
+                                                            var ServerIP = resServ.URL;
+                                                            console.log(ServerIP);
+
+
+                                                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/publish/fromRemoteserver', ServerIP, version);
+                                                            console.log("URL "+httpUrl);
+                                                            var options = {
+                                                                url : httpUrl,
+                                                                method : 'POST',
+                                                                json : req.body,
+                                                                headers:{
+                                                                    'eventName':eventName,
+                                                                    'eventUuid':eventUuid,
+                                                                    'authorization':"bearer "+token,
+                                                                    'topic':eventUuid
+                                                                }
+
+                                                            };
+
+
+                                                            httpReq(options, function (error, response, body)
+                                                            {
+                                                                if (!error && response.statusCode == 200)
+                                                                {
+                                                                    console.log("no errrs");
+                                                                    //console.log(JSON.stringify(response));
+
+                                                                }
+                                                                else
+                                                                {
+                                                                    console.log("errrs  "+error);
+
+
+                                                                }
+                                                                if(i==resList.length-1)
+                                                                {
+                                                                    callback(undefined,"Success");
+                                                                }
+                                                            });
+                                                        }
+
+                                                    });
+                                                }
+                                                else
+                                                {
+                                                    if(Clients[clientID])
+                                                    {
+                                                        var instanceArray = Clients[clientID];
+                                                        for(var j=0;i<instanceArray.length;j++)
+                                                        {
+                                                            var instanceSocket = instanceArray[j];
+                                                            instanceSocket.emit(eventName,msgObj);
+
+                                                        }
+                                                        if(i==resList.length-1)
+                                                        {
+                                                            callback(undefined,"Success");
+                                                        }
+                                                    }
+                                                }
+
+
+                                            }
+                                        }
+                                        else
+                                        {
+                                            for(var i=0;i<resList.length;i++)
+                                            {
+                                                DBController.ServerPicker(resList[i], function (errServ,resServ) {
+                                                    if(errServ)
+                                                    {
+
+                                                    }
+                                                    else if(!resServ)
+                                                    {
+
+                                                    }
+                                                    else
+                                                    {
+                                                        var ServerIP = resServ.URL;
+                                                        console.log(ServerIP);
+
+
+                                                        var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/publish/fromRemoteserver', ServerIP, version);
+                                                        console.log("URL "+httpUrl);
+                                                        var options = {
+                                                            url : httpUrl,
+                                                            method : 'POST',
+                                                            json : req.body,
+                                                            headers:{
+                                                                'eventName':eventName,
+                                                                'eventUuid':eventUuid,
+                                                                'authorization':"bearer "+token,
+                                                                'topic':eventUuid
+                                                            }
+
+                                                        };
+
+
+                                                        httpReq(options, function (error, response, body)
+                                                        {
+                                                            if (!error && response.statusCode == 200)
+                                                            {
+                                                                console.log("no errrs");
+                                                                //console.log(JSON.stringify(response));
+
+                                                            }
+                                                            else
+                                                            {
+                                                                console.log("errrs  "+error);
+
+
+                                                            }
+
+                                                            if(i==resList.length-1)
+                                                            {
+                                                                callback(undefined,"Success");
+                                                            }
+                                                        });
+                                                    }
+
+                                                });
+                                            }
+                                        }
+
+                                       /* for(var i=0;i<resList.length;i++)
+                                        {
+                                            if(MyID==resList[i])
+                                            {
+                                                if(Clients[clientID])
+                                                {
+                                                    var instanceArray = Clients[clientID];
+                                                    for(var i=0;i<instanceArray.length;i++)
+                                                    {
+                                                        var instanceSocket = instanceArray[i];
+                                                        instanceSocket.emit(eventName,msgObj);
+
+                                                    }
+
+                                                }
+                                            }
+                                        }*/
+                                    }
+
+                                });
+
+
+                            });
+                        });
+                        async.parallel(subscriberArray, function (errBulkSend,resSend) {
+
+                            if(errBulkSend)
+                            {
+                                console.log(errBulkSend);
+                                res.end();
+                                //res.end(errBulkSend.toString());
+                            }
+                            else
+                            {
+                                res.end();
+                            }
+
+
+                        });
+                    }
+                }
+            });
+        }
+
+       /* if(queryKey)
+        {
+            redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
+
+                if(errSubs)
+                {
+                    console.log(errSubs);
+                    res.end();
+                }
+                else
+                {
+                    if(!resSubs)
+                    {
+                        console.log("No Subscribers found");
+                        res.end();
+                    }
+                    else
+                    {
+                        PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
+
+                            if(errPublish)
+                            {
+                                //res.end("Error");
+                                console.log(errPublish);
+                                res.end();
+
+                            }
+                            else
+                            {
+                                console.log("Success");
+                                //res.end("Done");
+                                res.end();
+                            }
+                        });
+
+                    }
+                }
+
+            });
+        }
+        else
+        {
+            console.log("Invalid query key");
+            res.end();
+
+        }*/
     }
     catch (e)
     {
