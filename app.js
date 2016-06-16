@@ -13,8 +13,8 @@ var gcm = require('node-gcm');
 
 
 var opt = {
-    pingTimeout: 3000,
-    pingInterval: 3000,
+    pingTimeout: 60000,
+    pingInterval: 25000,
     transports: ['websocket'],
     allowUpgrades: false,
     cookie: false
@@ -1952,7 +1952,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                 redisManager.LocationListPicker(clientID, function (errList,resList)
                                 {
 
-                                    if(resList)
+                                    if(resList.length>0)
                                     {
                                         if(resList.indexOf(MyID)!=-1 && resList.length==1)
                                         {
@@ -1979,11 +1979,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                             {
                                                 if(resList[i]!==MyID)
                                                 {
-                                                    DBController.ServerPicker(resList[i], function (errServ,resServ) {
+                                                    DBController.ClientServerPicker(resList[i],i, function (errServ,resServ,index) {
                                                         if(errServ)
                                                         {
                                                             console.log("Error in Server picking "+errServ);
-                                                            if(i==resList.length-1)
+                                                            if(index==resList.length-1)
                                                             {
                                                                 callback(undefined,"Success");
                                                             }
@@ -1991,7 +1991,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                         else if(!resServ)
                                                         {
                                                             console.log("No server found ");
-                                                            if(i==resList.length-1)
+                                                            if(index==resList.length-1)
                                                             {
                                                                 callback(undefined,"Success");
                                                             }
@@ -2027,7 +2027,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                                 if (!error && response.statusCode == 200)
                                                                 {
                                                                     console.log("no errrs");
-                                                                    if(i>= resList.length)
+                                                                    if(index= resList.length)
                                                                     {
                                                                         callback(undefined,"Success");
                                                                     }
@@ -2037,7 +2037,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                                 else
                                                                 {
                                                                     console.log("errors  "+error);
-                                                                    if(i==resList.length-1)
+                                                                    if(index==resList.length-1)
                                                                     {
                                                                         callback(undefined,"Success");
                                                                     }
@@ -2074,17 +2074,19 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                         {
                                             for(var i=0;i<resList.length;i++)
                                             {
-                                                DBController.ServerPicker(resList[i], function (errServ,resServ) {
+                                                DBController.ClientServerPicker(resList[i],i, function (errServ,resServ,index) {
                                                     if(errServ)
                                                     {
-                                                        if(i==resList.length-1)
+                                                        console.log("Error in Server picking "+errServ);
+                                                        if(index==resList.length-1)
                                                         {
                                                             callback(undefined,"Success");
                                                         }
                                                     }
                                                     else if(!resServ)
                                                     {
-                                                        if(i==resList.length-1)
+                                                        console.log("No server found ");
+                                                        if(index==resList.length-1)
                                                         {
                                                             callback(undefined,"Success");
                                                         }
@@ -2093,6 +2095,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                     {
                                                         var ServerIP = resServ.URL;
                                                         console.log(ServerIP);
+                                                        req.body.To=clientID;
 
 
                                                         var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/publish/fromRemoteserver', ServerIP, version);
@@ -2113,23 +2116,29 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
 
                                                         httpReq(options, function (error, response, body)
                                                         {
+                                                            console.log("Error "+error);
+                                                            console.log("response "+response);
+
                                                             if (!error && response.statusCode == 200)
                                                             {
                                                                 console.log("no errrs");
+                                                                if(index= resList.length)
+                                                                {
+                                                                    callback(undefined,"Success");
+                                                                }
                                                                 //console.log(JSON.stringify(response));
 
                                                             }
                                                             else
                                                             {
-                                                                console.log("errrs  "+error);
-
+                                                                console.log("errors  "+error);
+                                                                if(index==resList.length-1)
+                                                                {
+                                                                    callback(undefined,"Success");
+                                                                }
 
                                                             }
 
-                                                            if(i==resList.length-1)
-                                                            {
-                                                                callback(undefined,"Success");
-                                                            }
                                                         });
                                                     }
 
@@ -2154,6 +2163,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                          }
                                          }
                                          }*/
+                                    }
+                                    else
+                                    {
+                                        console.log("No servers found");
+                                        callback(undefined,"Success");
                                     }
 
                                 });
@@ -2446,7 +2460,10 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/f
      throw new Error("Invalid company or tenant");
      }*/
 
+    console.log("Hit");
+
     var clientID= req.body.To;
+    console.log(clientID);
     var eventName=req.headers.eventname;
     var eventUuid=req.headers.eventuuid;
 
@@ -2458,6 +2475,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/f
         {
             var instanceSocket = insArray[i];
             instanceSocket.emit(eventName,req.body.message);
+
+            if(i==insArray.length-1)
+            {
+                res.end();
+            }
         }
     }
 

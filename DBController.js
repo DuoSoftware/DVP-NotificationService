@@ -24,6 +24,27 @@ ServerPicker = function (SID,callback) {
     }
 };
 
+ClientServerPicker = function (SID,index,callback) {
+
+
+    try {
+        DbConn.NotificationServer.find({where: {id: SID}}).then(function (resServ) {
+
+            if (resServ) {
+                callback(undefined, resServ,index);
+            }
+            else {
+                callback(new Error("Invalid ID"), undefined,index);
+            }
+        }).catch(function (errServ) {
+            console.log(errServ);
+            callback(errServ, undefined,index);
+        });
+    } catch (e) {
+        callback(e,undefined,index);
+    }
+};
+
 PersistenceMessageRecorder = function (Obj,callback) {
 
     try {
@@ -261,3 +282,4 @@ module.exports.PersistenceGroupMessageRecorder = PersistenceGroupMessageRecorder
 module.exports.PersistencePubSubMessageRecorder = PersistencePubSubMessageRecorder;
 module.exports.GoogleNotificationKeyPicker = GoogleNotificationKeyPicker;
 module.exports.GCMRegistrator = GCMRegistrator;
+module.exports.ClientServerPicker = ClientServerPicker;
