@@ -798,7 +798,7 @@ QueryKeySubscriberPicker = function (queryKey,callback) {
             }
             else {
 
-                if (resSubs)
+                if (resSubs.length>0)
                 {
                     callback(undefined, resSubs);
                 }
@@ -841,31 +841,29 @@ QuerySubscriberRecorder = function (key,userID,callback) {
 
     client.lrange(key,0,-1, function (errList,resList)
     {
-        if(resList)
-        {
-            if(userID.indexOf(resList)==-1)
-            {
-                client.lpush(key,userID, function (errAdd,resAdd) {
-
-                    if(errAdd)
-                    {
-                        callback(errAdd,undefined);
-                    }
-                    else
-                    {
-                        callback(null,resAdd);
-                    }
-                });
-            }
-            else
-            {
-                callback(null,"success");
-            }
-        }
-        else
+        if(errList)
         {
             callback(errList,undefined);
         }
+        else if(resList.length==0 || userID.indexOf(resList)==-1)
+        {
+            client.lpush(key,userID, function (errAdd,resAdd) {
+
+                if(errAdd)
+                {
+                    callback(errAdd,undefined);
+                }
+                else
+                {
+                    callback(null,resAdd);
+                }
+            });
+        }
+        else
+        {
+            callback(null,"success");
+        }
+
     });
 
 };

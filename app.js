@@ -467,7 +467,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     });
     socket.on('disconnect',function(reason)
-    { var ClientID=socket.decoded_token.client;
+    { var ClientID=socket.decoded_token.iss;
         console.log("Disconnected "+socket.id+" Reason "+reason);
         console.log("Socket ID ",socket.id);
         console.log("ClientID "+ClientID);
@@ -1775,7 +1775,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
     var userID= req.params.username;
     console.log(req.body.querykey);
 
-    redisManager.QuerySubscriberRecorder("CONFERENCE:TESTCONF",userID, function (errSubs,resSubs) {
+    redisManager.QuerySubscriberRecorder(req.body.querykey,userID, function (errSubs,resSubs) {
 
 
         if(errSubs)
@@ -1838,74 +1838,74 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
 });
 
 /*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
-{
-    try
-    {
-        if(!req.user.company || !req.user.tenant)
-        {
-            throw new Error("Invalid company or tenant");
-        }
+ {
+ try
+ {
+ if(!req.user.company || !req.user.tenant)
+ {
+ throw new Error("Invalid company or tenant");
+ }
 
-        var Company=req.user.company;
-        var Tenant=req.user.tenant;
+ var Company=req.user.company;
+ var Tenant=req.user.tenant;
 
-        var queryKey = req.body.refID;
-        var msgObj = req.body;
-        if(queryKey)
-        {
-            redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
+ var queryKey = req.body.refID;
+ var msgObj = req.body;
+ if(queryKey)
+ {
+ redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
 
-                if(errSubs)
-                {
-                    console.log(errSubs);
-                    res.end();
-                }
-                else
-                {
-                    if(!resSubs)
-                    {
-                        console.log("No Subscribers found");
-                        res.end();
-                    }
-                    else
-                    {
-                        PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
+ if(errSubs)
+ {
+ console.log(errSubs);
+ res.end();
+ }
+ else
+ {
+ if(!resSubs)
+ {
+ console.log("No Subscribers found");
+ res.end();
+ }
+ else
+ {
+ PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
 
-                            if(errPublish)
-                            {
-                                //res.end("Error");
-                                console.log(errPublish);
-                                res.end();
+ if(errPublish)
+ {
+ //res.end("Error");
+ console.log(errPublish);
+ res.end();
 
-                            }
-                            else
-                            {
-                                console.log("Success");
-                                //res.end("Done");
-                                res.end();
-                            }
-                        });
+ }
+ else
+ {
+ console.log("Success");
+ //res.end("Done");
+ res.end();
+ }
+ });
 
-                    }
-                }
+ }
+ }
 
-            });
-        }
-        else
-        {
-            console.log("Invalid query key");
-            res.end();
+ });
+ }
+ else
+ {
+ console.log("Invalid query key");
+ res.end();
 
-        }
-    }
-    catch (e)
-    {
-        console.log(e);
-        res.end();
-    }
-    return next();
+ }
+ }
+ catch (e)
+ {
+ console.log(e);
+ res.end();
+ }
+ return next();
 
-});*/
+ });*/
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
     console.log("Hit");
@@ -1923,9 +1923,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
         var Company=req.user.company;
         var Tenant=req.user.tenant;
 
-        //var queryKey = req.body.querykey;
-        var queryKey = "CONFERENCE:TESTCONF";
-        var msgObj = "Done";
+        var queryKey = req.body.querykey;
+        var msgObj = req.body.message;
 
         if(queryKey)
         {
@@ -1938,7 +1937,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                 }
                 else
                 {
-                    if(!resSubscribers)
+                    if(resSubscribers.length==0)
                     {
                         console.log("No Subscribers found");
                         res.end();
@@ -1975,6 +1974,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                         }
                                         else if(resList.indexOf(MyID)!=-1 && resList.length>1)
                                         {
+                                            console.log("me");
                                             for(var i=0;i<resList.length;i++)
                                             {
                                                 if(resList[i]!==MyID)
@@ -1982,16 +1982,25 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                     DBController.ServerPicker(resList[i], function (errServ,resServ) {
                                                         if(errServ)
                                                         {
-
+                                                            console.log("Error in Server picking "+errServ);
+                                                            if(i==resList.length-1)
+                                                            {
+                                                                callback(undefined,"Success");
+                                                            }
                                                         }
                                                         else if(!resServ)
                                                         {
-
+                                                            console.log("No server found ");
+                                                            if(i==resList.length-1)
+                                                            {
+                                                                callback(undefined,"Success");
+                                                            }
                                                         }
                                                         else
                                                         {
                                                             var ServerIP = resServ.URL;
                                                             console.log(ServerIP);
+                                                            req.body.To=clientID;
 
 
                                                             var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/publish/fromRemoteserver', ServerIP, version);
@@ -2012,22 +2021,29 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
 
                                                             httpReq(options, function (error, response, body)
                                                             {
+                                                                console.log("Error "+error);
+                                                                console.log("response "+response);
+
                                                                 if (!error && response.statusCode == 200)
                                                                 {
                                                                     console.log("no errrs");
+                                                                    if(i>= resList.length)
+                                                                    {
+                                                                        callback(undefined,"Success");
+                                                                    }
                                                                     //console.log(JSON.stringify(response));
 
                                                                 }
                                                                 else
                                                                 {
-                                                                    console.log("errrs  "+error);
-
+                                                                    console.log("errors  "+error);
+                                                                    if(i==resList.length-1)
+                                                                    {
+                                                                        callback(undefined,"Success");
+                                                                    }
 
                                                                 }
-                                                                if(i==resList.length-1)
-                                                                {
-                                                                    callback(undefined,"Success");
-                                                                }
+
                                                             });
                                                         }
 
@@ -2038,7 +2054,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                     if(Clients[clientID])
                                                     {
                                                         var instanceArray = Clients[clientID];
-                                                        for(var j=0;i<instanceArray.length;j++)
+                                                        for(var j=0;j<instanceArray.length;j++)
                                                         {
                                                             var instanceSocket = instanceArray[j];
                                                             instanceSocket.emit(eventName,msgObj);
@@ -2061,11 +2077,17 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                 DBController.ServerPicker(resList[i], function (errServ,resServ) {
                                                     if(errServ)
                                                     {
-
+                                                        if(i==resList.length-1)
+                                                        {
+                                                            callback(undefined,"Success");
+                                                        }
                                                     }
                                                     else if(!resServ)
                                                     {
-
+                                                        if(i==resList.length-1)
+                                                        {
+                                                            callback(undefined,"Success");
+                                                        }
                                                     }
                                                     else
                                                     {
@@ -2115,23 +2137,23 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                             }
                                         }
 
-                                       /* for(var i=0;i<resList.length;i++)
-                                        {
-                                            if(MyID==resList[i])
-                                            {
-                                                if(Clients[clientID])
-                                                {
-                                                    var instanceArray = Clients[clientID];
-                                                    for(var i=0;i<instanceArray.length;i++)
-                                                    {
-                                                        var instanceSocket = instanceArray[i];
-                                                        instanceSocket.emit(eventName,msgObj);
+                                        /* for(var i=0;i<resList.length;i++)
+                                         {
+                                         if(MyID==resList[i])
+                                         {
+                                         if(Clients[clientID])
+                                         {
+                                         var instanceArray = Clients[clientID];
+                                         for(var i=0;i<instanceArray.length;i++)
+                                         {
+                                         var instanceSocket = instanceArray[i];
+                                         instanceSocket.emit(eventName,msgObj);
 
-                                                    }
+                                         }
 
-                                                }
-                                            }
-                                        }*/
+                                         }
+                                         }
+                                         }*/
                                     }
 
                                 });
@@ -2159,52 +2181,52 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
             });
         }
 
-       /* if(queryKey)
-        {
-            redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
+        /* if(queryKey)
+         {
+         redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
 
-                if(errSubs)
-                {
-                    console.log(errSubs);
-                    res.end();
-                }
-                else
-                {
-                    if(!resSubs)
-                    {
-                        console.log("No Subscribers found");
-                        res.end();
-                    }
-                    else
-                    {
-                        PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
+         if(errSubs)
+         {
+         console.log(errSubs);
+         res.end();
+         }
+         else
+         {
+         if(!resSubs)
+         {
+         console.log("No Subscribers found");
+         res.end();
+         }
+         else
+         {
+         PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
 
-                            if(errPublish)
-                            {
-                                //res.end("Error");
-                                console.log(errPublish);
-                                res.end();
+         if(errPublish)
+         {
+         //res.end("Error");
+         console.log(errPublish);
+         res.end();
 
-                            }
-                            else
-                            {
-                                console.log("Success");
-                                //res.end("Done");
-                                res.end();
-                            }
-                        });
+         }
+         else
+         {
+         console.log("Success");
+         //res.end("Done");
+         res.end();
+         }
+         });
 
-                    }
-                }
+         }
+         }
 
-            });
-        }
-        else
-        {
-            console.log("Invalid query key");
-            res.end();
+         });
+         }
+         else
+         {
+         console.log("Invalid query key");
+         res.end();
 
-        }*/
+         }*/
     }
     catch (e)
     {
@@ -2417,6 +2439,29 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegist
     return next();
 });
 
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+
+    /*if(!req.user.company || !req.user.tenant)
+     {
+     throw new Error("Invalid company or tenant");
+     }*/
+
+    var clientID= req.body.To;
+    var eventName=req.headers.eventname;
+    var eventUuid=req.headers.eventuuid;
+
+
+    if(Clients[clientID])
+    {
+        var insArray =Clients[clientID];
+        for(var i=0;i<insArray.length;i++)
+        {
+            var instanceSocket = insArray[i];
+            instanceSocket.emit(eventName,req.body.message);
+        }
+    }
+
+});
 
 
 TopicIdGenerator = function ()
