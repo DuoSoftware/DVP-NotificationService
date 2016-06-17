@@ -139,7 +139,8 @@ io.sockets.on('connection',socketioJwt.authorize({
             {
 
 
-                if(typeof resList !== 'undefined' && resList.length > 0)
+                //if(typeof resList !== 'undefined' && resList.length > 0)
+                if(resList.length > 0)
                 {
 
                     // console.log("New Client instance Added");
@@ -1837,6 +1838,47 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
     return next();
 });
 
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Unsubscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
+{
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    var userID= req.params.username;
+    console.log(req.body.querykey);
+
+    redisManager.QueryUnsubscriber(req.body.querykey,userID, function (errSubs,resSubs) {
+
+
+        if(errSubs)
+        {
+            console.log("Unsubcriber record saving error "+errSubs);
+            res.end();
+        }
+
+        else if(!resSubs)
+        {
+
+            console.log("No sunscribed user found "+userID);
+            res.end();
+
+        }
+        else
+        {
+            console.log("Successfully unubscribed user: "+userID+" from Query : "+req.body.querykey);
+            res.end();
+
+        }
+
+    });
+
+    return next();
+});
+
 /*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
  {
  try
@@ -1913,6 +1955,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
     var eventName=req.headers.eventname;
     var eventUuid=req.headers.eventuuid;
 
+    var parellalErrors=[];
+    var parellalResults=[];
+
     try
     {
         if(!req.user.company || !req.user.tenant)
@@ -1964,17 +2009,27 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                     var instanceSocket = instanceArray[i];
                                                     instanceSocket.emit(eventName,msgObj);
 
+                                                    parellalResults.push("Only registerd users in this servers : success");
+
                                                     if(i==instanceArray.length-1)
                                                     {
-                                                        callback(undefined,"Success");
+                                                        callback(parellalErrors,parellalResults);
+
                                                     }
 
+                                                }
+                                            }
+                                            else
+                                            {
+                                                parellalErrors.push("Unregisterd user : "+clientID);
+                                                if(i==instanceArray.length-1)
+                                                {
+                                                    callback(parellalErrors,parellalResults);
                                                 }
                                             }
                                         }
                                         else if(resList.indexOf(MyID)!=-1 && resList.length>1)
                                         {
-                                            console.log("me");
                                             for(var i=0;i<resList.length;i++)
                                             {
                                                 if(resList[i]!==MyID)
@@ -1983,17 +2038,22 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                         if(errServ)
                                                         {
                                                             console.log("Error in Server picking "+errServ);
+                                                            parellalErrors.push("Error in Server picking "+errServ);
                                                             if(index==resList.length-1)
                                                             {
-                                                                callback(undefined,"Success");
+
+                                                                callback(parellalErrors,parellalResults);
+
                                                             }
                                                         }
                                                         else if(!resServ)
                                                         {
                                                             console.log("No server found ");
+                                                            parellalErrors.push("No server found ");
                                                             if(index==resList.length-1)
                                                             {
-                                                                callback(undefined,"Success");
+
+                                                                callback(parellalErrors,parellalResults);
                                                             }
                                                         }
                                                         else
@@ -2026,10 +2086,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
 
                                                                 if (!error && response.statusCode == 200)
                                                                 {
-                                                                    console.log("no errrs");
+                                                                    parellalResults.push("Requested to remote servers Succeess");
                                                                     if(index= resList.length)
                                                                     {
-                                                                        callback(undefined,"Success");
+                                                                        callback(parellalErrors,parellalResults);
+
                                                                     }
                                                                     //console.log(JSON.stringify(response));
 
@@ -2037,9 +2098,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                                 else
                                                                 {
                                                                     console.log("errors  "+error);
+                                                                    parellalErrors.push("Error found pushing to remote servers "+error);
                                                                     if(index==resList.length-1)
                                                                     {
-                                                                        callback(undefined,"Success");
+                                                                        callback(parellalErrors,parellalResults);
+
                                                                     }
 
                                                                 }
@@ -2060,9 +2123,10 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                             instanceSocket.emit(eventName,msgObj);
 
                                                         }
+                                                        parellalResults.push("Pushed to Clients of this server "+clientID);
                                                         if(i==resList.length-1)
                                                         {
-                                                            callback(undefined,"Success");
+                                                            callback(parellalErrors,parellalResults);
                                                         }
                                                     }
                                                 }
@@ -2078,17 +2142,18 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                     if(errServ)
                                                     {
                                                         console.log("Error in Server picking "+errServ);
+                                                        parellalErrors.push("Error found pushing to remote servers "+error);
                                                         if(index==resList.length-1)
                                                         {
-                                                            callback(undefined,"Success");
+                                                            callback(parellalErrors,parellalResults);
                                                         }
                                                     }
                                                     else if(!resServ)
                                                     {
-                                                        console.log("No server found ");
+                                                        parellalErrors.push("No remote servers found "+resList[i]);
                                                         if(index==resList.length-1)
                                                         {
-                                                            callback(undefined,"Success");
+                                                            callback(parellalErrors,parellalResults);
                                                         }
                                                     }
                                                     else
@@ -2121,20 +2186,20 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
 
                                                             if (!error && response.statusCode == 200)
                                                             {
-                                                                console.log("no errrs");
+                                                                parellalResults.push("Pushed to remote server Success : "+ServerIP);
                                                                 if(index= resList.length)
                                                                 {
-                                                                    callback(undefined,"Success");
+                                                                    callback(parellalErrors,parellalResults);
                                                                 }
                                                                 //console.log(JSON.stringify(response));
 
                                                             }
                                                             else
                                                             {
-                                                                console.log("errors  "+error);
+                                                                parellalErrors.push("Remote server pushing error "+error);
                                                                 if(index==resList.length-1)
                                                                 {
-                                                                    callback(undefined,"Success");
+                                                                    callback(parellalErrors,parellalResults);
                                                                 }
 
                                                             }
@@ -2166,8 +2231,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                     }
                                     else
                                     {
-                                        console.log("No servers found");
-                                        callback(undefined,"Success");
+                                        parellalErrors.push("No servers found");
+                                        callback(parellalErrors,parellalResults);
                                     }
 
                                 });
@@ -2177,17 +2242,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                         });
                         async.parallel(subscriberArray, function (errBulkSend,resSend) {
 
-                            if(errBulkSend)
-                            {
-                                console.log(errBulkSend);
-                                res.end();
-                                //res.end(errBulkSend.toString());
-                            }
-                            else
-                            {
-                                res.end();
-                            }
-
+                            console.log("Sending to Remote servers Errors: "+errBulkSend);
+                            res.end();
 
                         });
                     }
@@ -2250,7 +2306,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
     return next();
 
 });
-
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
     console.log("HIT publish");
@@ -2481,6 +2536,10 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/f
                 res.end();
             }
         }
+    }
+    else
+    {
+        console.log("Client "+clientID+" is not registed in this server");
     }
 
 });

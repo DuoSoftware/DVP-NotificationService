@@ -796,15 +796,9 @@ QueryKeySubscriberPicker = function (queryKey,callback) {
                 console.log("Error in Query key checker ", errSubs);
                 callback(errSubs, undefined);
             }
-            else {
-
-                if (resSubs.length>0)
-                {
-                    callback(undefined, resSubs);
-                }
-                else {
-                    callback(undefined, false);
-                }
+            else
+            {
+                callback(undefined, resSubs);
 
             }
         });
@@ -868,6 +862,23 @@ QuerySubscriberRecorder = function (key,userID,callback) {
 
 };
 
+QueryUnsubscriber = function (key,userID,callback) {
+
+    client.lrem(key,-1,userID, function (errRem,resRem)
+    {
+        if(errRem)
+        {
+            callback(errRem,undefined);
+        }
+        else
+        {
+            callback(undefined,resRem);
+        }
+
+    });
+
+};
+
 LocationListPicker = function (clientId,callback) {
 
     var key = "notification:loc:" + clientId;
@@ -909,6 +920,7 @@ module.exports.SubsQueryUserAvailabitityChecker = SubsQueryUserAvailabitityCheck
 module.exports.QueryKeySubscriberPicker = QueryKeySubscriberPicker;
 module.exports.QuerySubscriberRecorder = QuerySubscriberRecorder;
 module.exports.LocationListPicker = LocationListPicker;
+module.exports.QueryUnsubscriber = QueryUnsubscriber;
 
 
 
