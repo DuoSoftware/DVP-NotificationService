@@ -103,6 +103,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     console.log('authenticated received ');
     var clientID = socket.decoded_token.iss;
+    console.log("Client logged "+clientID);
     socket.emit('clientdetails',clientID);
     console.log(clientID);
 
@@ -928,7 +929,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
     var msgSenderArray=[];
 
 
-
     if(!req.user.company || !req.user.tenant)
     {
         throw new Error("Invalid company or tenant");
@@ -990,7 +990,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
             {
                 resList.forEach(function (serverId) {
 
-
                     msgSenderArray.push(function createContact(callback)
                     {
 
@@ -999,6 +998,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                             if(Clients[clientID])
                             {
+
 
                                 GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
                                     if(errGnotf)
@@ -1012,36 +1012,65 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                 });
 
+                                /*DBController.SipUserDetailsPicker(clientID,Company,Tenant, function (errSipData,resSipData) {
+
+                                 if(errSipData)
+                                 {
+                                 console.log("Error in searching user data");
+                                 }
+                                 else
+                                 {
+                                 GooglePushMessageSender(resSipData.id,msgObj, function (errGnotf,resGnotf) {
+                                 if(errGnotf)
+                                 {
+                                 console.log("Error in Google notifications:  "+errGnotf);
+                                 }
+                                 else
+                                 {
+                                 console.log("Success. Google notifications sent:  "+resGnotf);
+                                 }
+
+                                 });
+                                 }
+
+                                 })*/
+
+
                                 var insArray =Clients[clientID];
                                 for(var i=0;i<insArray.length;i++)
                                 {
                                     var insSocket=insArray[i];
 
 
-                                    if(eventName=="agent_connected")
-                                    {
-                                        insSocket.emit('agent_connected',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else if(eventName=="agent_disconnected")
-                                    {
-                                        insSocket.emit('agent_disconnected',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else if(eventName=="agent_found") {
-                                        insSocket.emit('agent_found',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else if(eventName=="agent_rejected")
-                                    {
-                                        insSocket.emit('agent_rejected',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else
-                                    {
-                                        insSocket.emit('message',msgObj);
-                                        console.log("Message sent : "+JSON.stringify(msgObj));
-                                    }
+                                    insSocket.emit(eventName,msgObj);
+                                    console.log("Notification sent : "+JSON.stringify(msgObj));
+
+                                    /*
+
+                                     if(eventName=="agent_connected")
+                                     {
+                                     insSocket.emit('agent_connected',msgObj);
+                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                     }
+                                     else if(eventName=="agent_disconnected")
+                                     {
+                                     insSocket.emit('agent_disconnected',msgObj);
+                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                     }
+                                     else if(eventName=="agent_found") {
+                                     insSocket.emit('agent_found',msgObj);
+                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                     }
+                                     else if(eventName=="agent_rejected")
+                                     {
+                                     insSocket.emit('agent_rejected',msgObj);
+                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                     }
+                                     else
+                                     {
+                                     insSocket.emit('message',msgObj);
+                                     console.log("Message sent : "+JSON.stringify(msgObj));
+                                     }*/
 
                                     if(i==insArray.length-1)
                                     {
@@ -1168,9 +1197,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
         }
     });
-
-
-
     return next();
 
 });
@@ -2009,7 +2035,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                     var instanceSocket = instanceArray[i];
                                                     instanceSocket.emit(eventName,msgObj);
 
-                                                    parellalResults.push("Only registerd users in this servers : success");
+                                                    parellalResults.push("Only registered users in this servers : success");
 
                                                     if(i==instanceArray.length-1)
                                                     {
@@ -2250,6 +2276,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                 }
             });
         }
+        else
+        {
+            console.log("No Query key found");
+            res.end();
+        }
 
         /* if(queryKey)
          {
@@ -2306,7 +2337,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
     return next();
 
 });
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
     console.log("HIT publish");
     if(!req.user.company || !req.user.tenant)
@@ -2346,6 +2378,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:
 
     return next();
 });
+
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', function (req,res,next){
 
@@ -2423,35 +2456,82 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
 
         });
 
+        /* if(!isNaN(clientID))
+         {
+         GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+         if(errGnotf)
+         {
+         console.log("Error in Google notifications:  "+errGnotf);
+         }
+         else
+         {
+         console.log("Success. Google notifications sent:  "+resGnotf);
+         }
+
+         });
+         }
+         else
+         {
+         DBController.SipUserDetailsPicker(clientID,Company,Tenant, function (errSipData,resSipData) {
+
+         if(errSipData)
+         {
+         console.log("Error in searching user data");
+         }
+         else
+         {
+         GooglePushMessageSender(resSipData.id,msgObj, function (errGnotf,resGnotf) {
+         if(errGnotf)
+         {
+         console.log("Error in Google notifications:  "+errGnotf);
+         }
+         else
+         {
+         console.log("Success. Google notifications sent:  "+resGnotf);
+         }
+
+         });
+         }
+
+         })
+         }*/
+
+
+
         var insArray =Clients[clientID];
         for(var i=0;i<insArray.length;i++)
         {
             var insSocket=insArray[i];
 
-            if(eventName=="agent_connected")
-            {
-                insSocket.emit('agent_connected',msgObj);
-                console.log("Event notification sent : "+JSON.stringify(msgObj));
-            }
-            else if(eventName=="agent_disconnected")
-            {
-                insSocket.emit('agent_disconnected',msgObj);
-                console.log("Event notification sent : "+JSON.stringify(msgObj));
-            }
-            else if(eventName=="agent_found") {
-                insSocket.emit('agent_found',msgObj);
-                console.log("Event notification sent : "+JSON.stringify(msgObj));
-            }
-            else if(eventName=="agent_rejected")
-            {
-                insSocket.emit('agent_rejected',msgObj);
-                console.log("Event notification sent : "+JSON.stringify(msgObj));
-            }
-            else
-            {
-                insSocket.emit('message',msgObj);
-                console.log("Message sent : "+JSON.stringify(msgObj));
-            }
+
+            insSocket.emit(eventName,msgObj);
+            console.log("Event notification sent : "+JSON.stringify(msgObj));
+
+
+            /* if(eventName=="agent_connected")
+             {
+             insSocket.emit('agent_connected',msgObj);
+             console.log("Event notification sent : "+JSON.stringify(msgObj));
+             }
+             else if(eventName=="agent_disconnected")
+             {
+             insSocket.emit('agent_disconnected',msgObj);
+             console.log("Event notification sent : "+JSON.stringify(msgObj));
+             }
+             else if(eventName=="agent_found") {
+             insSocket.emit('agent_found',msgObj);
+             console.log("Event notification sent : "+JSON.stringify(msgObj));
+             }
+             else if(eventName=="agent_rejected")
+             {
+             insSocket.emit('agent_rejected',msgObj);
+             console.log("Event notification sent : "+JSON.stringify(msgObj));
+             }
+             else
+             {
+             insSocket.emit('message',msgObj);
+             console.log("Message sent : "+JSON.stringify(msgObj));
+             }*/
 
 
             if(i==insArray.length-1)
@@ -2498,14 +2578,35 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegist
      }*/
 
     var AppKey=req.headers.appkey;
-    var userID = req.user.client;
+    var username = req.user.iss;
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
 
-    console.log("APPkey "+AppKey);
-    console.log("User "+userID);
 
-    console.log("hitz");
-    DBController.GCMRegistrator(userID,AppKey,res);
+    DBController.GCMRegistrator(username,AppKey,res);
+
+
+    /* DBController.SipUserDetailsPicker(username,Company,Tenant, function (errSipData,resSipData) {
+
+     if(errSipData)
+     {
+     console.log("Error in registration ",errSipData);
+     res.end();
+     }
+     else
+     {
+     var userID = resSipData.id;
+     console.log("APPkey "+AppKey);
+     console.log("User "+userID);
+
+     console.log("hitz");
+     DBController.GCMRegistrator(userID,AppKey,res);
+     }
+
+     });*/
+
     return next();
+
 });
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next) {
@@ -3417,6 +3518,7 @@ InitiateSubscriber = function (clientID,msgObj,callback) {
 };
 
 GooglePushMessageSender = function (clientId,msgObj,callback) {
+
 
     DBController.GoogleNotificationKeyPicker(clientId, function (errKey,resKey) {
 

@@ -274,6 +274,23 @@ GoogleNotificationKeyPicker = function (clientID,callback) {
 
 };
 
+SipUserDetailsPicker = function (sipUsername,company,tenant,callback) {
+
+    DbConn.SipUACEndpoint.find({where:[{SipUsername:sipUsername},{CompanyId:company},{TenantId:tenant}]}).then(function (resSipUserData) {
+       if(!resSipUserData)
+       {
+           callback(new Error("User not found"),undefined);
+       }
+        else
+       {
+           callback(undefined,resSipUserData);
+       }
+
+    }).catch(function (errSipUserData) {
+        callback(errSipUserData,undefined);
+    });
+};
+
 module.exports.ServerPicker = ServerPicker;
 module.exports.PersistenceMessageRecorder = PersistenceMessageRecorder;
 module.exports.QueuedMessagesPicker = QueuedMessagesPicker;
@@ -283,3 +300,4 @@ module.exports.PersistencePubSubMessageRecorder = PersistencePubSubMessageRecord
 module.exports.GoogleNotificationKeyPicker = GoogleNotificationKeyPicker;
 module.exports.GCMRegistrator = GCMRegistrator;
 module.exports.ClientServerPicker = ClientServerPicker;
+module.exports.SipUserDetailsPicker = SipUserDetailsPicker;

@@ -35,6 +35,7 @@ function  ClientConfiguration(eventObj,jwt)
     socketObj.conference_member_joined=eventObj.Callbacks.onConferenceMemberJoined;
     socketObj.conference_member_left=eventObj.Callbacks.onConferenceMemberLeft;
     socketObj.conference_member_status=eventObj.Callbacks.onConferenceMemberStatus;
+    socketObj.conference_user_assigned=eventObj.Callbacks.onConferenceUserAdded;
 
     socket
         .on('authenticated', function () {
@@ -93,6 +94,9 @@ function  ClientConfiguration(eventObj,jwt)
     });
     socket.on('conference_member_status', function (data) {
         socketObj.conference_member_status(data);
+    });
+    socket.on('conference_user_assigned', function (data) {
+        socketObj.conference_user_assigned(data);
     });
 
 
