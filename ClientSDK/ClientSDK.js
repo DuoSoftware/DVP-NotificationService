@@ -27,7 +27,15 @@ function  ClientConfiguration(eventObj,jwt)
     socketObj.agent_found=eventObj.Callbacks.onAgentFound;
     socketObj.agent_connected=eventObj.Callbacks.onAgentConnected;
     socketObj.agent_disconnected=eventObj.Callbacks.onAgentDisconnected;
+    socketObj.agent_rejected=eventObj.Callbacks.onAgentRejected;
     socketObj.onClientdetailsRecieved=eventObj.Callbacks.onClientdetailsRecieved;
+
+    socketObj.conference_create=eventObj.Callbacks.onConferenceCreate;
+    socketObj.conference_destroy=eventObj.Callbacks.onConferenceDestroy;
+    socketObj.conference_member_joined=eventObj.Callbacks.onConferenceMemberJoined;
+    socketObj.conference_member_left=eventObj.Callbacks.onConferenceMemberLeft;
+    socketObj.conference_member_status=eventObj.Callbacks.onConferenceMemberStatus;
+    socketObj.conference_user_assigned=eventObj.Callbacks.onConferenceUserAdded;
 
     socket
         .on('authenticated', function () {
@@ -47,7 +55,7 @@ function  ClientConfiguration(eventObj,jwt)
 
     socket.on('message', function(reason)
     {
-            socketObj.onMessageReceived(reason);
+        socketObj.onMessageReceived(reason);
     });
 
     socket.on('broadcast', function(data){
@@ -68,6 +76,27 @@ function  ClientConfiguration(eventObj,jwt)
     });
     socket.on('agent_disconnected', function (data) {
         socketObj.agent_disconnected(data);
+    });
+    socket.on('agent_rejected', function (data) {
+        socketObj.agent_rejected(data);
+    });
+    socket.on('conference_create', function (data) {
+        socketObj.conference_create(data);
+    });
+    socket.on('conference_destroy', function (data) {
+        socketObj.conference_destroy(data);
+    });
+    socket.on('conference_member_joined', function (data) {
+        socketObj.conference_member_joined(data);
+    });
+    socket.on('conference_member_left', function (data) {
+        socketObj.conference_member_left(data);
+    });
+    socket.on('conference_member_status', function (data) {
+        socketObj.conference_member_status(data);
+    });
+    socket.on('conference_user_assigned', function (data) {
+        socketObj.conference_user_assigned(data);
     });
 
 

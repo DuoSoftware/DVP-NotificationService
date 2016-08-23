@@ -166,7 +166,7 @@ SocketObjectUpdater = function(TopicID,SocketID,callback)
 
 TokenObjectCreator = function(topicID,clientID,direction,sender,resURL,ttl,callback)
 {
-    console.log("Token Object creating");
+    console.log("Token Object creation started");
     try {
         var key = "notification:" + topicID;
 //notification:topic
@@ -292,19 +292,16 @@ RecordUserServer = function (clientName,server,callback)
     console.log("Client "+clientName);
     console.log("server "+server);
     try {
-        var key = "notification:loc:" + clientName + ":" + server;//notification:loc....
+        var key = "notification:loc:" + clientName;//notification:loc....
 
-        client.set(key, server, function (errSet, resSet) {
-            if (errSet) {
+        client.lpush(key, server, function (errSet, resSet) {
+            if (errSet)
+            {
                 callback(errSet, undefined);
             }
-            else {
-                if (resSet == "" || !resSet || resSet == "NULL") {
-                    callback(new Error("Invalid key to set "), undefined);
-                }
-                else {
-                    callback(undefined, resSet);
-                }
+            else
+            {
+                callback(undefined, resSet);
             }
         });
     } catch (e)
@@ -387,12 +384,14 @@ GetClientsServer = function (clientName,callback) {
 
 TopicObjectPicker = function (topicId,ttl,callback) {
 
-    try {
+    try
+    {
         TouchSession(topicId, ttl);
-        var key = "notification:" + topicId;
-        client.hgetall(key, function (errTkn, resTkn) {
-            callback(errTkn, resTkn);
 
+        var key = "notification:" + topicId;
+        client.hgetall(key, function (errTkn, resTkn)
+        {
+            callback(errTkn, resTkn);
         });
     } catch (e)
     {
@@ -404,8 +403,8 @@ TopicObjectPicker = function (topicId,ttl,callback) {
 ClientLocationDataRemover = function (clientID,server,callback) {
 
     try {
-        var key = "notification:loc:" + clientID + ":" + server;
-        client.del(key, function (e, r) {
+        var key = "notification:loc:" + clientID;
+        client.lrem(key,1,server, function (e, r) {
             callback(e, r);
         })
     } catch (e)
@@ -427,37 +426,37 @@ SessionRemover = function (topicKey,callback) {
     }
 };
 
-CheckClientAvailability = function (clientId,callback) {
+/*CheckClientAvailability = function (clientId,callback) {
 
-    var key = "notification:loc:"+clientId+":*";
+ var key = "notification:loc:"+clientId+":*";
 
-    console.log(key);
-    try {
-        client.keys(key, function (errClient, resClient) {
+ console.log(key);
+ try {
+ client.keys(key, function (errClient, resClient) {
 
-            if (errClient) {
-                console.log("Error in checking Availability ", errClient);
-                callback(errClient, false);
-            }
-            else {
-                console.log("checking Availability Result ", resClient);
+ if (errClient) {
+ console.log("Error in checking Availability ", errClient);
+ callback(errClient, false);
+ }
+ else {
+ console.log("checking Availability Result ", resClient);
 
-                if (!resClient || resClient == "" || resClient == null) {
-                    callback(undefined, true);
-                }
-                else {
-                    callback(undefined, false);
-                }
+ if (!resClient || resClient == "" || resClient == null) {
+ callback(undefined, true);
+ }
+ else {
+ callback(undefined, false);
+ }
 
 
-            }
+ }
 
-        });
-    } catch (e)
-    {
-        callback(e,undefined);
-    }
-};
+ });
+ } catch (e)
+ {
+ callback(e,undefined);
+ }
+ };*/
 
 ResetServerData = function (serverID,callback) {
 
@@ -502,37 +501,37 @@ RemoveKeys = function (keys,callback) {
 
 };
 
-IsRegisteredClient = function (clientID,callback) {
+/*IsRegisteredClient = function (clientID,callback) {
 
-    var key = "notification:loc:"+clientID+":*";
+ var key = "notification:loc:"+clientID;
 
-    console.log("Reg key "+key);
-    try {
-        client.keys(key, function (errClient, resClient) {
+ console.log("Reg key "+key);
+ try {
+ client.keys(key, function (errClient, resClient) {
 
-            if (errClient) {
-                console.log("Error in checking Availability ", errClient);
-                callback(errClient, false, undefined);
-            }
-            else {
-                console.log("checking Availability Result ", resClient);
-                if (!resClient || resClient == "" || resClient == null) {
-                    callback(undefined, false, undefined);
-                }
-                else {
-                    console.log("Reg clients " + resClient);
+ if (errClient) {
+ console.log("Error in checking Availability ", errClient);
+ callback(errClient, false, undefined);
+ }
+ else {
+ console.log("checking Availability Result ", resClient);
+ if (!resClient || resClient == "" || resClient == null) {
+ callback(undefined, false, undefined);
+ }
+ else {
+ console.log("Reg clients " + resClient);
 
-                    callback(undefined, true, resClient[0]);
-                }
+ callback(undefined, true, resClient[0]);
+ }
 
 
-            }
+ }
 
-        });
-    } catch (e) {
-        callback(e,undefined);
-    }
-};
+ });
+ } catch (e) {
+ callback(e,undefined);
+ }
+ };*/
 
 BroadcastTopicObjectCreator = function (topicId,msgObj,clients,callback) {
 
@@ -764,23 +763,42 @@ SubsQueryUserAvailabitityChecker = function (queryKey,clientID,callback) {
     }
 };
 
+/*QueryKeySubscriberPicker = function (queryKey,callback) {
+
+ try {
+ client.GET(queryKey, function (errSubs, resSubs) {
+
+ if (errSubs) {
+ console.log("Error in Query key checker ", errSubs);
+ callback(errSubs, undefined);
+ }
+ else {
+
+ if (resSubs) {
+ callback(undefined, resSubs);
+ }
+ else {
+ callback(undefined, false);
+ }
+
+ }
+ });
+ } catch (e) {
+ callback(e,undefined);
+ }
+ };*/
 QueryKeySubscriberPicker = function (queryKey,callback) {
 
     try {
-        client.GET(queryKey, function (errSubs, resSubs) {
+        client.lrange(queryKey,0,-1, function (errSubs,resSubs) {
 
             if (errSubs) {
                 console.log("Error in Query key checker ", errSubs);
                 callback(errSubs, undefined);
             }
-            else {
-
-                if (resSubs) {
-                    callback(undefined, resSubs);
-                }
-                else {
-                    callback(undefined, false);
-                }
+            else
+            {
+                callback(undefined, resSubs);
 
             }
         });
@@ -815,13 +833,65 @@ QueryKeyAvailabilityChecker = function (key,callback) {
 
 QuerySubscriberRecorder = function (key,userID,callback) {
 
-    client.set(key,userID, function (errKeyRec,resKeyRes) {
+    client.lrange(key,0,-1, function (errList,resList)
+    {
+        if(errList)
+        {
+            callback(errList,undefined);
+        }
+        else if(resList.length==0 || userID.indexOf(resList)==-1)
+        {
+            client.lpush(key,userID, function (errAdd,resAdd) {
 
-        callback(errKeyRec,resKeyRes);
+                if(errAdd)
+                {
+                    callback(errAdd,undefined);
+                }
+                else
+                {
+                    callback(null,resAdd);
+                }
+            });
+        }
+        else
+        {
+            callback(null,"success");
+        }
 
     });
 
+};
 
+QueryUnsubscriber = function (key,userID,callback) {
+
+    client.lrem(key,-1,userID, function (errRem,resRem)
+    {
+        if(errRem)
+        {
+            callback(errRem,undefined);
+        }
+        else
+        {
+            callback(undefined,resRem);
+        }
+
+    });
+
+};
+
+LocationListPicker = function (clientId,callback) {
+
+    var key = "notification:loc:" + clientId;
+    client.lrange(key,0,-1, function (errList,resList) {
+        if(errList)
+        {
+            callback(errList,undefined);
+        }
+        else
+        {
+            callback(undefined,resList);
+        }
+    });
 };
 
 module.exports.SocketObjectManager = SocketObjectManager;
@@ -834,12 +904,14 @@ module.exports.ResourceObjectPicker = ResourceObjectPicker;
 module.exports.ResponseUrlPicker = ResponseUrlPicker;
 module.exports.RecordUserServer = RecordUserServer;
 module.exports.GetClientsServer = GetClientsServer;
-module.exports.TopicObjectPicker = TopicObjectPicker;
+
+
+
 module.exports.ClientLocationDataRemover = ClientLocationDataRemover;
 module.exports.SessionRemover = SessionRemover;
-module.exports.CheckClientAvailability = CheckClientAvailability;
+//module.exports.CheckClientAvailability = CheckClientAvailability;
 module.exports.ResetServerData = ResetServerData;
-module.exports.IsRegisteredClient = IsRegisteredClient;
+//module.exports.IsRegisteredClient = IsRegisteredClient;
 module.exports.BroadcastTopicObjectCreator = BroadcastTopicObjectCreator;
 module.exports.ParamKeyGenerator = ParamKeyGenerator;
 module.exports.QueryKeyGenerator = QueryKeyGenerator;
@@ -847,6 +919,9 @@ module.exports.UserServerUpdater = UserServerUpdater;
 module.exports.SubsQueryUserAvailabitityChecker = SubsQueryUserAvailabitityChecker;
 module.exports.QueryKeySubscriberPicker = QueryKeySubscriberPicker;
 module.exports.QuerySubscriberRecorder = QuerySubscriberRecorder;
+module.exports.LocationListPicker = LocationListPicker;
+module.exports.QueryUnsubscriber = QueryUnsubscriber;
+
 
 
 

@@ -5,6 +5,7 @@ var DbConn = require('dvp-dbmodels');
 
 ServerPicker = function (SID,callback) {
 
+    console.log("Hitaa");
     try {
         DbConn.NotificationServer.find({where: {id: SID}}).then(function (resServ) {
 
@@ -20,6 +21,27 @@ ServerPicker = function (SID,callback) {
         });
     } catch (e) {
         callback(e,undefined);
+    }
+};
+
+ClientServerPicker = function (SID,index,callback) {
+
+
+    try {
+        DbConn.NotificationServer.find({where: {id: SID}}).then(function (resServ) {
+
+            if (resServ) {
+                callback(undefined, resServ,index);
+            }
+            else {
+                callback(new Error("Invalid ID"), undefined,index);
+            }
+        }).catch(function (errServ) {
+            console.log(errServ);
+            callback(errServ, undefined,index);
+        });
+    } catch (e) {
+        callback(e,undefined,index);
     }
 };
 
@@ -42,7 +64,9 @@ PersistenceMessageRecorder = function (Obj,callback) {
             Direction: dataBody.Direction,
             Topic: topic,
             CallbackURL: dataBody.Callback,
-            MessageType: "GENERAL"
+            MessageType: "GENERAL",
+            eventName:Obj.headers.eventname,
+            eventUuid:Obj.headers.eventuuid
         };
         try {
             var newMessageObject = DbConn.PersistenceMessages
@@ -117,21 +141,18 @@ PersistenceGroupMessageRecorder = function (Obj,callback) {
         };
 
         console.log("Saving " + CallbackObj);
-        try {
-            var newMessageObject = DbConn.PersistenceMessages
-                .build(
-                {
-                    From: dataBody.From,
-                    To: dataBody.To,
-                    Time: Date.now(),
-                    Callback: JSON.stringify(CallbackObj)
 
-                }
-            )
-        }
-        catch (e) {
-            callback(e, undefined);
-        }
+        var newMessageObject = DbConn.PersistenceMessages
+            .build(
+            {
+                From: dataBody.From,
+                To: dataBody.To,
+                Time: Date.now(),
+                Callback: JSON.stringify(CallbackObj)
+
+            }
+        );
+
 
         newMessageObject.save().then(function (resSave) {
             callback(undefined, resSave)
@@ -189,7 +210,86 @@ PersistencePubSubMessageRecorder = function (Obj,clientID,callback) {
     }
 };
 
+GCMRegistrator = function (clientID,regKey,res) {
 
+    try {
+        var gcmKey = DbConn.GCMKeys
+            .build(
+            {
+                ClientID: clientID,
+                GCMKey: regKey
+
+            }
+        );
+
+
+        gcmKey.save().then(function (resSave) {
+
+            console.log("GCM record successfully saved");
+            res.end("Success");
+
+        }).catch(function (errSave) {
+            console.log("GCM record insertion failed");
+            res.end(JSON.stringify(errSave));
+        });
+    } catch (ex) {
+        console.log("Exception in GCM Recorder");
+        res.end(JSON.stringify(ex));
+    }
+
+
+};
+
+GoogleNotificationKeyPicker = function (clientID,callback) {
+
+    DbConn.GCMKeys.findAll({attributes: ['GCMKey'],where:{ClientID:clientID}}).then(function (resKeys) {
+
+        console.log("key : "+resKeys.GCMKey);
+        if(resKeys)
+        {
+            var GCMkeys=[];
+            for(var i=0;i<resKeys.length;i++)
+            {
+                GCMkeys[i]=resKeys[i].GCMKey;
+                if(i==resKeys.length-1)
+                {
+                    callback(undefined,GCMkeys)
+                }
+            }
+
+        }
+        else
+        {
+            console.log("Key not found");
+            callback("Key not found",undefined);
+
+        }
+
+    }).catch(function (errKeys) {
+        console.log("Error in key searching ",errKeys);
+        callback("Error in key searching "+errKeys,undefined);
+    });
+
+
+
+};
+
+SipUserDetailsPicker = function (sipUsername,company,tenant,callback) {
+
+    DbConn.SipUACEndpoint.find({where:[{SipUsername:sipUsername},{CompanyId:company},{TenantId:tenant}]}).then(function (resSipUserData) {
+       if(!resSipUserData)
+       {
+           callback(new Error("User not found"),undefined);
+       }
+        else
+       {
+           callback(undefined,resSipUserData);
+       }
+
+    }).catch(function (errSipUserData) {
+        callback(errSipUserData,undefined);
+    });
+};
 
 module.exports.ServerPicker = ServerPicker;
 module.exports.PersistenceMessageRecorder = PersistenceMessageRecorder;
@@ -197,3 +297,7 @@ module.exports.QueuedMessagesPicker = QueuedMessagesPicker;
 module.exports.PersistenceMessageRemover = PersistenceMessageRemover;
 module.exports.PersistenceGroupMessageRecorder = PersistenceGroupMessageRecorder;
 module.exports.PersistencePubSubMessageRecorder = PersistencePubSubMessageRecorder;
+module.exports.GoogleNotificationKeyPicker = GoogleNotificationKeyPicker;
+module.exports.GCMRegistrator = GCMRegistrator;
+module.exports.ClientServerPicker = ClientServerPicker;
+module.exports.SipUserDetailsPicker = SipUserDetailsPicker;
