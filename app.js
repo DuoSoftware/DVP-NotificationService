@@ -55,8 +55,6 @@ var Refs=new Array();
 
 RestServer.listen(port, function () {
     console.log('%s listening at %s', RestServer.name, RestServer.url);
-
-
 });
 
 
@@ -999,7 +997,6 @@ RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id
     return next();
 });
 
-
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
@@ -1437,6 +1434,7 @@ QueuedInitiateMessageSender = function (messageObj,callback) {
     }
 
 };
+
 QueuedContinueMessageSender = function (messageObj,callback) {
 
 
