@@ -358,9 +358,24 @@ UserServerUpdater = function (clientName,server,myID,callback)
 
 GetClientsServer = function (clientName,callback) {
 
-    var key="notification:loc:"+clientName+":*";
+    var key="notification:loc:"+clientName;
     console.log(key);
-    try {
+
+
+    client.lrange(key,0,-1, function (errList,resList) {
+        if(errList)
+        {
+            callback(errList,undefined);
+        }
+        else
+        {
+            callback(undefined,resList);
+        }
+    });
+
+
+
+   /* try {
         client.keys(key, function (errGet, resGet) {
             if (errGet) {
                 callback(errGet, undefined);
@@ -379,8 +394,10 @@ GetClientsServer = function (clientName,callback) {
     } catch (e)
     {
         callback(e,undefined);
-    }
+    }*/
 };
+
+
 
 TopicObjectPicker = function (topicId,ttl,callback) {
 

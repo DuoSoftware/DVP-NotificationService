@@ -5,7 +5,6 @@ var DbConn = require('dvp-dbmodels');
 
 ServerPicker = function (SID,callback) {
 
-    console.log("Hitaa");
     try {
         DbConn.NotificationServer.find({where: {id: SID}}).then(function (resServ) {
 

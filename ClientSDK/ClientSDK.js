@@ -45,58 +45,119 @@ function  ClientConfiguration(eventObj,jwt)
 
     socket.on('clientdetails', function (data) {
 
-        socketObj.onClientdetailsRecieved(data);
+        if(socketObj.onClientdetailsRecieved)
+        {
+            socketObj.onClientdetailsRecieved(data);
+        }
+
     });
 
     socket.on('disconnect', function(reason)
     {
-        socketObj.onDisconnected(reason);
+        if(socketObj.onDisconnected)
+        {
+            socketObj.onDisconnected(reason);
+        }
+
     });
 
     socket.on('message', function(reason)
     {
-        socketObj.onMessageReceived(reason);
+        if(socketObj.onMessageReceived);
+        {
+            socketObj.onMessageReceived(reason);
+        }
+
+
     });
 
     socket.on('broadcast', function(data){
-        socketObj.onBroadcastMessageReceived(data);
+        if(socketObj.onBroadcastMessageReceived)
+        {
+            socketObj.onBroadcastMessageReceived(data);
+        }
+
         //socket.disconnect();
     });
 
     socket.on('publish', function(data){
-        socketObj.onPublishMessageReceived(data);
+        if(socketObj.onPublishMessageReceived)
+        {
+            socketObj.onPublishMessageReceived(data);
+        }
+
         //socket.disconnect();
     });
 
     socket.on('agent_found', function (data) {
-        socketObj.agent_found(data);
+        if(socketObj.agent_found)
+        {
+            socketObj.agent_found(data);
+        }
+
     });
     socket.on('agent_connected', function (data) {
-        socketObj.agent_connected(data);
+        if(socketObj.agent_connected);
+        {
+            socketObj.agent_connected(data);
+        }
+
     });
     socket.on('agent_disconnected', function (data) {
-        socketObj.agent_disconnected(data);
+        if(socketObj.agent_disconnected)
+        {
+            socketObj.agent_disconnected(data);
+        }
+
     });
     socket.on('agent_rejected', function (data) {
-        socketObj.agent_rejected(data);
+        if(socketObj.agent_rejected)
+        {
+            socketObj.agent_rejected(data);
+        }
+
+
     });
     socket.on('conference_create', function (data) {
-        socketObj.conference_create(data);
+        if(socketObj.conference_create)
+        {
+            socketObj.conference_create(data);
+        }
+
     });
     socket.on('conference_destroy', function (data) {
-        socketObj.conference_destroy(data);
+        if(socketObj.conference_destroy(data))
+        {
+            socketObj.conference_destroy(data);
+        }
+
     });
     socket.on('conference_member_joined', function (data) {
-        socketObj.conference_member_joined(data);
+        if(socketObj.conference_member_joined)
+        {
+            socketObj.conference_member_joined(data);
+        }
+
     });
     socket.on('conference_member_left', function (data) {
-        socketObj.conference_member_left(data);
+        if(socketObj.conference_member_left)
+        {
+            socketObj.conference_member_left(data);
+        }
+
     });
     socket.on('conference_member_status', function (data) {
-        socketObj.conference_member_status(data);
+        if(socketObj.conference_member_status)
+        {
+            socketObj.conference_member_status(data);
+        }
+
     });
     socket.on('conference_user_assigned', function (data) {
-        socketObj.conference_user_assigned(data);
+        if(socketObj.conference_user_assigned)
+        {
+            socketObj.conference_user_assigned(data);
+        }
     });
 
 

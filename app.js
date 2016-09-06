@@ -64,6 +64,7 @@ RestServer.use(jwt({secret: secret.Secret}));
 var Clients ={};//=new Array();
 var Refs=new Array();
 
+var newSock;
 
 
 //Server listen
@@ -101,6 +102,7 @@ io.sockets.on('connection',socketioJwt.authorize({
     timeout: 15000 // 15 seconds to send the authentication message
 })).on('authenticated',function (socket) {
 
+    newSock=socket;
     console.log('authenticated received ');
     var clientID = socket.decoded_token.iss;
     console.log("Client logged "+clientID);
@@ -394,6 +396,13 @@ io.sockets.on('connection',socketioJwt.authorize({
         });
     }
 
+    socket.on('authenticate', function (data) {
+        console.log("authenticate  received from client ");
+        console.log("authenticate  : "+JSON.stringify(data));
+
+
+    })
+
     socket.on('reply',function(data)
     {
         console.log("Reply received from client ");
@@ -509,6 +518,8 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     });
 
+    socket.emit('message',"Hello "+socket.decoded_token.iss);
+
     socket.on('subscribe', function (subsObj) {
 
         InitiateSubscriber(clientID,subsObj, function (errSubs,resSubs) {
@@ -525,6 +536,9 @@ io.sockets.on('connection',socketioJwt.authorize({
     });
 
 });
+
+
+// check and follow common format or res.end();
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
@@ -1041,6 +1055,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                 {
                                     var insSocket=insArray[i];
 
+
+                                    console.log("Event Name : "+eventName);
+                                    console.log("Event Message : "+msgObj);
 
                                     insSocket.emit(eventName,msgObj);
                                     console.log("Notification sent : "+JSON.stringify(msgObj));
@@ -1609,37 +1626,44 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
 
     var clientData = req.body.Clients;
 
-
-    console.log(clientData);
     var clientCount=clientData.length;
 
-    for(var i=0;i<clientData.length;i++)
+    BroadcastMessageHandler(req.body,clientData, function (error,processStatus)
     {
-        console.log("......................................................"+clientData[i].name+"........................................................................................................................")
-        BroadcastMessageHandler(req.body,clientData[i].name, function (errBCMsg,resBCMsg)
-        {
-            if(i==clientCount)
-            {
-                console.log("Request ended");
-                res.end();
-            }
-            if(errBCMsg)
-            {
-                console.log("err "+errBCMsg);
-                //res.end();
-
-            }
-            else
-            {
-                console.log("res "+resBCMsg);
-                //res.end();
-
-            }
-
-        });
+        res.end(JSON.stringify(processStatus));
+    });
 
 
-    }
+
+
+
+    /* for(var i=0;i<clientData.length;i++)
+     {
+     console.log("......................................................"+clientData[i].name+"........................................................................................................................")
+     BroadcastMessageHandler(req.body,clientData[i].name, function (errBCMsg,resBCMsg)
+     {
+     if(i==clientCount)
+     {
+     console.log("Request ended");
+     res.end();
+     }
+     if(errBCMsg)
+     {
+     console.log("err "+errBCMsg);
+     //res.end();
+
+     }
+     else
+     {
+     console.log("res "+resBCMsg);
+     //res.end();
+
+     }
+
+     });
+
+
+     }*/
     return next();
 });
 
@@ -2033,6 +2057,10 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                 for(var i=0;i<instanceArray.length;i++)
                                                 {
                                                     var instanceSocket = instanceArray[i];
+
+                                                    console.log("Publish : Event Name : "+eventName);
+                                                    console.log("Publish : Event Message : "+msgObj);
+
                                                     instanceSocket.emit(eventName,msgObj);
 
                                                     parellalResults.push("Only registered users in this servers : success");
@@ -2146,6 +2174,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                         for(var j=0;j<instanceArray.length;j++)
                                                         {
                                                             var instanceSocket = instanceArray[j];
+
+                                                            console.log("Publish : Event Name : "+eventName);
+                                                            console.log("Publish : Event Message : "+msgObj);
                                                             instanceSocket.emit(eventName,msgObj);
 
                                                         }
@@ -2503,6 +2534,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
         {
             var insSocket=insArray[i];
 
+            console.log("Publish : Event Name : "+eventName);
+            console.log("Publish : Event Message : "+msgObj);
 
             insSocket.emit(eventName,msgObj);
             console.log("Event notification sent : "+JSON.stringify(msgObj));
@@ -2643,6 +2676,13 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/f
         console.log("Client "+clientID+" is not registed in this server");
     }
 
+});
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/TestMessage', function (req,res,next) {
+
+    newSock.emit("message","Are you there?");
+    res.end();
+    return next();
 });
 
 
@@ -3120,122 +3160,524 @@ QueuedMessageOperator = function (msgObj,socketObj) {
 
 };
 
-BroadcastMessageHandler = function (msgObj,clientData,callback) {
+BroadcastMessageHandler = function (messageData,clientArray,callbackResult) {
+
+    var broadcastArray=[];
+    var processData=[];
 
 
-    try {
-        var msgBody = msgObj;
-        msgBody.To = clientData;
-        msgBody.Ref = "";
-        msgBody.Direction = "STATELESS";
-        msgBody.Topic = "";
-        msgBody.Callback = "";
+    clientArray.forEach(function (clientData) {
 
-        console.log("Message Body " + JSON.stringify(msgBody));
-        redisManager.GetClientsServer(clientData, function (errServer, resServer) {
+        broadcastArray.push(function createContact(callback)
+        {
+            redisManager.GetClientsServer(clientData, function (errServer, resServer) {
 
-            if (errServer) {
-                console.log("Error in server searching for client " + clientData);
-
-                msgBody.To = clientData;
-                console.log("Error Client " + msgBody.To);
-                console.log("my Client " + clientData);
-                DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave, resSave) {
-                    if (errSave) {
-                        callback(errSave, undefined);
+                if (errServer)
+                {
+                    console.log("Error in server searching for client " + clientData,errServer);
+                    var processStatus =
+                    {
+                        clientStatus:clientData+" : failed"
                     }
-                    else {
-                        callback(undefined, resSave);
-                    }
-
-                });
-            }
-            else {
-                console.log("Server " + resServer + " found for client " + clientData);
-
-                if (MyID == resServer) {
-                    console.log("Client " + clientData + " is a registerd client");
-                    if (Clients[clientData]) {
-                        var socket = Clients[clientData];
-                        var BcMsgObj = {
-
-                            "Message": msgObj.Message
-                        };
-                        socket.emit('broadcast', BcMsgObj);
-                        callback(undefined, clientData);
-
-
-                    }
-                    else {
-                        //record in DB
-                        console.log("Not in clientList " + clientData);
-                        msgBody.To = clientData;
-                        DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave, resSave) {
-                            if (errSave) {
-                                callback(errSave, undefined);
-                            }
-                            else {
-                                callback(undefined, resSave);
-                            }
-
-                        });
-                    }
+                    processData.push(processStatus);
+                    callback(null,processData);
                 }
-                else {
-                    console.log("SERVER " + resServer);
-                    console.log("My ID " + MyID);
+                else
+                {
 
-                    console.log("Client " + clientData + " is not a registerd client");
-                    DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+                    /*for(var i=0;i<resServer.length;i++)
+                     {
+                     console.log("Server " + resServer + " found for client " + clientData);
 
-                        if (errSvrPick) {
-                            console.log("error in Picking server from DB");
-                            console.log("Destination user not found");
-                            console.log("error " + errSvrPick);
-                            callback(errSvrPick, undefined);
+                     if (MyID == resServer[i]) {
+                     console.log("Server id of client "+resServer[i]);
+                     console.log("Client " + clientData + " is a registerd client");
 
-                        }
-                        else {
-                            var ServerIP = resSvrPick.URL;
-                            console.log(ServerIP);
-                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
-                            var options = {
-                                url: httpUrl,
-                                method: 'POST',
-                                json: msgObj
+                     if (Clients[clientData])
+                     {
 
-                            };
 
-                            console.log(options);
-                            try {
-                                httpReq(options, function (error, response, body) {
-                                    if (!error && response.statusCode == 200) {
-                                        console.log("no errrs in request 200 ok");
-                                        callback(undefined, response.statusCode);
+                     var instanceArray = Clients[clientData];
+
+                     for(var j=0;j<instanceArray.length;j++)
+                     {
+                     var socket =instanceArray[j];
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     }
+
+                     /!*instanceArray.forEach(function (clientInstance)
+                     {
+                     instanceData.push(function createContact(instanceCallback)
+                     {
+                     var socket=clientInstance;
+
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     instanceCallback(processData);
+                     });
+                     async.parallel(instanceArray, function (processStatus) {
+
+                     callbackResult(processStatus);
+
+
+                     });
+
+                     });*!/
+
+
+
+
+                     }
+                     else
+                     {
+                     //record in DB
+                     console.log("Requested client recorded in this server but not in clientList " + clientData);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     }
+                     else
+                     {
+                     console.log("SERVER " + resServer);
+                     console.log("My ID " + MyID);
+
+                     console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                     DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                     if (errSvrPick) {
+                     console.log("error in Picking server from DB");
+                     console.log("Destination user not found");
+                     console.log("error " + errSvrPick);
+
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     var ServerIP = resSvrPick.URL;
+                     console.log(ServerIP);
+                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                     var options = {
+                     url: httpUrl,
+                     method: 'POST',
+                     json: messageData
+
+                     };
+
+                     console.log(options);
+                     try
+                     {
+                     httpReq(options, function (error, response, body) {
+                     if (!error && response.statusCode == 200) {
+                     console.log("no errrs in request 200 ok");
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     console.log("error in request  " + error);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     });
+                     }
+                     catch (ex) {
+                     console.log("exception" + ex);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+
+                     }
+
+                     }
+                     });
+                     }
+
+                     if(i==resServer.length-1)
+                     {
+                     callback(processData);
+                     }
+                     }*/
+                    var serverData=[];
+                    resServer.forEach(function (serverItem) {
+
+
+                        console.log("Server " + resServer + " found for client " + clientData);
+
+                        console.log("Client " + clientData + " is a registered client");
+
+
+                        serverData.push(function createContact(serverCallback)
+                        {
+                            console.log("Server id of client "+serverItem);
+
+                            if (MyID == serverItem)     {
+
+                                console.log("My Client "+clientData);
+                                if (Clients[clientData])
+                                {
+
+                                    var instanceArray = Clients[clientData];
+
+                                    console.log("My instances "+clientData+":"+instanceArray.length);
+                                    /*for(var j=0;j<instanceArray.length;j++)
+                                     {
+                                     var socket =instanceArray[j];
+                                     var BcMsgObj = {
+
+                                     "Message": messageData.Message
+                                     };
+                                     socket.emit('broadcast', BcMsgObj);
+                                     var processStatus =
+                                     {
+                                     clientStatus:clientData+" : success"
+                                     }
+                                     processData.push(processStatus);
+
+
+                                     if(j==instanceArray.length-1)
+                                     {
+                                     serverCallback(processData);
+                                     }
+                                     }*/
+                                    var instanceData=[];
+                                    instanceArray.forEach(function (clientInstance)
+                                    {
+                                        instanceData.push(function createContact(instanceCallback)
+                                        {
+                                            var socket=clientInstance;
+                                            console.log("My socket "+clientData);
+
+                                            var BcMsgObj = {
+
+                                                "Message": messageData.Message
+                                            };
+                                            socket.emit('broadcast', BcMsgObj);
+                                            var processStatus =
+                                            {
+                                                clientStatus:clientData+" : success"
+                                            };
+                                            processData.push(processStatus);
+                                            instanceCallback(null,processData);
+                                        });
+
+
+                                    });
+
+                                    async.parallel(instanceData, function (processStatus) {
+
+                                        console.log("instance sending ends here for "+clientData);
+                                        serverCallback(null,processStatus);
+
+
+                                    });
+
+
+                                }
+                                else
+                                {
+                                    //record in DB
+                                    console.log("Requested client recorded in this server but not in clientList " + clientData);
+                                    var processStatus =
+                                    {
+                                        clientStatus:clientData+" : failed"
+                                    }
+                                    processData.push(processStatus);
+                                    serverCallback(null,processData);
+
+                                }
+                            }
+                            else
+                            {
+                                console.log("SERVER " + resServer);
+                                console.log("My ID " + MyID);
+
+                                console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                                DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                                    if (errSvrPick) {
+                                        console.log("error in Picking server from DB");
+                                        console.log("Destination user not found");
+                                        console.log("error " + errSvrPick);
+
+                                        var processStatus =
+                                        {
+                                            clientStatus:clientData+" : failed"
+                                        }
+
+                                        processData.push(processStatus);
+                                        serverCallback(null,processData);
 
                                     }
                                     else {
-                                        console.log("errrs in request  " + error);
-                                        callback(error, undefined);
+                                        var ServerIP = resSvrPick.URL;
+                                        console.log(ServerIP);
+                                        var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                                        var options = {
+                                            url: httpUrl,
+                                            method: 'POST',
+                                            json: messageData
+
+                                        };
+
+                                        console.log(options);
+                                        try
+                                        {
+                                            httpReq(options, function (error, response, body) {
+                                                if (!error && response.statusCode == 200) {
+                                                    console.log("no errrs in request 200 ok");
+                                                    var processStatus =
+                                                    {
+                                                        clientStatus:clientData+" : success"
+                                                    }
+
+                                                    processData.push(processStatus);
+                                                    serverCallback(null,processData);
+
+                                                }
+                                                else {
+                                                    console.log("error in request  " + error);
+                                                    var processStatus =
+                                                    {
+                                                        clientStatus:clientData+" : falied"
+                                                    }
+                                                    processData.push(processStatus);
+                                                    serverCallback(null,processData);
+
+                                                }
+                                            });
+                                        }
+                                        catch (ex) {
+                                            console.log("exception" + ex);
+                                            var processStatus =
+                                            {
+                                                clientStatus:clientData+" : falied"
+                                            }
+                                            processData.push(processStatus);
+                                            serverCallback(null,processData);
+
+
+                                        }
 
                                     }
                                 });
                             }
-                            catch (ex) {
-                                console.log("ex..." + ex);
-                                callback(ex, undefined);
 
-                            }
-
-                        }
+                        });
                     });
+
+                    async.parallel(serverData, function (processStatus) {
+
+                        console.log("Server data ends here");
+                        callback(null,processStatus);
+
+
+                    });
+
+                    /*for(var i=0;i<resServer.length;i++)
+                     {
+                     console.log("Server " + resServer + " found for client " + clientData);
+
+                     if (MyID == resServer[i]) {
+                     console.log("Server id of client "+resServer[i]);
+                     console.log("Client " + clientData + " is a registerd client");
+
+                     if (Clients[clientData])
+                     {
+
+
+                     var instanceArray = Clients[clientData];
+
+                     for(var j=0;j<instanceArray.length;j++)
+                     {
+                     var socket =instanceArray[j];
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     }
+
+                     /!*instanceArray.forEach(function (clientInstance)
+                     {
+                     instanceData.push(function createContact(instanceCallback)
+                     {
+                     var socket=clientInstance;
+
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     instanceCallback(processData);
+                     });
+                     async.parallel(instanceArray, function (processStatus) {
+
+                     callbackResult(processStatus);
+
+
+                     });
+
+                     });*!/
+
+
+
+
+                     }
+                     else
+                     {
+                     //record in DB
+                     console.log("Requested client recorded in this server but not in clientList " + clientData);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     }
+                     else
+                     {
+                     console.log("SERVER " + resServer);
+                     console.log("My ID " + MyID);
+
+                     console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                     DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                     if (errSvrPick) {
+                     console.log("error in Picking server from DB");
+                     console.log("Destination user not found");
+                     console.log("error " + errSvrPick);
+
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     var ServerIP = resSvrPick.URL;
+                     console.log(ServerIP);
+                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                     var options = {
+                     url: httpUrl,
+                     method: 'POST',
+                     json: messageData
+
+                     };
+
+                     console.log(options);
+                     try
+                     {
+                     httpReq(options, function (error, response, body) {
+                     if (!error && response.statusCode == 200) {
+                     console.log("no errrs in request 200 ok");
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     console.log("error in request  " + error);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     });
+                     }
+                     catch (ex) {
+                     console.log("exception" + ex);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+
+                     }
+
+                     }
+                     });
+                     }
+
+                     if(i==resServer.length-1)
+                     {
+                     callback(processData);
+                     }
+                     }*/
+
+
                 }
 
-            }
+
+
+            });
+
         });
-    } catch (e) {
-        callback(e,undefined);
-    }
+    });
+
+    async.parallel(broadcastArray, function (processStatus) {
+
+        console.log("Users ends here");
+        callbackResult(null,processData);
+
+
+    });
+
 
 };
 
@@ -3560,6 +4002,78 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
 
 
 };
+
+ClientServerPicker = function (clientArray,messageData,callback) {
+    var serverResponse=[];
+    var processData=[];
+
+    clientArray.forEach(function (clientData)
+    {
+        serverResponse.push(function createContact(serverCallback)
+        {
+            redisManager.GetClientsServer(clientData, function (errServer, resServer) {
+                if(errServer)
+                {
+                    console.log("Error in server searching for client " + clientData,errServer);
+                    var processStatus =
+                    {
+                        clientStatus:clientData+" : failed"
+                    }
+                    processData.push(processStatus);
+                    serverCallback(processData);
+                }
+                else
+                {
+                    if(resServer.length==1 && resServer.indexOf(MyID)!=-1)
+                    {
+                        InstanceMessageHandler(clientData,Clients[clientData],messageData, function (instanceCallback) {
+                            serverCallback(instanceCallback);
+                        });
+                    }
+                    else if(resServer.length>1 && resServer.indexOf(MyID)!=-1)
+                    {
+
+                    }
+
+
+                }
+            });
+        });
+    });
+
+
+};
+
+InstanceMessageHandler = function (clientData,instanceArray,messageData,callback) {
+
+    var instanceResponse=[];
+    var processData=[];
+
+    instanceArray.forEach(function (instanceItem) {
+
+        instanceResponse.push(function createContact(Instancecallback)
+        {
+            var socket =instanceItem;
+            var BcMsgObj = {
+
+                "Message": messageData.Message
+            };
+            socket.emit('broadcast', BcMsgObj);
+            var processStatus =
+            {
+                clientStatus:clientData+" : success"
+            }
+            processData.push(processStatus);
+
+        });
+    });
+
+    async.parallel(instanceResponse, function (processStatus)
+    {
+        callback(processStatus);
+    });
+};
+
 
 function Crossdomain(req,res,next){
 
