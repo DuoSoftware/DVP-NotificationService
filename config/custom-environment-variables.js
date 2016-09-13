@@ -36,6 +36,10 @@ module.exports = {
     {
         "ttl":"SYS_TTL"
     },
+    "PERSISTENCY":
+    {
+        "inbox_mode":"SYS_INBOX_MODE"
+    },
     "ID":"SYS_NS_ID",
     "Token":"HOST_TOKEN"
 };

@@ -1,7 +1,16 @@
 /**
  * Created by Pawan on 2/24/2016.
  */
+var mongoose = require('mongoose');
 var DbConn = require('dvp-dbmodels');
+var User = require('dvp-mongomodels/model/User');
+var InboxMessage = require('dvp-mongomodels/model/UserInbox').InboxMessage;
+var Schema = mongoose.Schema;
+var ObjectId = Schema.ObjectId;
+var httpReq = require('request');
+var util = require('util');
+var config=require('config');
+var token=config.Token;
 
 ServerPicker = function (SID,callback) {
 
@@ -276,19 +285,69 @@ GoogleNotificationKeyPicker = function (clientID,callback) {
 SipUserDetailsPicker = function (sipUsername,company,tenant,callback) {
 
     DbConn.SipUACEndpoint.find({where:[{SipUsername:sipUsername},{CompanyId:company},{TenantId:tenant}]}).then(function (resSipUserData) {
-       if(!resSipUserData)
-       {
-           callback(new Error("User not found"),undefined);
-       }
+        if(!resSipUserData)
+        {
+            callback(new Error("User not found"),undefined);
+        }
         else
-       {
-           callback(undefined,resSipUserData);
-       }
+        {
+            callback(undefined,resSipUserData);
+        }
 
     }).catch(function (errSipUserData) {
         callback(errSipUserData,undefined);
     });
 };
+
+InboxMessageSender = function (req,callback) {
+
+    var messageData =
+    {
+        message:req.body.Message,
+        msgType:"NOTIFICATION",
+        heading:req.headers.eventname,
+        from:req.body.From,
+        issuer:req.user.iss
+    }
+
+
+    var httpUrl = util.format('http://interactions.app.veery.cloud/DVP/API/1.0.0.0/Inbox/Message' );
+    var options = {
+        url: httpUrl,
+        method: 'POST',
+        json: messageData,
+        headers:
+        {
+            'authorization':"bearer "+token,
+            'CompanyInfo':'1:103'
+        }
+
+    };
+
+    try
+    {
+        httpReq(options, function (error, response, body) {
+
+            if(body.Exception || error)
+            {
+                callback(body.Exception,null);
+            }
+            else
+            {
+                callback(null,response);
+            }
+
+        });
+    }
+    catch (ex) {
+        callback(ex,undefined);
+
+
+    }
+
+
+
+}
 
 module.exports.ServerPicker = ServerPicker;
 module.exports.PersistenceMessageRecorder = PersistenceMessageRecorder;
@@ -300,3 +359,4 @@ module.exports.GoogleNotificationKeyPicker = GoogleNotificationKeyPicker;
 module.exports.GCMRegistrator = GCMRegistrator;
 module.exports.ClientServerPicker = ClientServerPicker;
 module.exports.SipUserDetailsPicker = SipUserDetailsPicker;
+module.exports.InboxMessageSender = InboxMessageSender;
