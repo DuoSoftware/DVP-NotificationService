@@ -3,7 +3,7 @@
  */
 var config=require('config');
 var clientSDK= require('./ClientSDK/ClientSDK.js');
-var token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdWtpdGhhIiwianRpIjoiMTdmZTE4M2QtM2QyNC00NjQwLTg1NTgtNWFkNGQ5YzVlMzE1Iiwic3ViIjoiNTZhOWU3NTlmYjA3MTkwN2EwMDAwMDAxMjVkOWU4MGI1YzdjNGY5ODQ2NmY5MjExNzk2ZWJmNDMiLCJjbGllbnQiOiIxIiwiZXhwIjoxODkzMzAyNzUzLCJ0ZW5hbnQiOjEsImNvbXBhbnkiOjMsInNjb3BlIjpbeyJyZXNvdXJjZSI6ImFsbCIsImFjdGlvbnMiOiJhbGwifV0sImlhdCI6MTQ2MTI5OTE1M30._M8u4ElZESTdJtkQSEtr58kE97s0KiHeIaeWsoVc8Ho";
+var token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdWtpdGhhIiwianRpIjoiYWEzOGRmZWYtNDFhOC00MWUyLTgwMzktOTJjZTY0YjM4ZDFmIiwic3ViIjoiNTZhOWU3NTlmYjA3MTkwN2EwMDAwMDAxMjVkOWU4MGI1YzdjNGY5ODQ2NmY5MjExNzk2ZWJmNDMiLCJleHAiOjE5MDIzODExMTgsInRlbmFudCI6MTAzLCJjb21wYW55IjoxLCJzY29wZSI6W3sicmVzb3VyY2UiOiJhbGwiLCJhY3Rpb25zIjoiYWxsIn1dLCJpYXQiOjE0NzAzODExMTh9.uKoB-v7fuv73_C3Fmtt5t-7Ln9bYwvZFWKzCqLQSpFs";
 var ClientID;
 var TopiCData;
 
@@ -69,6 +69,10 @@ function  ConferenceMemberStatus(reason)
 {
     console.log("ConferenceMemberStatus "+JSON.stringify(reason));
 };
+function  onBroadcastMessageReceived(reason)
+{
+    console.log("Broadcast message received "+JSON.stringify(reason));
+};
 
 
 var configOptions =
@@ -87,6 +91,7 @@ var configOptions =
         onConferenceMemberJoined:onConferenceMemberJoined,
         onConferenceMemberLeft:onConferenceMemberLeft,
         ConferenceMemberStatus:ConferenceMemberStatus,
+        onBroadcastMessageReceived:onBroadcastMessageReceived
 
 
     },

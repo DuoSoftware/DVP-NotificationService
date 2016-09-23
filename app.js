@@ -64,6 +64,9 @@ RestServer.use(jwt({secret: secret.Secret}));
 var Clients ={};//=new Array();
 var Refs=new Array();
 
+var newSock;
+
+var inboxMode=config.PERSISTENCY.inbox_mode;
 
 
 //Server listen
@@ -101,6 +104,7 @@ io.sockets.on('connection',socketioJwt.authorize({
     timeout: 15000 // 15 seconds to send the authentication message
 })).on('authenticated',function (socket) {
 
+    newSock=socket;
     console.log('authenticated received ');
     var clientID = socket.decoded_token.iss;
     console.log("Client logged "+clientID);
@@ -394,6 +398,13 @@ io.sockets.on('connection',socketioJwt.authorize({
         });
     }
 
+    socket.on('authenticate', function (data) {
+        console.log("authenticate  received from client ");
+        console.log("authenticate  : "+JSON.stringify(data));
+
+
+    })
+
     socket.on('reply',function(data)
     {
         console.log("Reply received from client ");
@@ -509,6 +520,8 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     });
 
+    socket.emit('message',"Hello "+socket.decoded_token.iss);
+
     socket.on('subscribe', function (subsObj) {
 
         InitiateSubscriber(clientID,subsObj, function (errSubs,resSubs) {
@@ -526,400 +539,11 @@ io.sockets.on('connection',socketioJwt.authorize({
 
 });
 
+
+// check and follow common format or res.end();
+
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
-
-    /*var clientID=req.body.To;
-     var eventName=req.headers.eventname;
-     var eventUuid=req.headers.eventuuid;
-     var msgSenderArray=[];
-     var Company =1;
-     var Tenant=1;
-
-     redisManager.LocationListPicker(clientID, function (errList,resList) {
-
-     console.log("Checking Location result "+resList);
-     if(errList)
-     {
-     console.log("Client is not available.......................");
-     console.log("Error in Checking Availability ",errList);
-     res.end();
-
-     }
-
-     else
-     {
-     if(typeof resList !== 'undefined' && resList.length > 0)
-     {
-     if(!isNaN(req.body.Timeout))
-     {
-     TTL =req.body.Timeout;
-     console.log("TTL found "+TTL);
-     }
-
-     var callbackURL=req.body.CallbackURL;
-     var topicID=TopicIdGenerator();
-     var direction=req.body.Direction;
-     var message=req.body.Message;
-     var ref=req.body.Ref;
-
-     Refs[topicID]=ref;
-
-     if(direction=="STATEFUL")
-     {
-     callbackURL=req.body.CallbackURL;
-     }
-     var sender = req.body.From;
-
-
-     var msgObj={
-
-     "Message":message,
-     "TopicKey":topicID,
-     "eventName":eventName,
-     "eventUuid":eventUuid,
-     "Company":Company,
-     "Tenant":Tenant
-
-     };
-
-
-
-     redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
-     {
-     resList.forEach(function (serverId) {
-
-     console.log("hit");
-     msgSenderArray.push(function createContact(callback)
-     {
-     if(serverId==MyID)
-     {
-     if(Clients[clientID])
-     {
-     var insArray =Clients[clientID];
-     for(var i=0;i<insArray.length;i++)
-     {
-     var insSocket=insArray[i];
-
-
-     if(eventName=="agent_connected")
-     {
-     insSocket.emit('agent_connected',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else if(eventName=="agent_disconnected")
-     {
-     insSocket.emit('agent_disconnected',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else if(eventName=="agent_found") {
-     insSocket.emit('agent_found',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else
-     {
-     insSocket.emit('message',msgObj);
-     console.log("Message sent : "+JSON.stringify(msgObj));
-     }
-
-     if(i==insArray.length-1)
-     {
-     //res.end();
-     callback(undefined,"Success");
-     }
-     }
-
-     }
-     }
-     else
-     {
-     DBController.ServerPicker(serverId, function (errServ,resServ) {
-     if(errServ)
-     {
-     console.log("Error in server picking");
-     callback(errServ,undefined);
-     }
-     else if(!resServ)
-     {
-     console.log("Invalid server ID");
-     callback(new Error("Invalid Server ID"),undefined);
-     }
-     else
-     {
-     var ServerIP = resServ.URL;
-     console.log(ServerIP);
-
-
-     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
-     var options = {
-     url : httpUrl,
-     method : 'POST',
-     json : req.body,
-     headers:{
-     'eventName':req.headers.eventname,
-     'eventUuid':req.headers.eventuuid,
-     'authorization':'bearer '+token,
-     'topic':topicID
-     }
-
-     };
-
-
-     httpReq(options, function (error, response, body)
-     {
-     if (!error && response.statusCode == 200)
-     {
-     console.log("no errrs");
-     console.log(JSON.stringify(response));
-     callback(undefined,"Success")
-     }
-     else
-     {
-     console.log("errrs  "+error);
-     callback(error,undefined);
-     }
-     });
-     }
-     });
-     }
-
-
-     });
-
-
-
-     });
-     async.parallel(msgSenderArray, function (errBulkSend,resSend) {
-
-     console.log(errBulkSend);
-     console.log(resSend);
-     if(errTobj)
-     {
-     res.end(new Error("Topic key delievering Error "+errTobj));
-     }
-     else
-     {
-     res.end(topicID);
-     }
-
-     });
-
-     });
-
-
-
-     }
-     else
-     {
-     if(req.body.Persistency)
-     {
-
-     DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
-
-     if(errSave)
-     {
-     console.log("Error in Message Saving ",errSave);
-     res.end();
-     }
-     else
-     {
-     console.log("Message saving succeeded ",resSave);
-     res.end();
-     }
-     });
-     }
-     else
-     {
-     console.log("Client is not available.......................");
-     res.end();
-     }
-
-     }
-
-
-
-     ///////////////////////////////////////////////////////////////////////////////////
-
-     /!*if(resAvbl && req.body.Persistency)
-     {
-
-     DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
-
-     if(errSave)
-     {
-     console.log("Error in Message Saving ",errSave);
-     res.end();
-     }
-     else
-     {
-     console.log("Message saving succeeded ",resSave);
-     res.end();
-     }
-     });
-     }
-     else
-     {
-     if(!isNaN(req.body.Timeout))
-     {
-     TTL =req.body.Timeout;
-     console.log("TTL found "+TTL);
-     }
-     console.log(clientID);
-
-     if(Clients[clientID])
-     {
-     console.log("Client "+clientID+" is registered in this server");
-     var socket=Clients[clientID];
-
-     console.log("Destination available");
-     console.log("Body "+req.body);
-     try
-     {
-     var callbackURL=req.body.CallbackURL;
-     var topicID=TopicIdGenerator();
-     var direction=req.body.Direction;
-     var message=req.body.Message;
-     var ref=req.body.Ref;
-
-     Refs[topicID]=ref;
-
-     if(direction=="STATEFUL")
-     {
-     callbackURL=req.body.CallbackURL;
-     }
-     var sender = req.body.From;
-
-
-
-     }
-     catch(ex)
-     {
-     console.log("Error in request body "+ex);
-     res.end("Error in request body "+ex);
-     }
-
-
-     redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
-     {
-     if(errTobj)
-     {
-     console.log("Error in TokenObject creation "+errTobj);
-     res.end("Error in TokenObject creation "+errTobj);
-     }
-     else
-     {
-
-
-     var msgObj={
-
-     "Message":message,
-     "TopicKey":topicID,
-     "eventName":eventName,
-     "eventUuid":eventUuid,
-     "Company":Company,
-     "Tenant":Tenant
-
-     };
-     if(eventName=="agent_connected")
-     {
-     socket.emit('agent_connected',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else if(eventName=="agent_disconnected")
-     {
-     socket.emit('agent_disconnected',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else if(eventName=="agent_found") {
-     socket.emit('agent_found',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else
-     {
-     socket.emit('message',msgObj);
-     console.log("Message sent : "+JSON.stringify(msgObj));
-     }
-
-     res.end(topicID);
-
-     }
-     });
-
-     }
-     else
-     {
-     console.log("Client "+clientID+" is not registered in this server");
-     redisManager.GetClientsServer(clientID, function (errGet,resGet) {
-
-     if(errGet)
-     {
-     console.log("error in getting client server");
-     console.log("Destination user not found");
-     res.status(400);
-     res.end("No user found "+clientID);
-     }
-     else
-     {
-     console.log("SERVER "+resGet);
-     console.log("My ID "+MyID);
-     DBController.ServerPicker(resGet, function (errPick,resPick) {
-
-     if(errPick)
-     {
-     console.log("error in Picking server from DB");
-     console.log("Destination user not found");
-     console.log("error "+errPick);
-     res.status(400);
-     res.end("No user found "+clientID);
-     }
-     else
-     {
-     var ServerIP = resPick.URL;
-     console.log(ServerIP);
-
-
-     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate', ServerIP, version);
-     var options = {
-     url : httpUrl,
-     method : 'POST',
-     json : req.body
-
-     };
-
-     console.log(options);
-     try
-     {
-     httpReq(options, function (error, response, body)
-     {
-     if (!error && response.statusCode == 200)
-     {
-     console.log("no errrs");
-     console.log(JSON.stringify(response));
-     res.end(response.body);
-     }
-     else
-     {
-     console.log("errrs  "+error);
-     res.end();
-     }
-     });
-     }
-     catch(ex)
-     {
-     console.log("ex..."+ex);
-     res.end();
-     }
-
-     }
-     });
-     }
-     });
-     }
-     }*!/
-     }
-
-
-     });*/
 
     console.log("New request form "+req.body.From);
 
@@ -1041,6 +665,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                 {
                                     var insSocket=insArray[i];
 
+
+                                    console.log("Event Name : "+eventName);
+                                    console.log("Event Message : "+msgObj);
 
                                     insSocket.emit(eventName,msgObj);
                                     console.log("Notification sent : "+JSON.stringify(msgObj));
@@ -1175,19 +802,39 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
             {
                 console.log("No client found,  backing up messages ");
 
-                DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+                if(inboxMode)
+                {
+                    DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                        if(errInbox)
+                        {
+                            console.log("Error in Message Saving ",errInbox);
+                            res.end();
+                        }
+                        else
+                        {
+                            console.log("Message saving succeeded ");
+                            res.end("Message saved to related client's inbox");
+                        }
+                    });
+                }
+                else
+                {
+                    DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
 
-                    if(errSave)
-                    {
-                        console.log("Error in Message Saving ",errSave);
-                        res.end();
-                    }
-                    else
-                    {
-                        console.log("Message saving succeeded ",resSave);
-                        res.end("Message saved until related client is online");
-                    }
-                });
+                        if(errSave)
+                        {
+                            console.log("Error in Message Saving ",errSave);
+                            res.end();
+                        }
+                        else
+                        {
+                            console.log("Message saving succeeded ",resSave);
+                            res.end("Message saved until related client is online");
+                        }
+                    });
+                }
+
+
             }
             else
             {
@@ -1341,20 +988,36 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
 
                         }
 
+                        if(inboxMode)
+                        {
+                            DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                                if(errInbox)
+                                {
+                                    console.log("Error in Message Saving ",errInbox);
+                                    res.end();
+                                }
+                                else
+                                {
+                                    console.log("Message saving succeeded ",resInbox);
+                                    res.end("Message saved to related client's inbox");
+                                }
+                            });
+                        }
+                        else
+                        {
 
-                        DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+                            DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
 
-                            if(errSave)
-                            {
-                                console.log("Error in Message Saving ",errSave);
-                                res.end();
-                            }
-                            else
-                            {
-                                console.log("Message saving succeeded ",resSave);
-                                res.end();
-                            }
-                        });
+                                if (errSave) {
+                                    console.log("Error in Message Saving ", errSave);
+                                    res.end();
+                                }
+                                else {
+                                    console.log("Message saving succeeded ", resSave);
+                                    res.end();
+                                }
+                            });
+                        }
                     }
                     else
                     {
@@ -1404,7 +1067,12 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
                                             var options = {
                                                 url : httpUrl,
                                                 method : 'POST',
-                                                json : req.body
+                                                json : req.body,
+                                                headers:{
+                                                    'eventName':req.headers.eventname,
+                                                    'eventUuid':req.headers.eventuuid,
+                                                    'authorization':"bearer "+token
+                                                }
 
                                             };
 
@@ -1542,7 +1210,13 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
                                     var options = {
                                         url : httpUrl,
                                         method : 'POST',
-                                        json : req.body
+                                        json : req.body,
+                                        headers:{
+                                            'eventName':req.headers.eventname,
+                                            'eventUuid':req.headers.eventuuid,
+                                            'authorization':"bearer "+token,
+                                            'topic':topicKey
+                                        }
 
                                     };
 
@@ -1608,37 +1282,44 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
 
     var clientData = req.body.Clients;
 
-
-    console.log(clientData);
     var clientCount=clientData.length;
 
-    for(var i=0;i<clientData.length;i++)
+    BroadcastMessageHandler(req.body,clientData, function (error,processStatus)
     {
-        console.log("......................................................"+clientData[i].name+"........................................................................................................................")
-        BroadcastMessageHandler(req.body,clientData[i].name, function (errBCMsg,resBCMsg)
-        {
-            if(i==clientCount)
-            {
-                console.log("Request ended");
-                res.end();
-            }
-            if(errBCMsg)
-            {
-                console.log("err "+errBCMsg);
-                //res.end();
-
-            }
-            else
-            {
-                console.log("res "+resBCMsg);
-                //res.end();
-
-            }
-
-        });
+        res.end(JSON.stringify(processStatus));
+    });
 
 
-    }
+
+
+
+    /* for(var i=0;i<clientData.length;i++)
+     {
+     console.log("......................................................"+clientData[i].name+"........................................................................................................................")
+     BroadcastMessageHandler(req.body,clientData[i].name, function (errBCMsg,resBCMsg)
+     {
+     if(i==clientCount)
+     {
+     console.log("Request ended");
+     res.end();
+     }
+     if(errBCMsg)
+     {
+     console.log("err "+errBCMsg);
+     //res.end();
+
+     }
+     else
+     {
+     console.log("res "+resBCMsg);
+     //res.end();
+
+     }
+
+     });
+
+
+     }*/
     return next();
 });
 
@@ -1671,22 +1352,38 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     {
         console.log("Not in clientList "+clientData);
         userData.To=user;
-        DBController.PersistenceGroupMessageRecorder(userData, function (errSave,resSave)
+        if(inboxMode)
         {
-            if(errSave)
-            {
-                //callback(errSave,undefined);
-                console.log("DB error "+errSave);
-                res.end();
-            }
-            else
-            {
-                //callback(undefined,resSave);
-                console.log("DB kk "+resSave);
-                res.end(resSave);
-            }
+            DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                if(errInbox)
+                {
+                    console.log("Error in Message Saving ",errInbox);
+                    res.end();
+                }
+                else
+                {
+                    console.log("Message saving succeeded ",resInbox);
+                    res.end("Message saved to related client's inbox");
+                }
+            });
+        }
+        else
+        {
 
-        });
+            DBController.PersistenceGroupMessageRecorder(userData, function (errSave, resSave) {
+                if (errSave) {
+                    //callback(errSave,undefined);
+                    console.log("DB error " + errSave);
+                    res.end();
+                }
+                else {
+                    //callback(undefined,resSave);
+                    console.log("DB kk " + resSave);
+                    res.end(resSave);
+                }
+
+            });
+        }
     }
 });
 
@@ -2032,6 +1729,10 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                 for(var i=0;i<instanceArray.length;i++)
                                                 {
                                                     var instanceSocket = instanceArray[i];
+
+                                                    console.log("Publish : Event Name : "+eventName);
+                                                    console.log("Publish : Event Message : "+msgObj);
+
                                                     instanceSocket.emit(eventName,msgObj);
 
                                                     parellalResults.push("Only registered users in this servers : success");
@@ -2145,6 +1846,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                         for(var j=0;j<instanceArray.length;j++)
                                                         {
                                                             var instanceSocket = instanceArray[j];
+
+                                                            console.log("Publish : Event Name : "+eventName);
+                                                            console.log("Publish : Event Message : "+msgObj);
                                                             instanceSocket.emit(eventName,msgObj);
 
                                                         }
@@ -2356,21 +2060,32 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:
         socket.emit('publish',req.body);
         res.end("Success");
     }
-    else
-    {
-
-        DBController.PersistencePubSubMessageRecorder(req.body,clientID, function (errSave,resSave) {
-            if(errSave)
-            {
-                console.log("Error Save "+errSave);
-                res.end();
-            }
-            else
-            {
-                console.log("Success ");
-                res.end();
-            }
-        });
+    else {
+        if (inboxMode) {
+            DBController.InboxMessageSender(req, function (errInbox, resInbox) {
+                if (errInbox) {
+                    console.log("Error in Message Saving ", errInbox);
+                    res.end();
+                }
+                else {
+                    console.log("Message saving succeeded ", resInbox);
+                    res.end("Message saved to related client's inbox");
+                }
+            });
+        }
+        else
+        {
+            DBController.PersistencePubSubMessageRecorder(req.body, clientID, function (errSave, resSave) {
+                if (errSave) {
+                    console.log("Error Save " + errSave);
+                    res.end();
+                }
+                else {
+                    console.log("Success ");
+                    res.end();
+                }
+            });
+        }
     }
 
 
@@ -2502,6 +2217,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
         {
             var insSocket=insArray[i];
 
+            console.log("Publish : Event Name : "+eventName);
+            console.log("Publish : Event Message : "+msgObj);
 
             insSocket.emit(eventName,msgObj);
             console.log("Event notification sent : "+JSON.stringify(msgObj));
@@ -2545,19 +2262,37 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
     {
         if(req.body.Persistency)
         {
-            DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+            if(inboxMode)
+            {
+                DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                    if(errInbox)
+                    {
+                        console.log("Error in Message Saving ",errInbox);
+                        res.end();
+                    }
+                    else
+                    {
+                        console.log("Message saving succeeded ",resInbox);
+                        res.end("Message saved to related client's inbox");
+                    }
+                });
+            }
+            else
+            {
 
-                if(errSave)
-                {
-                    console.log("Error in Message Saving ",errSave);
-                    res.end();
-                }
-                else
-                {
-                    console.log("Message saving succeeded ");
-                    res.end();
-                }
-            });
+
+                DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+
+                    if (errSave) {
+                        console.log("Error in Message Saving ", errSave);
+                        res.end();
+                    }
+                    else {
+                        console.log("Message saving succeeded ");
+                        res.end();
+                    }
+                });
+            }
         }
         else
         {
@@ -2642,6 +2377,26 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/f
         console.log("Client "+clientID+" is not registed in this server");
     }
 
+});
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/TestMessage',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+
+    DBController.InboxMessageSender(req, function (err,response) {
+        if(err)
+        {
+            console.log("Error "+err);
+            res.end();
+        }
+        else
+        {
+            console.log("Response "+response);
+            res.end();
+        }
+
+
+    });
+
+    return next();
 });
 
 
@@ -3119,122 +2874,530 @@ QueuedMessageOperator = function (msgObj,socketObj) {
 
 };
 
-BroadcastMessageHandler = function (msgObj,clientData,callback) {
+BroadcastMessageHandler = function (messageData,clientArray,callbackResult) {
+
+    var broadcastArray=[];
+    var processData=[];
 
 
-    try {
-        var msgBody = msgObj;
-        msgBody.To = clientData;
-        msgBody.Ref = "";
-        msgBody.Direction = "STATELESS";
-        msgBody.Topic = "";
-        msgBody.Callback = "";
+    clientArray.forEach(function (clientData) {
 
-        console.log("Message Body " + JSON.stringify(msgBody));
-        redisManager.GetClientsServer(clientData, function (errServer, resServer) {
+        broadcastArray.push(function createContact(callback)
+        {
+            redisManager.GetClientsServer(clientData, function (errServer, resServer) {
 
-            if (errServer) {
-                console.log("Error in server searching for client " + clientData);
-
-                msgBody.To = clientData;
-                console.log("Error Client " + msgBody.To);
-                console.log("my Client " + clientData);
-                DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave, resSave) {
-                    if (errSave) {
-                        callback(errSave, undefined);
+                if (errServer)
+                {
+                    console.log("Error in server searching for client " + clientData,errServer);
+                    var processStatus =
+                    {
+                        clientStatus:clientData+" : failed"
                     }
-                    else {
-                        callback(undefined, resSave);
-                    }
-
-                });
-            }
-            else {
-                console.log("Server " + resServer + " found for client " + clientData);
-
-                if (MyID == resServer) {
-                    console.log("Client " + clientData + " is a registerd client");
-                    if (Clients[clientData]) {
-                        var socket = Clients[clientData];
-                        var BcMsgObj = {
-
-                            "Message": msgObj.Message
-                        };
-                        socket.emit('broadcast', BcMsgObj);
-                        callback(undefined, clientData);
-
-
-                    }
-                    else {
-                        //record in DB
-                        console.log("Not in clientList " + clientData);
-                        msgBody.To = clientData;
-                        DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave, resSave) {
-                            if (errSave) {
-                                callback(errSave, undefined);
-                            }
-                            else {
-                                callback(undefined, resSave);
-                            }
-
-                        });
-                    }
+                    processData.push(processStatus);
+                    callback(null,processData);
                 }
-                else {
-                    console.log("SERVER " + resServer);
-                    console.log("My ID " + MyID);
+                else
+                {
 
-                    console.log("Client " + clientData + " is not a registerd client");
-                    DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+                    /*for(var i=0;i<resServer.length;i++)
+                     {
+                     console.log("Server " + resServer + " found for client " + clientData);
 
-                        if (errSvrPick) {
-                            console.log("error in Picking server from DB");
-                            console.log("Destination user not found");
-                            console.log("error " + errSvrPick);
-                            callback(errSvrPick, undefined);
+                     if (MyID == resServer[i]) {
+                     console.log("Server id of client "+resServer[i]);
+                     console.log("Client " + clientData + " is a registerd client");
 
-                        }
-                        else {
-                            var ServerIP = resSvrPick.URL;
-                            console.log(ServerIP);
-                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
-                            var options = {
-                                url: httpUrl,
-                                method: 'POST',
-                                json: msgObj
+                     if (Clients[clientData])
+                     {
 
-                            };
 
-                            console.log(options);
-                            try {
-                                httpReq(options, function (error, response, body) {
-                                    if (!error && response.statusCode == 200) {
-                                        console.log("no errrs in request 200 ok");
-                                        callback(undefined, response.statusCode);
+                     var instanceArray = Clients[clientData];
+
+                     for(var j=0;j<instanceArray.length;j++)
+                     {
+                     var socket =instanceArray[j];
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     }
+
+                     /!*instanceArray.forEach(function (clientInstance)
+                     {
+                     instanceData.push(function createContact(instanceCallback)
+                     {
+                     var socket=clientInstance;
+
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     instanceCallback(processData);
+                     });
+                     async.parallel(instanceArray, function (processStatus) {
+
+                     callbackResult(processStatus);
+
+
+                     });
+
+                     });*!/
+
+
+
+
+                     }
+                     else
+                     {
+                     //record in DB
+                     console.log("Requested client recorded in this server but not in clientList " + clientData);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     }
+                     else
+                     {
+                     console.log("SERVER " + resServer);
+                     console.log("My ID " + MyID);
+
+                     console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                     DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                     if (errSvrPick) {
+                     console.log("error in Picking server from DB");
+                     console.log("Destination user not found");
+                     console.log("error " + errSvrPick);
+
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     var ServerIP = resSvrPick.URL;
+                     console.log(ServerIP);
+                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                     var options = {
+                     url: httpUrl,
+                     method: 'POST',
+                     json: messageData
+
+                     };
+
+                     console.log(options);
+                     try
+                     {
+                     httpReq(options, function (error, response, body) {
+                     if (!error && response.statusCode == 200) {
+                     console.log("no errrs in request 200 ok");
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     console.log("error in request  " + error);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     });
+                     }
+                     catch (ex) {
+                     console.log("exception" + ex);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+
+                     }
+
+                     }
+                     });
+                     }
+
+                     if(i==resServer.length-1)
+                     {
+                     callback(processData);
+                     }
+                     }*/
+                    var serverData=[];
+                    resServer.forEach(function (serverItem) {
+
+
+                        console.log("Server " + resServer + " found for client " + clientData);
+
+                        console.log("Client " + clientData + " is a registered client");
+
+
+                        serverData.push(function createContact(serverCallback)
+                        {
+                            console.log("Server id of client "+serverItem);
+
+                            if (MyID == serverItem)     {
+
+                                console.log("My Client "+clientData);
+                                if (Clients[clientData])
+                                {
+
+                                    var instanceArray = Clients[clientData];
+
+                                    console.log("My instances "+clientData+":"+instanceArray.length);
+                                    /*for(var j=0;j<instanceArray.length;j++)
+                                     {
+                                     var socket =instanceArray[j];
+                                     var BcMsgObj = {
+
+                                     "Message": messageData.Message
+                                     };
+                                     socket.emit('broadcast', BcMsgObj);
+                                     var processStatus =
+                                     {
+                                     clientStatus:clientData+" : success"
+                                     }
+                                     processData.push(processStatus);
+
+
+                                     if(j==instanceArray.length-1)
+                                     {
+                                     serverCallback(processData);
+                                     }
+                                     }*/
+                                    var instanceData=[];
+                                    instanceArray.forEach(function (clientInstance)
+                                    {
+                                        instanceData.push(function createContact(instanceCallback)
+                                        {
+                                            var socket=clientInstance;
+                                            console.log("My socket "+clientData);
+
+                                            var BcMsgObj = {
+
+                                                "Message": messageData.Message
+                                            };
+                                            socket.emit('broadcast', BcMsgObj);
+                                            var processStatus =
+                                            {
+                                                clientStatus:clientData+" : success"
+                                            };
+                                            processData.push(processStatus);
+                                            instanceCallback(null,processData);
+                                        });
+
+
+                                    });
+
+                                    async.parallel(instanceData, function (processStatus) {
+
+                                        console.log("instance sending ends here for "+clientData);
+                                        serverCallback(null,processStatus);
+
+
+                                    });
+
+
+                                }
+                                else
+                                {
+                                    //record in DB
+                                    console.log("Requested client recorded in this server but not in clientList " + clientData);
+                                    var processStatus =
+                                    {
+                                        clientStatus:clientData+" : failed"
+                                    }
+                                    processData.push(processStatus);
+                                    serverCallback(null,processData);
+
+                                }
+                            }
+                            else
+                            {
+                                console.log("SERVER " + resServer);
+                                console.log("My ID " + MyID);
+
+                                console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                                DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                                    if (errSvrPick) {
+                                        console.log("error in Picking server from DB");
+                                        console.log("Destination user not found");
+                                        console.log("error " + errSvrPick);
+
+                                        var processStatus =
+                                        {
+                                            clientStatus:clientData+" : failed"
+                                        }
+
+                                        processData.push(processStatus);
+                                        serverCallback(null,processData);
 
                                     }
                                     else {
-                                        console.log("errrs in request  " + error);
-                                        callback(error, undefined);
+                                        var ServerIP = resSvrPick.URL;
+                                        console.log(ServerIP);
+                                        var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                                        var options = {
+                                            url: httpUrl,
+                                            method: 'POST',
+                                            json: messageData,
+                                            headers:{
+                                                'eventName':eventName,
+                                                'eventUuid':eventUuid,
+                                                'authorization':"bearer "+token
+                                            }
+
+
+                                        };
+
+                                        console.log(options);
+                                        try
+                                        {
+                                            httpReq(options, function (error, response, body) {
+                                                if (!error && response.statusCode == 200) {
+                                                    console.log("no errrs in request 200 ok");
+                                                    var processStatus =
+                                                    {
+                                                        clientStatus:clientData+" : success"
+                                                    }
+
+                                                    processData.push(processStatus);
+                                                    serverCallback(null,processData);
+
+                                                }
+                                                else {
+                                                    console.log("error in request  " + error);
+                                                    var processStatus =
+                                                    {
+                                                        clientStatus:clientData+" : falied"
+                                                    }
+                                                    processData.push(processStatus);
+                                                    serverCallback(null,processData);
+
+                                                }
+                                            });
+                                        }
+                                        catch (ex) {
+                                            console.log("exception" + ex);
+                                            var processStatus =
+                                            {
+                                                clientStatus:clientData+" : falied"
+                                            }
+                                            processData.push(processStatus);
+                                            serverCallback(null,processData);
+
+
+                                        }
 
                                     }
                                 });
                             }
-                            catch (ex) {
-                                console.log("ex..." + ex);
-                                callback(ex, undefined);
 
-                            }
-
-                        }
+                        });
                     });
+
+                    async.parallel(serverData, function (processStatus) {
+
+                        console.log("Server data ends here");
+                        callback(null,processStatus);
+
+
+                    });
+
+                    /*for(var i=0;i<resServer.length;i++)
+                     {
+                     console.log("Server " + resServer + " found for client " + clientData);
+
+                     if (MyID == resServer[i]) {
+                     console.log("Server id of client "+resServer[i]);
+                     console.log("Client " + clientData + " is a registerd client");
+
+                     if (Clients[clientData])
+                     {
+
+
+                     var instanceArray = Clients[clientData];
+
+                     for(var j=0;j<instanceArray.length;j++)
+                     {
+                     var socket =instanceArray[j];
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     }
+
+                     /!*instanceArray.forEach(function (clientInstance)
+                     {
+                     instanceData.push(function createContact(instanceCallback)
+                     {
+                     var socket=clientInstance;
+
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     instanceCallback(processData);
+                     });
+                     async.parallel(instanceArray, function (processStatus) {
+
+                     callbackResult(processStatus);
+
+
+                     });
+
+                     });*!/
+
+
+
+
+                     }
+                     else
+                     {
+                     //record in DB
+                     console.log("Requested client recorded in this server but not in clientList " + clientData);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     }
+                     else
+                     {
+                     console.log("SERVER " + resServer);
+                     console.log("My ID " + MyID);
+
+                     console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                     DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                     if (errSvrPick) {
+                     console.log("error in Picking server from DB");
+                     console.log("Destination user not found");
+                     console.log("error " + errSvrPick);
+
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     var ServerIP = resSvrPick.URL;
+                     console.log(ServerIP);
+                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                     var options = {
+                     url: httpUrl,
+                     method: 'POST',
+                     json: messageData
+
+                     };
+
+                     console.log(options);
+                     try
+                     {
+                     httpReq(options, function (error, response, body) {
+                     if (!error && response.statusCode == 200) {
+                     console.log("no errrs in request 200 ok");
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     console.log("error in request  " + error);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     });
+                     }
+                     catch (ex) {
+                     console.log("exception" + ex);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+
+                     }
+
+                     }
+                     });
+                     }
+
+                     if(i==resServer.length-1)
+                     {
+                     callback(processData);
+                     }
+                     }*/
+
+
                 }
 
-            }
+
+
+            });
+
         });
-    } catch (e) {
-        callback(e,undefined);
-    }
+    });
+
+    async.parallel(broadcastArray, function (processStatus) {
+
+        console.log("Users ends here");
+        callbackResult(null,processData);
+
+
+    });
+
 
 };
 
@@ -3367,6 +3530,7 @@ PublishToUser = function (clientID,msgObj,callback) {
                     }
                     else {
                         console.log("Offline user");
+
                         DBController.PersistencePubSubMessageRecorder(msgObj,clientID, function (errSave,resSave) {
                             if(errSave)
                             {
@@ -3393,7 +3557,12 @@ PublishToUser = function (clientID,msgObj,callback) {
                             var options = {
                                 url: httpUrl,
                                 method: 'POST',
-                                json: msgObj
+                                json: msgObj,
+                                headers:{
+                                    'eventName':eventName,
+                                    'eventUuid':eventUuid,
+                                    'authorization':"bearer "+token
+                                }
 
                             };
 
@@ -3469,7 +3638,12 @@ InitiateSubscriber = function (clientID,msgObj,callback) {
                             var options = {
                                 url : httpUrl,
                                 method : 'POST',
-                                json : msgObj
+                                json : msgObj,
+                                headers:{
+                                    'eventName':eventName,
+                                    'eventUuid':eventUuid,
+                                    'authorization':"bearer "+token,
+                                }
 
                             };
 
@@ -3559,6 +3733,80 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
 
 
 };
+
+ClientServerPicker = function (clientArray,messageData,callback) {
+    var serverResponse=[];
+    var processData=[];
+
+    clientArray.forEach(function (clientData)
+    {
+        serverResponse.push(function createContact(serverCallback)
+        {
+            redisManager.GetClientsServer(clientData, function (errServer, resServer) {
+                if(errServer)
+                {
+                    console.log("Error in server searching for client " + clientData,errServer);
+                    var processStatus =
+                    {
+                        clientStatus:clientData+" : failed"
+                    }
+                    processData.push(processStatus);
+                    serverCallback(processData);
+                }
+                else
+                {
+                    if(resServer.length==1 && resServer.indexOf(MyID)!=-1)
+                    {
+                        InstanceMessageHandler(clientData,Clients[clientData],messageData, function (instanceCallback) {
+                            serverCallback(instanceCallback);
+                        });
+                    }
+                    else if(resServer.length>1 && resServer.indexOf(MyID)!=-1)
+                    {
+
+                    }
+
+
+                }
+            });
+        });
+    });
+
+
+};
+
+InstanceMessageHandler = function (clientData,instanceArray,messageData,callback) {
+
+    var instanceResponse=[];
+    var processData=[];
+
+    instanceArray.forEach(function (instanceItem) {
+
+        instanceResponse.push(function createContact(Instancecallback)
+        {
+            var socket =instanceItem;
+            var BcMsgObj = {
+
+                "Message": messageData.Message
+            };
+            socket.emit('broadcast', BcMsgObj);
+            var processStatus =
+            {
+                clientStatus:clientData+" : success"
+            }
+            processData.push(processStatus);
+
+        });
+    });
+
+    async.parallel(instanceResponse, function (processStatus)
+    {
+        callback(processStatus);
+    });
+};
+
+
+
 
 function Crossdomain(req,res,next){
 
