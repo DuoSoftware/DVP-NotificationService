@@ -51,14 +51,18 @@ var RestServer = restify.createServer({
 var io = socketio.listen(RestServer.server);
 //restify.CORS.ALLOW_HEADERS.push('authorization');
 
+
+restify.CORS.ALLOW_HEADERS.push('authorization');
+restify.CORS.ALLOW_HEADERS.push('eventname');
+restify.CORS.ALLOW_HEADERS.push('eventuuid');
+restify.CORS.ALLOW_HEADERS.push('appkey');
 RestServer.use(restify.CORS());
 RestServer.use(restify.fullResponse());
 RestServer.use(restify.bodyParser());
 RestServer.use(restify.acceptParser(RestServer.acceptable));
 RestServer.use(restify.queryParser());
 
-restify.CORS.ALLOW_HEADERS.push('authorization');
-restify.CORS.ALLOW_HEADERS.push('appkey');
+
 RestServer.use(jwt({secret: secret.Secret}));
 
 var Clients ={};//=new Array();
