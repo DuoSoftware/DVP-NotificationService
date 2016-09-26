@@ -1276,6 +1276,8 @@ RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
+
+    console.log("hit broadcast");
     if(!req.user.company || !req.user.tenant)
     {
         throw new Error("Invalid company or tenant");
@@ -1290,6 +1292,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
         {
             res.end(JSON.stringify(processStatus));
         });
+    }
+    else
+    {
+        res.end("Empty client lit received ");
+
     }
 
     return next();
@@ -3142,8 +3149,6 @@ BroadcastMessageHandler = function (messageData,callbackResult) {
                                             method: 'POST',
                                             json: messageData,
                                             headers:{
-                                                'eventName':eventName,
-                                                'eventUuid':eventUuid,
                                                 'authorization':"bearer "+token
                                             }
 
