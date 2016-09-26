@@ -1284,46 +1284,14 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     var Company=req.user.company;
     var Tenant=req.user.tenant;
 
-    var clientData = req.body.Clients;
-
-    var clientCount=clientData.length;
-
-    BroadcastMessageHandler(req.body,clientData, function (error,processStatus)
+    if(req.body.clients)
     {
-        res.end(JSON.stringify(processStatus));
-    });
+        BroadcastMessageHandler(req.body, function (error,processStatus)
+        {
+            res.end(JSON.stringify(processStatus));
+        });
+    }
 
-
-
-
-
-    /* for(var i=0;i<clientData.length;i++)
-     {
-     console.log("......................................................"+clientData[i].name+"........................................................................................................................")
-     BroadcastMessageHandler(req.body,clientData[i].name, function (errBCMsg,resBCMsg)
-     {
-     if(i==clientCount)
-     {
-     console.log("Request ended");
-     res.end();
-     }
-     if(errBCMsg)
-     {
-     console.log("err "+errBCMsg);
-     //res.end();
-
-     }
-     else
-     {
-     console.log("res "+resBCMsg);
-     //res.end();
-
-     }
-
-     });
-
-
-     }*/
     return next();
 });
 
@@ -2878,10 +2846,12 @@ QueuedMessageOperator = function (msgObj,socketObj) {
 
 };
 
-BroadcastMessageHandler = function (messageData,clientArray,callbackResult) {
+BroadcastMessageHandler = function (messageData,callbackResult) {
 
     var broadcastArray=[];
     var processData=[];
+
+    var clientArray=messageData.clients;
 
 
     clientArray.forEach(function (clientData) {

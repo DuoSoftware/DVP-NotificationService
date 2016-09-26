@@ -77,7 +77,7 @@ function  onBroadcastMessageReceived(reason)
 
 var configOptions =
 {
-    URL:"http://127.0.0.1:8089",
+    URL:"http://192.168.0.67:8089",
     Callbacks:{
         onDisconnected:onDisconnected,
         onMessageReceived:onMessageReceived,
