@@ -606,7 +606,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                 "eventUuid":eventUuid,
                 "TopicKey":topicID,
                 "Message":message,
-                "eventName":eventName
+                "eventName":eventName,
+                "From":sender
 
 
 
@@ -2130,7 +2131,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
         "eventName":eventName,
         "eventUuid":eventUuid,
         "Company":Company,
-        "Tenant":Tenant
+        "Tenant":Tenant,
+        "From":req.body.From
 
     };
 
@@ -3081,7 +3083,8 @@ BroadcastMessageHandler = function (messageData,callbackResult) {
 
                                             var BcMsgObj = {
 
-                                                "Message": messageData.Message
+                                                "Message": messageData.Message,
+                                                "From":messageData.From
                                             };
                                             socket.emit('broadcast', BcMsgObj);
                                             var processStatus =
