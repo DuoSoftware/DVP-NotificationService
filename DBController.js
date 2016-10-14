@@ -12,6 +12,8 @@ var util = require('util');
 var config=require('config');
 var token=config.Token;
 
+var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
+
 ServerPicker = function (SID,callback) {
 
     try {
@@ -219,7 +221,7 @@ PersistencePubSubMessageRecorder = function (Obj,clientID,callback) {
 };
 
 GCMRegistrator = function (clientID,regKey,res) {
-
+    var jsonString;
     try {
         var gcmKey = DbConn.GCMKeys
             .build(
@@ -234,15 +236,19 @@ GCMRegistrator = function (clientID,regKey,res) {
         gcmKey.save().then(function (resSave) {
 
             console.log("GCM record successfully saved");
-            res.end("Success");
+            jsonString = messageFormatter.FormatMessage(undefined, "GCM record successfully saved", true, resSave);
+            res.end(jsonString);
+
 
         }).catch(function (errSave) {
             console.log("GCM record insertion failed");
-            res.end(JSON.stringify(errSave));
+            jsonString = messageFormatter.FormatMessage(errSave, "GCM record insertion failed", false, undefined);
+            res.end(jsonString);
         });
     } catch (ex) {
         console.log("Exception in GCM Recorder");
-        res.end(JSON.stringify(ex));
+        jsonString = messageFormatter.FormatMessage(ex, "GCM record insertion failed", false, undefined);
+        res.end(jsonString);
     }
 
 
