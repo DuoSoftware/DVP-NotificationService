@@ -548,15 +548,6 @@ io.sockets.on('connection',socketioJwt.authorize({
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
-
-    console.log("New request form "+req.body.From);
-
-    var clientID=req.body.To;
-    var eventName=req.headers.eventname;
-    var eventUuid=req.headers.eventuuid;
-    var msgSenderArray=[];
-
-
     if(!req.user.company || !req.user.tenant)
     {
         throw new Error("Invalid company or tenant");
@@ -564,6 +555,61 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    console.log("New request form "+req.body.From);
+
+    var clientID=req.body.To;
+    var eventName=req.headers.eventname;
+    var eventUuid=req.headers.eventuuid;
+    var msgSenderArray=[];
+    if(!isNaN(req.body.Timeout))
+    {
+        TTL =req.body.Timeout;
+        console.log("TTL found "+TTL);
+    }
+
+    var callbackURL=req.body.CallbackURL;
+    var topicID=TopicIdGenerator();
+    var direction=req.body.Direction;
+    var message=req.body.Message;
+    var ref=req.body.Ref;
+
+    Refs[topicID]=ref;
+
+    if(direction=="STATEFUL")
+    {
+        callbackURL=req.body.CallbackURL;
+    }
+    var sender = req.body.From;
+
+
+    var msgObj={
+        "Tenant":Tenant,
+        "Company":Company,
+        "eventUuid":eventUuid,
+        "TopicKey":topicID,
+        "Message":message,
+        "eventName":eventName,
+        "From":sender
+
+
+
+
+    };
+
+    GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+        if(errGnotf)
+        {
+            console.log("Error in Google notifications:  "+errGnotf);
+        }
+        else
+        {
+            console.log("Success. Google notifications sent:  "+resGnotf);
+        }
+
+    });
+
+
+
 
 
 
@@ -579,41 +625,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
         }
         else if(typeof resList !== 'undefined' && resList.length > 0)
         {
-            if(!isNaN(req.body.Timeout))
-            {
-                TTL =req.body.Timeout;
-                console.log("TTL found "+TTL);
-            }
-
-            var callbackURL=req.body.CallbackURL;
-            var topicID=TopicIdGenerator();
-            var direction=req.body.Direction;
-            var message=req.body.Message;
-            var ref=req.body.Ref;
-
-            Refs[topicID]=ref;
-
-            if(direction=="STATEFUL")
-            {
-                callbackURL=req.body.CallbackURL;
-            }
-            var sender = req.body.From;
-
-
-            var msgObj={
-                "Tenant":Tenant,
-                "Company":Company,
-                "eventUuid":eventUuid,
-                "TopicKey":topicID,
-                "Message":message,
-                "eventName":eventName,
-                "From":sender
-
-
-
-
-            };
-
 
             redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
             {
@@ -629,7 +640,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                             {
 
 
-                                GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+                               /* GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
                                     if(errGnotf)
                                     {
                                         console.log("Error in Google notifications:  "+errGnotf);
@@ -639,7 +650,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         console.log("Success. Google notifications sent:  "+resGnotf);
                                     }
 
-                                });
+                                });*/
 
                                 /*DBController.SipUserDetailsPicker(clientID,Company,Tenant, function (errSipData,resSipData) {
 
@@ -3693,14 +3704,19 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
              message.addData("Message  ", msgObj.Message);
              message.addData("EventName  ", msgObj.eventName);*/
 
-            message.addNotification(msgObj);
+            //message.addNotification(msgObj);
 
             //var icon = 'https://raw.githubusercontent.com/deanhume/typography/gh-pages/icons/typography.png';
             //message.addNotification('icon', icon);
 
 
+            message.addNotification('title', msgObj.eventName);
+            message.addNotification('icon', 'ic_launcher');
+            message.addNotification('body', msgObj);
 
             // Sender.send(message, { registrationTokens: [regToken] }, function (err, response) {
+            console.log("Recepients "+resKey);
+            console.log("Message "+JSON.stringify(message));
             Sender.send(message, { registrationTokens: resKey }, function (err, response) {
 
 
