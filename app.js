@@ -3695,7 +3695,8 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
         else
         {
             console.log("type: "+typeof (resKey));
-            var message = new gcm.Message();
+            var message = new gcm.Message({data:msgObj});
+            //var message = new gcm.Message();
 
             /*message.addData("EventUuid  ", msgObj.eventUuid);
              message.addData("TopicID  ", msgObj.topicID);
@@ -3712,7 +3713,7 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
 
             message.addNotification('title', msgObj.eventName);
             message.addNotification('icon', 'ic_launcher');
-            message.addNotification('body', msgObj);
+            //message.addNotification('body', msgObj);
 
             // Sender.send(message, { registrationTokens: [regToken] }, function (err, response) {
             console.log("Recepients "+resKey);
