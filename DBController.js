@@ -253,6 +253,25 @@ GCMRegistrator = function (clientID,regKey,res) {
 
 
 };
+GCMKeyRemover = function (clientID,regKey,res) {
+    var jsonString;
+
+
+    DbConn.GCMKeys.destroy({where:[{GCMKey:regKey},{ClientID:clientID}]}).then(function (resRemove) {
+
+        console.log("GCM record successfully removed");
+        jsonString = messageFormatter.FormatMessage(undefined, "GCM record successfully removed", true, resRemove);
+        res.end(jsonString);
+
+    }).catch(function (errRemove) {
+        console.log("GCM record deletion failed");
+        jsonString = messageFormatter.FormatMessage(errRemove, "GCM record deletion failed", false, undefined);
+        res.end(jsonString);
+    });
+
+
+
+};
 
 GoogleNotificationKeyPicker = function (clientID,callback) {
 

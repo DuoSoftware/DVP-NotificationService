@@ -2150,7 +2150,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
 
     if(Clients[clientID])
     {
-        GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+        /*GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
             if(errGnotf)
             {
                 console.log("Error in Google notifications:  "+errGnotf);
@@ -2160,7 +2160,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
                 console.log("Success. Google notifications sent:  "+resGnotf);
             }
 
-        });
+        });*/
 
         /* if(!isNaN(clientID))
          {
@@ -2298,10 +2298,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
-    /*if(!req.user.company || !req.user.tenant)
-     {
-     throw new Error("Invalid company or tenant");
-     }*/
 
     var AppKey=req.headers.appkey;
     var username = req.user.iss;
@@ -2310,6 +2306,40 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegist
 
 
     DBController.GCMRegistrator(username,AppKey,res);
+
+
+    /* DBController.SipUserDetailsPicker(username,Company,Tenant, function (errSipData,resSipData) {
+
+     if(errSipData)
+     {
+     console.log("Error in registration ",errSipData);
+     res.end();
+     }
+     else
+     {
+     var userID = resSipData.id;
+     console.log("APPkey "+AppKey);
+     console.log("User "+userID);
+
+     console.log("hitz");
+     DBController.GCMRegistrator(userID,AppKey,res);
+     }
+
+     });*/
+
+    return next();
+
+});
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCM/Unregister',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+
+
+    var AppKey=req.body.appkey;
+    var username = req.user.iss;
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+
+    DBController.GCMKeyRemover(username,AppKey,res);
 
 
     /* DBController.SipUserDetailsPicker(username,Company,Tenant, function (errSipData,resSipData) {
@@ -3713,6 +3743,7 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
 
             message.addNotification('title', msgObj.eventName);
             message.addNotification('icon', 'ic_launcher');
+            message.addNotification(' click_action', 'apps.veery.com.service.MyFirebaseMessagingService');
             //message.addNotification('body', msgObj);
 
             // Sender.send(message, { registrationTokens: [regToken] }, function (err, response) {
