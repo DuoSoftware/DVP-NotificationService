@@ -384,3 +384,4 @@ module.exports.GCMRegistrator = GCMRegistrator;
 module.exports.ClientServerPicker = ClientServerPicker;
 module.exports.SipUserDetailsPicker = SipUserDetailsPicker;
 module.exports.InboxMessageSender = InboxMessageSender;
+module.exports.GCMKeyRemover = GCMKeyRemover;

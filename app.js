@@ -555,6 +555,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    var compInfo = Tenant + ':' + Company;
     console.log("New request form "+req.body.From);
 
     var clientID=req.body.To;
@@ -751,6 +752,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
                                     console.log("URL "+httpUrl);
+
                                     var options = {
                                         url : httpUrl,
                                         method : 'POST',
@@ -759,7 +761,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                             'eventName':req.headers.eventname,
                                             'eventUuid':req.headers.eventuuid,
                                             'authorization':"bearer "+token,
-                                            'topic':topicID
+                                            'topic':topicID,
+                                            'companyinfo': compInfo
                                         }
 
                                     };
@@ -971,6 +974,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    var compInfo = Tenant + ':' + Company;
 
 
 
@@ -1087,7 +1091,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
                                                 headers:{
                                                     'eventName':req.headers.eventname,
                                                     'eventUuid':req.headers.eventuuid,
-                                                    'authorization':"bearer "+token
+                                                    'authorization':"bearer "+token,
+                                                    'companyinfo': compInfo
+
                                                 }
 
                                             };
@@ -1148,6 +1154,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    var compInfo = Tenant + ':' + Company;
 
     redisManager.TopicObjectPicker(topicKey,TTL, function (errTopic,resTopic) {
 
@@ -1221,7 +1228,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
                                     var ServerIP = resPick.URL;
                                     console.log(ServerIP);
 
-
                                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/DisconnectSession/'+resTopic.Client, ServerIP, version);
                                     var options = {
                                         url : httpUrl,
@@ -1231,7 +1237,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
                                             'eventName':req.headers.eventname,
                                             'eventUuid':req.headers.eventuuid,
                                             'authorization':"bearer "+token,
-                                            'topic':topicKey
+                                            'topic':topicKey,
+                                            'companyInfo':compInfo
                                         }
 
                                     };
@@ -1297,10 +1304,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    var compInfo = Tenant + ':' + Company;
 
     if(req.body.clients)
     {
-        BroadcastMessageHandler(req.body, function (error,processStatus)
+        BroadcastMessageHandler(req.body,compInfo, function (error,processStatus)
         {
             res.end(JSON.stringify(processStatus));
         });
@@ -1680,6 +1688,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
 
         var Company=req.user.company;
         var Tenant=req.user.tenant;
+        var compInfo = Tenant + ':' + Company;
 
         var queryKey = req.body.querykey;
         var msgObj = req.body.message;
@@ -1790,7 +1799,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                                     'eventName':eventName,
                                                                     'eventUuid':eventUuid,
                                                                     'authorization':"bearer "+token,
-                                                                    'topic':eventUuid
+                                                                    'topic':eventUuid,
+                                                                    'companyInfo':compInfo
+
                                                                 }
 
                                                             };
@@ -1893,7 +1904,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
                                                                 'eventName':eventName,
                                                                 'eventUuid':eventUuid,
                                                                 'authorization':"bearer "+token,
-                                                                'topic':eventUuid
+                                                                'topic':eventUuid,
+                                                                'companyInfo':compInfo
                                                             }
 
                                                         };
@@ -2896,7 +2908,7 @@ QueuedMessageOperator = function (msgObj,socketObj) {
 
 };
 
-BroadcastMessageHandler = function (messageData,callbackResult) {
+BroadcastMessageHandler = function (messageData,compInfo,callbackResult) {
 
     var broadcastArray=[];
     var processData=[];
@@ -3193,7 +3205,8 @@ BroadcastMessageHandler = function (messageData,callbackResult) {
                                             method: 'POST',
                                             json: messageData,
                                             headers:{
-                                                'authorization':"bearer "+token
+                                                'authorization':"bearer "+token,
+                                                'companyInfo':compInfo
                                             }
 
 
@@ -3492,7 +3505,7 @@ SubscribeDataRecorder = function (dataObj,userId) {
 
 };
 
-PublishToUser = function (clientID,msgObj,callback) {
+PublishToUser = function (clientID,msgObj,compInfo,callback) {
 
     /* redisManager.IsRegisteredClient(clientID, function (errAvbl,status,resAvbl) {
 
@@ -3584,7 +3597,8 @@ PublishToUser = function (clientID,msgObj,callback) {
                                 headers:{
                                     'eventName':eventName,
                                     'eventUuid':eventUuid,
-                                    'authorization':"bearer "+token
+                                    'authorization':"bearer "+token,
+                                    'companyInfo':compInfo
                                 }
 
                             };
@@ -3743,7 +3757,6 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
 
             message.addNotification('title', msgObj.eventName);
             message.addNotification('icon', 'ic_launcher');
-            message.addNotification(' click_action', 'apps.veery.com.service.MyFirebaseMessagingService');
             //message.addNotification('body', msgObj);
 
             // Sender.send(message, { registrationTokens: [regToken] }, function (err, response) {
