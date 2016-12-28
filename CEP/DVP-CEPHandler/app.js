@@ -194,7 +194,7 @@ QueryKeyGenerator = function (dataObj) {
 
     // client.RPUSH("key",)
 };
-PublishToUser = function (userID,msgObj,callback) {
+PublishToUser = function (userID,msgObj,compInfo,callback) {
 
     redismanager.ServerPicker(userID, function (errSID,resSID) {
 

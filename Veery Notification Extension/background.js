@@ -30,6 +30,7 @@ function messageReceived(message) {
             topicString=message.data[key];
         }
 
+
         /* if (messageString != "")
          messageString += '\n'
          messageString += key + " : " + message.data[key];*/
@@ -44,12 +45,6 @@ function messageReceived(message) {
         iconUrl: 'veery.png',
         type: 'list',
         message: messageString,
-        buttons: [{
-            title: "Add to Calender"
-        }, {
-            title: "Cancel"
-
-        }],
         items:listArr
     }, function(id) {myNotificationID = id;});
 }
@@ -90,7 +85,7 @@ function firstTimeRegistration() {
         registerWindowCreated = true;
         chrome.app.window.create(
             "index.html",
-            {  width: 500,
+            {  width: 1000,
                 height: 400,
                 frame: 'chrome'
             },

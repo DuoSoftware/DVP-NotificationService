@@ -1,11 +1,21 @@
 /**
  * Created by Pawan on 2/24/2016.
  */
+var mongoose = require('mongoose');
 var DbConn = require('dvp-dbmodels');
+var User = require('dvp-mongomodels/model/User');
+var InboxMessage = require('dvp-mongomodels/model/UserInbox').InboxMessage;
+var Schema = mongoose.Schema;
+var ObjectId = Schema.ObjectId;
+var httpReq = require('request');
+var util = require('util');
+var config=require('config');
+var token=config.Token;
+
+var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
 
 ServerPicker = function (SID,callback) {
 
-    console.log("Hitaa");
     try {
         DbConn.NotificationServer.find({where: {id: SID}}).then(function (resServ) {
 
@@ -21,6 +31,27 @@ ServerPicker = function (SID,callback) {
         });
     } catch (e) {
         callback(e,undefined);
+    }
+};
+
+ClientServerPicker = function (SID,index,callback) {
+
+
+    try {
+        DbConn.NotificationServer.find({where: {id: SID}}).then(function (resServ) {
+
+            if (resServ) {
+                callback(undefined, resServ,index);
+            }
+            else {
+                callback(new Error("Invalid ID"), undefined,index);
+            }
+        }).catch(function (errServ) {
+            console.log(errServ);
+            callback(errServ, undefined,index);
+        });
+    } catch (e) {
+        callback(e,undefined,index);
     }
 };
 
@@ -190,7 +221,7 @@ PersistencePubSubMessageRecorder = function (Obj,clientID,callback) {
 };
 
 GCMRegistrator = function (clientID,regKey,res) {
-
+    var jsonString;
     try {
         var gcmKey = DbConn.GCMKeys
             .build(
@@ -205,16 +236,39 @@ GCMRegistrator = function (clientID,regKey,res) {
         gcmKey.save().then(function (resSave) {
 
             console.log("GCM record successfully saved");
-            res.end("Success");
+            jsonString = messageFormatter.FormatMessage(undefined, "GCM record successfully saved", true, resSave);
+            res.end(jsonString);
+
 
         }).catch(function (errSave) {
             console.log("GCM record insertion failed");
-            res.end(JSON.stringify(errSave));
+            jsonString = messageFormatter.FormatMessage(errSave, "GCM record insertion failed", false, undefined);
+            res.end(jsonString);
         });
     } catch (ex) {
         console.log("Exception in GCM Recorder");
-        res.end(JSON.stringify(ex));
+        jsonString = messageFormatter.FormatMessage(ex, "GCM record insertion failed", false, undefined);
+        res.end(jsonString);
     }
+
+
+};
+GCMKeyRemover = function (clientID,regKey,res) {
+    var jsonString;
+
+
+    DbConn.GCMKeys.destroy({where:[{GCMKey:regKey},{ClientID:clientID}]}).then(function (resRemove) {
+
+        console.log("GCM record successfully removed");
+        jsonString = messageFormatter.FormatMessage(undefined, "GCM record successfully removed", true, resRemove);
+        res.end(jsonString);
+
+    }).catch(function (errRemove) {
+        console.log("GCM record deletion failed");
+        jsonString = messageFormatter.FormatMessage(errRemove, "GCM record deletion failed", false, undefined);
+        res.end(jsonString);
+    });
+
 
 
 };
@@ -223,13 +277,12 @@ GoogleNotificationKeyPicker = function (clientID,callback) {
 
     DbConn.GCMKeys.findAll({attributes: ['GCMKey'],where:{ClientID:clientID}}).then(function (resKeys) {
 
-        console.log("key : "+resKeys.GCMKey);
         if(resKeys)
         {
             var GCMkeys=[];
             for(var i=0;i<resKeys.length;i++)
             {
-                GCMkeys[i]=resKeys[i].GCMKey;
+                GCMkeys.push(resKeys[i].GCMKey);
                 if(i==resKeys.length-1)
                 {
                     callback(undefined,GCMkeys)
@@ -253,6 +306,73 @@ GoogleNotificationKeyPicker = function (clientID,callback) {
 
 };
 
+SipUserDetailsPicker = function (sipUsername,company,tenant,callback) {
+
+    DbConn.SipUACEndpoint.find({where:[{SipUsername:sipUsername},{CompanyId:company},{TenantId:tenant}]}).then(function (resSipUserData) {
+        if(!resSipUserData)
+        {
+            callback(new Error("User not found"),undefined);
+        }
+        else
+        {
+            callback(undefined,resSipUserData);
+        }
+
+    }).catch(function (errSipUserData) {
+        callback(errSipUserData,undefined);
+    });
+};
+
+InboxMessageSender = function (req,callback) {
+
+    var messageData =
+    {
+        message:req.body.Message,
+        msgType:"NOTIFICATION",
+        heading:req.headers.eventname,
+        from:req.body.From,
+        issuer:req.user.iss
+    }
+
+
+    var httpUrl = util.format('http://interactions.app.veery.cloud/DVP/API/1.0.0.0/Inbox/Message' );
+    var options = {
+        url: httpUrl,
+        method: 'POST',
+        json: messageData,
+        headers:
+        {
+            'authorization':"bearer "+token,
+            'CompanyInfo':'1:103'
+        }
+
+    };
+
+    try
+    {
+        httpReq(options, function (error, response, body) {
+
+            if(body.Exception || error)
+            {
+                callback(body.Exception,null);
+            }
+            else
+            {
+                callback(null,response);
+            }
+
+        });
+    }
+    catch (ex) {
+        callback(ex,undefined);
+
+
+    }
+
+
+
+}
+
 module.exports.ServerPicker = ServerPicker;
 module.exports.PersistenceMessageRecorder = PersistenceMessageRecorder;
 module.exports.QueuedMessagesPicker = QueuedMessagesPicker;
@@ -261,3 +381,7 @@ module.exports.PersistenceGroupMessageRecorder = PersistenceGroupMessageRecorder
 module.exports.PersistencePubSubMessageRecorder = PersistencePubSubMessageRecorder;
 module.exports.GoogleNotificationKeyPicker = GoogleNotificationKeyPicker;
 module.exports.GCMRegistrator = GCMRegistrator;
+module.exports.ClientServerPicker = ClientServerPicker;
+module.exports.SipUserDetailsPicker = SipUserDetailsPicker;
+module.exports.InboxMessageSender = InboxMessageSender;
+module.exports.GCMKeyRemover = GCMKeyRemover;

@@ -13,8 +13,8 @@ var gcm = require('node-gcm');
 
 
 var opt = {
-    pingTimeout: 3000,
-    pingInterval: 3000,
+    pingTimeout: 60000,
+    pingInterval: 25000,
     transports: ['websocket'],
     allowUpgrades: false,
     cookie: false
@@ -51,19 +51,26 @@ var RestServer = restify.createServer({
 var io = socketio.listen(RestServer.server);
 //restify.CORS.ALLOW_HEADERS.push('authorization');
 
+
+restify.CORS.ALLOW_HEADERS.push('authorization');
+restify.CORS.ALLOW_HEADERS.push('eventname');
+restify.CORS.ALLOW_HEADERS.push('eventuuid');
+restify.CORS.ALLOW_HEADERS.push('appkey');
 RestServer.use(restify.CORS());
 RestServer.use(restify.fullResponse());
 RestServer.use(restify.bodyParser());
 RestServer.use(restify.acceptParser(RestServer.acceptable));
 RestServer.use(restify.queryParser());
 
-restify.CORS.ALLOW_HEADERS.push('authorization');
-restify.CORS.ALLOW_HEADERS.push('appkey');
+
 RestServer.use(jwt({secret: secret.Secret}));
 
 var Clients ={};//=new Array();
 var Refs=new Array();
 
+var newSock;
+
+var inboxMode=config.PERSISTENCY.inbox_mode;
 
 
 //Server listen
@@ -101,8 +108,10 @@ io.sockets.on('connection',socketioJwt.authorize({
     timeout: 15000 // 15 seconds to send the authentication message
 })).on('authenticated',function (socket) {
 
+    newSock=socket;
     console.log('authenticated received ');
-    var clientID = socket.decoded_token.client;
+    var clientID = socket.decoded_token.iss;
+    console.log("Client logged "+clientID);
     socket.emit('clientdetails',clientID);
     console.log(clientID);
 
@@ -129,8 +138,6 @@ io.sockets.on('connection',socketioJwt.authorize({
 
         }
 
-
-
         redisManager.LocationListPicker(clientID, function (errList,resList) {
 
             if(errList)
@@ -141,7 +148,8 @@ io.sockets.on('connection',socketioJwt.authorize({
             {
 
 
-                if(typeof resList !== 'undefined' && resList.length > 0)
+                //if(typeof resList !== 'undefined' && resList.length > 0)
+                if(resList.length > 0)
                 {
 
                     // console.log("New Client instance Added");
@@ -394,6 +402,13 @@ io.sockets.on('connection',socketioJwt.authorize({
         });
     }
 
+    socket.on('authenticate', function (data) {
+        console.log("authenticate  received from client ");
+        console.log("authenticate  : "+JSON.stringify(data));
+
+
+    })
+
     socket.on('reply',function(data)
     {
         console.log("Reply received from client ");
@@ -469,7 +484,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     });
     socket.on('disconnect',function(reason)
-    { var ClientID=socket.decoded_token.client;
+    { var ClientID=socket.decoded_token.iss;
         console.log("Disconnected "+socket.id+" Reason "+reason);
         console.log("Socket ID ",socket.id);
         console.log("ClientID "+ClientID);
@@ -509,6 +524,8 @@ io.sockets.on('connection',socketioJwt.authorize({
 
     });
 
+    socket.emit('message',"Hello "+socket.decoded_token.iss);
+
     socket.on('subscribe', function (subsObj) {
 
         InitiateSubscriber(clientID,subsObj, function (errSubs,resSubs) {
@@ -526,410 +543,11 @@ io.sockets.on('connection',socketioJwt.authorize({
 
 });
 
+
+// check and follow common format or res.end();
+
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
-
-    /*var clientID=req.body.To;
-     var eventName=req.headers.eventname;
-     var eventUuid=req.headers.eventuuid;
-     var msgSenderArray=[];
-     var Company =1;
-     var Tenant=1;
-
-     redisManager.LocationListPicker(clientID, function (errList,resList) {
-
-     console.log("Checking Location result "+resList);
-     if(errList)
-     {
-     console.log("Client is not available.......................");
-     console.log("Error in Checking Availability ",errList);
-     res.end();
-
-     }
-
-     else
-     {
-     if(typeof resList !== 'undefined' && resList.length > 0)
-     {
-     if(!isNaN(req.body.Timeout))
-     {
-     TTL =req.body.Timeout;
-     console.log("TTL found "+TTL);
-     }
-
-     var callbackURL=req.body.CallbackURL;
-     var topicID=TopicIdGenerator();
-     var direction=req.body.Direction;
-     var message=req.body.Message;
-     var ref=req.body.Ref;
-
-     Refs[topicID]=ref;
-
-     if(direction=="STATEFUL")
-     {
-     callbackURL=req.body.CallbackURL;
-     }
-     var sender = req.body.From;
-
-
-     var msgObj={
-
-     "Message":message,
-     "TopicKey":topicID,
-     "eventName":eventName,
-     "eventUuid":eventUuid,
-     "Company":Company,
-     "Tenant":Tenant
-
-     };
-
-
-
-     redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
-     {
-     resList.forEach(function (serverId) {
-
-     console.log("hit");
-     msgSenderArray.push(function createContact(callback)
-     {
-     if(serverId==MyID)
-     {
-     if(Clients[clientID])
-     {
-     var insArray =Clients[clientID];
-     for(var i=0;i<insArray.length;i++)
-     {
-     var insSocket=insArray[i];
-
-
-     if(eventName=="agent_connected")
-     {
-     insSocket.emit('agent_connected',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else if(eventName=="agent_disconnected")
-     {
-     insSocket.emit('agent_disconnected',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else if(eventName=="agent_found") {
-     insSocket.emit('agent_found',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else
-     {
-     insSocket.emit('message',msgObj);
-     console.log("Message sent : "+JSON.stringify(msgObj));
-     }
-
-     if(i==insArray.length-1)
-     {
-     //res.end();
-     callback(undefined,"Success");
-     }
-     }
-
-     }
-     }
-     else
-     {
-     DBController.ServerPicker(serverId, function (errServ,resServ) {
-     if(errServ)
-     {
-     console.log("Error in server picking");
-     callback(errServ,undefined);
-     }
-     else if(!resServ)
-     {
-     console.log("Invalid server ID");
-     callback(new Error("Invalid Server ID"),undefined);
-     }
-     else
-     {
-     var ServerIP = resServ.URL;
-     console.log(ServerIP);
-
-
-     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
-     var options = {
-     url : httpUrl,
-     method : 'POST',
-     json : req.body,
-     headers:{
-     'eventName':req.headers.eventname,
-     'eventUuid':req.headers.eventuuid,
-     'authorization':'bearer '+token,
-     'topic':topicID
-     }
-
-     };
-
-
-     httpReq(options, function (error, response, body)
-     {
-     if (!error && response.statusCode == 200)
-     {
-     console.log("no errrs");
-     console.log(JSON.stringify(response));
-     callback(undefined,"Success")
-     }
-     else
-     {
-     console.log("errrs  "+error);
-     callback(error,undefined);
-     }
-     });
-     }
-     });
-     }
-
-
-     });
-
-
-
-     });
-     async.parallel(msgSenderArray, function (errBulkSend,resSend) {
-
-     console.log(errBulkSend);
-     console.log(resSend);
-     if(errTobj)
-     {
-     res.end(new Error("Topic key delievering Error "+errTobj));
-     }
-     else
-     {
-     res.end(topicID);
-     }
-
-     });
-
-     });
-
-
-
-     }
-     else
-     {
-     if(req.body.Persistency)
-     {
-
-     DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
-
-     if(errSave)
-     {
-     console.log("Error in Message Saving ",errSave);
-     res.end();
-     }
-     else
-     {
-     console.log("Message saving succeeded ",resSave);
-     res.end();
-     }
-     });
-     }
-     else
-     {
-     console.log("Client is not available.......................");
-     res.end();
-     }
-
-     }
-
-
-
-     ///////////////////////////////////////////////////////////////////////////////////
-
-     /!*if(resAvbl && req.body.Persistency)
-     {
-
-     DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
-
-     if(errSave)
-     {
-     console.log("Error in Message Saving ",errSave);
-     res.end();
-     }
-     else
-     {
-     console.log("Message saving succeeded ",resSave);
-     res.end();
-     }
-     });
-     }
-     else
-     {
-     if(!isNaN(req.body.Timeout))
-     {
-     TTL =req.body.Timeout;
-     console.log("TTL found "+TTL);
-     }
-     console.log(clientID);
-
-     if(Clients[clientID])
-     {
-     console.log("Client "+clientID+" is registered in this server");
-     var socket=Clients[clientID];
-
-     console.log("Destination available");
-     console.log("Body "+req.body);
-     try
-     {
-     var callbackURL=req.body.CallbackURL;
-     var topicID=TopicIdGenerator();
-     var direction=req.body.Direction;
-     var message=req.body.Message;
-     var ref=req.body.Ref;
-
-     Refs[topicID]=ref;
-
-     if(direction=="STATEFUL")
-     {
-     callbackURL=req.body.CallbackURL;
-     }
-     var sender = req.body.From;
-
-
-
-     }
-     catch(ex)
-     {
-     console.log("Error in request body "+ex);
-     res.end("Error in request body "+ex);
-     }
-
-
-     redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
-     {
-     if(errTobj)
-     {
-     console.log("Error in TokenObject creation "+errTobj);
-     res.end("Error in TokenObject creation "+errTobj);
-     }
-     else
-     {
-
-
-     var msgObj={
-
-     "Message":message,
-     "TopicKey":topicID,
-     "eventName":eventName,
-     "eventUuid":eventUuid,
-     "Company":Company,
-     "Tenant":Tenant
-
-     };
-     if(eventName=="agent_connected")
-     {
-     socket.emit('agent_connected',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else if(eventName=="agent_disconnected")
-     {
-     socket.emit('agent_disconnected',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else if(eventName=="agent_found") {
-     socket.emit('agent_found',msgObj);
-     console.log("Event notification sent : "+JSON.stringify(msgObj));
-     }
-     else
-     {
-     socket.emit('message',msgObj);
-     console.log("Message sent : "+JSON.stringify(msgObj));
-     }
-
-     res.end(topicID);
-
-     }
-     });
-
-     }
-     else
-     {
-     console.log("Client "+clientID+" is not registered in this server");
-     redisManager.GetClientsServer(clientID, function (errGet,resGet) {
-
-     if(errGet)
-     {
-     console.log("error in getting client server");
-     console.log("Destination user not found");
-     res.status(400);
-     res.end("No user found "+clientID);
-     }
-     else
-     {
-     console.log("SERVER "+resGet);
-     console.log("My ID "+MyID);
-     DBController.ServerPicker(resGet, function (errPick,resPick) {
-
-     if(errPick)
-     {
-     console.log("error in Picking server from DB");
-     console.log("Destination user not found");
-     console.log("error "+errPick);
-     res.status(400);
-     res.end("No user found "+clientID);
-     }
-     else
-     {
-     var ServerIP = resPick.URL;
-     console.log(ServerIP);
-
-
-     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate', ServerIP, version);
-     var options = {
-     url : httpUrl,
-     method : 'POST',
-     json : req.body
-
-     };
-
-     console.log(options);
-     try
-     {
-     httpReq(options, function (error, response, body)
-     {
-     if (!error && response.statusCode == 200)
-     {
-     console.log("no errrs");
-     console.log(JSON.stringify(response));
-     res.end(response.body);
-     }
-     else
-     {
-     console.log("errrs  "+error);
-     res.end();
-     }
-     });
-     }
-     catch(ex)
-     {
-     console.log("ex..."+ex);
-     res.end();
-     }
-
-     }
-     });
-     }
-     });
-     }
-     }*!/
-     }
-
-
-     });*/
-
-    console.log("New request form "+req.body.From);
-
-    var clientID=req.body.To;
-    var eventName=req.headers.eventname;
-    var eventUuid=req.headers.eventuuid;
-    var msgSenderArray=[];
-
-
-
     if(!req.user.company || !req.user.tenant)
     {
         throw new Error("Invalid company or tenant");
@@ -937,6 +555,62 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    var compInfo = Tenant + ':' + Company;
+    console.log("New request form "+req.body.From);
+
+    var clientID=req.body.To;
+    var eventName=req.headers.eventname;
+    var eventUuid=req.headers.eventuuid;
+    var msgSenderArray=[];
+    if(!isNaN(req.body.Timeout))
+    {
+        TTL =req.body.Timeout;
+        console.log("TTL found "+TTL);
+    }
+
+    var callbackURL=req.body.CallbackURL;
+    var topicID=TopicIdGenerator();
+    var direction=req.body.Direction;
+    var message=req.body.Message;
+    var ref=req.body.Ref;
+
+    Refs[topicID]=ref;
+
+    if(direction=="STATEFUL")
+    {
+        callbackURL=req.body.CallbackURL;
+    }
+    var sender = req.body.From;
+
+
+    var msgObj={
+        "Tenant":Tenant,
+        "Company":Company,
+        "eventUuid":eventUuid,
+        "TopicKey":topicID,
+        "Message":message,
+        "eventName":eventName,
+        "From":sender
+
+
+
+
+    };
+
+    GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+        if(errGnotf)
+        {
+            console.log("Error in Google notifications:  "+errGnotf);
+        }
+        else
+        {
+            console.log("Success. Google notifications sent:  "+resGnotf);
+        }
+
+    });
+
+
+
 
 
 
@@ -952,45 +626,10 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
         }
         else if(typeof resList !== 'undefined' && resList.length > 0)
         {
-            if(!isNaN(req.body.Timeout))
-            {
-                TTL =req.body.Timeout;
-                console.log("TTL found "+TTL);
-            }
-
-            var callbackURL=req.body.CallbackURL;
-            var topicID=TopicIdGenerator();
-            var direction=req.body.Direction;
-            var message=req.body.Message;
-            var ref=req.body.Ref;
-
-            Refs[topicID]=ref;
-
-            if(direction=="STATEFUL")
-            {
-                callbackURL=req.body.CallbackURL;
-            }
-            var sender = req.body.From;
-
-
-            var msgObj={
-                "Tenant":Tenant,
-                "Company":Company,
-                "eventUuid":eventUuid,
-                "TopicKey":topicID,
-                "Message":message,
-                "eventName":eventName
-
-
-
-
-            };
-
 
             redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
             {
                 resList.forEach(function (serverId) {
-
 
                     msgSenderArray.push(function createContact(callback)
                     {
@@ -1001,7 +640,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                             if(Clients[clientID])
                             {
 
-                                GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+
+                               /* GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
                                     if(errGnotf)
                                     {
                                         console.log("Error in Google notifications:  "+errGnotf);
@@ -1011,7 +651,31 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         console.log("Success. Google notifications sent:  "+resGnotf);
                                     }
 
-                                });
+                                });*/
+
+                                /*DBController.SipUserDetailsPicker(clientID,Company,Tenant, function (errSipData,resSipData) {
+
+                                 if(errSipData)
+                                 {
+                                 console.log("Error in searching user data");
+                                 }
+                                 else
+                                 {
+                                 GooglePushMessageSender(resSipData.id,msgObj, function (errGnotf,resGnotf) {
+                                 if(errGnotf)
+                                 {
+                                 console.log("Error in Google notifications:  "+errGnotf);
+                                 }
+                                 else
+                                 {
+                                 console.log("Success. Google notifications sent:  "+resGnotf);
+                                 }
+
+                                 });
+                                 }
+
+                                 })*/
+
 
                                 var insArray =Clients[clientID];
                                 for(var i=0;i<insArray.length;i++)
@@ -1019,30 +683,38 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                     var insSocket=insArray[i];
 
 
-                                    if(eventName=="agent_connected")
-                                    {
-                                        insSocket.emit('agent_connected',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else if(eventName=="agent_disconnected")
-                                    {
-                                        insSocket.emit('agent_disconnected',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else if(eventName=="agent_found") {
-                                        insSocket.emit('agent_found',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else if(eventName=="agent_rejected")
-                                    {
-                                        insSocket.emit('agent_rejected',msgObj);
-                                        console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                    }
-                                    else
-                                    {
-                                        insSocket.emit('message',msgObj);
-                                        console.log("Message sent : "+JSON.stringify(msgObj));
-                                    }
+                                    console.log("Event Name : "+eventName);
+                                    console.log("Event Message : "+msgObj);
+
+                                    insSocket.emit(eventName,msgObj);
+                                    console.log("Notification sent : "+JSON.stringify(msgObj));
+
+                                    /*
+
+                                     if(eventName=="agent_connected")
+                                     {
+                                     insSocket.emit('agent_connected',msgObj);
+                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                     }
+                                     else if(eventName=="agent_disconnected")
+                                     {
+                                     insSocket.emit('agent_disconnected',msgObj);
+                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                     }
+                                     else if(eventName=="agent_found") {
+                                     insSocket.emit('agent_found',msgObj);
+                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                     }
+                                     else if(eventName=="agent_rejected")
+                                     {
+                                     insSocket.emit('agent_rejected',msgObj);
+                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
+                                     }
+                                     else
+                                     {
+                                     insSocket.emit('message',msgObj);
+                                     console.log("Message sent : "+JSON.stringify(msgObj));
+                                     }*/
 
                                     if(i==insArray.length-1)
                                     {
@@ -1080,6 +752,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
                                     console.log("URL "+httpUrl);
+
                                     var options = {
                                         url : httpUrl,
                                         method : 'POST',
@@ -1088,7 +761,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                             'eventName':req.headers.eventname,
                                             'eventUuid':req.headers.eventuuid,
                                             'authorization':"bearer "+token,
-                                            'topic':topicID
+                                            'topic':topicID,
+                                            'companyinfo': compInfo
                                         }
 
                                     };
@@ -1125,12 +799,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                     if(errBulkSend)
                     {
                         console.log(errBulkSend);
-                        res.end(errBulkSend.toString());
+                        //res.end(errBulkSend.toString());
                     }
-                    else
-                    {
-                        res.end(topicID);
-                    }
+
 
                 });
 
@@ -1139,6 +810,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
 
 
+            res.end(topicID);
 
 
         }
@@ -1149,19 +821,39 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
             {
                 console.log("No client found,  backing up messages ");
 
-                DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+                if(inboxMode)
+                {
+                    DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                        if(errInbox)
+                        {
+                            console.log("Error in Message Saving ",errInbox);
+                            res.end();
+                        }
+                        else
+                        {
+                            console.log("Message saving succeeded ");
+                            res.end("Message saved to related client's inbox");
+                        }
+                    });
+                }
+                else
+                {
+                    DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
 
-                    if(errSave)
-                    {
-                        console.log("Error in Message Saving ",errSave);
-                        res.end();
-                    }
-                    else
-                    {
-                        console.log("Message saving succeeded ",resSave);
-                        res.end("Message saved until related client is online");
-                    }
-                });
+                        if(errSave)
+                        {
+                            console.log("Error in Message Saving ",errSave);
+                            res.end();
+                        }
+                        else
+                        {
+                            console.log("Message saving succeeded ",resSave);
+                            res.end("Message saved until related client is online");
+                        }
+                    });
+                }
+
+
             }
             else
             {
@@ -1171,9 +863,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
         }
     });
-
-
-
     return next();
 
 });
@@ -1285,6 +974,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    var compInfo = Tenant + ':' + Company;
 
 
 
@@ -1318,20 +1008,36 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
 
                         }
 
+                        if(inboxMode)
+                        {
+                            DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                                if(errInbox)
+                                {
+                                    console.log("Error in Message Saving ",errInbox);
+                                    res.end();
+                                }
+                                else
+                                {
+                                    console.log("Message saving succeeded ",resInbox);
+                                    res.end("Message saved to related client's inbox");
+                                }
+                            });
+                        }
+                        else
+                        {
 
-                        DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+                            DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
 
-                            if(errSave)
-                            {
-                                console.log("Error in Message Saving ",errSave);
-                                res.end();
-                            }
-                            else
-                            {
-                                console.log("Message saving succeeded ",resSave);
-                                res.end();
-                            }
-                        });
+                                if (errSave) {
+                                    console.log("Error in Message Saving ", errSave);
+                                    res.end();
+                                }
+                                else {
+                                    console.log("Message saving succeeded ", resSave);
+                                    res.end();
+                                }
+                            });
+                        }
                     }
                     else
                     {
@@ -1381,7 +1087,14 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
                                             var options = {
                                                 url : httpUrl,
                                                 method : 'POST',
-                                                json : req.body
+                                                json : req.body,
+                                                headers:{
+                                                    'eventName':req.headers.eventname,
+                                                    'eventUuid':req.headers.eventuuid,
+                                                    'authorization':"bearer "+token,
+                                                    'companyinfo': compInfo
+
+                                                }
 
                                             };
 
@@ -1441,6 +1154,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    var compInfo = Tenant + ':' + Company;
 
     redisManager.TopicObjectPicker(topicKey,TTL, function (errTopic,resTopic) {
 
@@ -1514,12 +1228,18 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
                                     var ServerIP = resPick.URL;
                                     console.log(ServerIP);
 
-
                                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/DisconnectSession/'+resTopic.Client, ServerIP, version);
                                     var options = {
                                         url : httpUrl,
                                         method : 'POST',
-                                        json : req.body
+                                        json : req.body,
+                                        headers:{
+                                            'eventName':req.headers.eventname,
+                                            'eventUuid':req.headers.eventuuid,
+                                            'authorization':"bearer "+token,
+                                            'topic':topicKey,
+                                            'companyInfo':compInfo
+                                        }
 
                                     };
 
@@ -1573,9 +1293,10 @@ RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id
     return next();
 });
 
-
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
+
+    console.log("hit broadcast");
     if(!req.user.company || !req.user.tenant)
     {
         throw new Error("Invalid company or tenant");
@@ -1583,40 +1304,21 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
 
     var Company=req.user.company;
     var Tenant=req.user.tenant;
+    var compInfo = Tenant + ':' + Company;
 
-    var clientData = req.body.Clients;
-
-
-    console.log(clientData);
-    var clientCount=clientData.length;
-
-    for(var i=0;i<clientData.length;i++)
+    if(req.body.clients)
     {
-        console.log("......................................................"+clientData[i].name+"........................................................................................................................")
-        BroadcastMessageHandler(req.body,clientData[i].name, function (errBCMsg,resBCMsg)
+        BroadcastMessageHandler(req.body,compInfo, function (error,processStatus)
         {
-            if(i==clientCount)
-            {
-                console.log("Request ended");
-                res.end();
-            }
-            if(errBCMsg)
-            {
-                console.log("err "+errBCMsg);
-                //res.end();
-
-            }
-            else
-            {
-                console.log("res "+resBCMsg);
-                //res.end();
-
-            }
-
+            res.end(JSON.stringify(processStatus));
         });
-
+    }
+    else
+    {
+        res.end("Empty client lit received ");
 
     }
+
     return next();
 });
 
@@ -1649,25 +1351,139 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     {
         console.log("Not in clientList "+clientData);
         userData.To=user;
-        DBController.PersistenceGroupMessageRecorder(userData, function (errSave,resSave)
+        if(inboxMode)
         {
-            if(errSave)
-            {
-                //callback(errSave,undefined);
-                console.log("DB error "+errSave);
-                res.end();
-            }
-            else
-            {
-                //callback(undefined,resSave);
-                console.log("DB kk "+resSave);
-                res.end(resSave);
-            }
+            DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                if(errInbox)
+                {
+                    console.log("Error in Message Saving ",errInbox);
+                    res.end();
+                }
+                else
+                {
+                    console.log("Message saving succeeded ",resInbox);
+                    res.end("Message saved to related client's inbox");
+                }
+            });
+        }
+        else
+        {
 
-        });
+            DBController.PersistenceGroupMessageRecorder(userData, function (errSave, resSave) {
+                if (errSave) {
+                    //callback(errSave,undefined);
+                    console.log("DB error " + errSave);
+                    res.end();
+                }
+                else {
+                    //callback(undefined,resSave);
+                    console.log("DB kk " + resSave);
+                    res.end(resSave);
+                }
+
+            });
+        }
     }
 });
 
+/*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
+ {
+ if(!req.user.company || !req.user.tenant)
+ {
+ throw new Error("Invalid company or tenant");
+ }
+
+ var Company=req.user.company;
+ var Tenant=req.user.tenant;
+
+ var userID= req.params.username;
+
+ redisManager.IsRegisteredClient(userID, function (errReg,status,resReg) {
+
+ if(errReg)
+ {
+ console.log("Error in client registration checking "+errReg);
+ res.end();
+ }
+ else
+ {
+ if(resReg && status)
+ {
+ var key = req.body.querykey;
+
+ redisManager.QuerySubscriberRecorder(key,userID, function (errSubs,resSubs) {
+
+ if(errSubs)
+ {
+ console.log("Subcriber record saving error "+errSubs);
+ res.end();
+ }
+ else
+ {
+ if(!resSubs)
+ {
+ console.log("Unable to save subs record");
+ res.end();
+ }
+ else
+ {
+ req.body.RefId=key;
+ var ServerIP="127.0.0.1:8050";
+ var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
+ var msgObj=req.body;
+ // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
+ msgObj.CallbackURL="http://192.168.0.88:8080/DVP/API/6.0/NotificationService/Notification/Publish";
+ var options = {
+ url : httpUrl,
+ method : 'POST',
+ json : msgObj
+
+ };
+
+ console.log(options);
+ try
+ {
+ httpReq(options, function (error, response, body)
+ {
+ if (!error && response.statusCode == 200)
+ {
+ console.log("no errrs in request 200 ok");
+ //callback(undefined,response.statusCode);
+ res.end(key);
+
+ }
+ else
+ {
+ console.log("errrs in request  "+error);
+ res.end("Error");
+ //callback(error,undefined);
+
+ }
+ });
+ }
+ catch(ex)
+ {
+ console.log("ex..."+ex);
+ res.end("Exception");
+ //callback(ex,undefined);
+
+ }
+
+
+ }
+ }
+ });
+ }
+ else
+ {
+ console.log("Client ID  not found  "+userID);
+ res.end();
+ }
+ }
+ });
+
+ return next();
+ });*/
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
@@ -1679,96 +1495,190 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
     var Tenant=req.user.tenant;
 
     var userID= req.params.username;
+    console.log(req.body.querykey);
 
-    redisManager.IsRegisteredClient(userID, function (errReg,status,resReg) {
+    redisManager.QuerySubscriberRecorder(req.body.querykey,userID, function (errSubs,resSubs) {
 
-        if(errReg)
+
+        if(errSubs)
         {
-            console.log("Error in client registration checking "+errReg);
+            console.log("Subcriber record saving error "+errSubs);
             res.end();
         }
+
         else
         {
-            if(resReg && status)
-            {
-                var key = "Query:" + uuid.v1();
+            /*req.body.RefId=key;
+             var ServerIP="127.0.0.1:8050";
+             var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
+             var msgObj=req.body;
+             // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
+             msgObj.CallbackURL="http://192.168.0.88:8080/DVP/API/6.0/NotificationService/Notification/Publish";
+             var options = {
+             url : httpUrl,
+             method : 'POST',
+             json : msgObj
 
-                redisManager.QuerySubscriberRecorder(key,userID, function (errSubs,resSubs) {
+             };
 
-                    if(errSubs)
-                    {
-                        console.log("Subcriber record saving error "+errSubs);
-                        res.end();
-                    }
-                    else
-                    {
-                        if(!resSubs)
-                        {
-                            console.log("Unable to save subs record");
-                            res.end();
-                        }
-                        else
-                        {
-                            req.body.RefId=key;
-                            var ServerIP="127.0.0.1:8050";
-                            var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
-                            var msgObj=req.body;
-                            // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
-                            msgObj.CallbackURL="http://192.168.0.88:8080/DVP/API/6.0/NotificationService/Notification/Publish";
-                            var options = {
-                                url : httpUrl,
-                                method : 'POST',
-                                json : msgObj
+             console.log(options);
+             try
+             {
+             httpReq(options, function (error, response, body)
+             {
+             if (!error && response.statusCode == 200)
+             {
+             console.log("no errrs in request 200 ok");
+             //callback(undefined,response.statusCode);
+             res.end(key);
 
-                            };
+             }
+             else
+             {
+             console.log("errrs in request  "+error);
+             res.end("Error");
+             //callback(error,undefined);
 
-                            console.log(options);
-                            try
-                            {
-                                httpReq(options, function (error, response, body)
-                                {
-                                    if (!error && response.statusCode == 200)
-                                    {
-                                        console.log("no errrs in request 200 ok");
-                                        //callback(undefined,response.statusCode);
-                                        res.end(key);
+             }
+             });
+             }
+             catch(ex)
+             {
+             console.log("ex..."+ex);
+             res.end("Exception");
+             //callback(ex,undefined);
 
-                                    }
-                                    else
-                                    {
-                                        console.log("errrs in request  "+error);
-                                        res.end("Error");
-                                        //callback(error,undefined);
+             }*/
+            console.log("Successfully subscribed User "+userID);
+            res.end();
 
-                                    }
-                                });
-                            }
-                            catch(ex)
-                            {
-                                console.log("ex..."+ex);
-                                res.end("Exception");
-                                //callback(ex,undefined);
-
-                            }
-
-
-                        }
-                    }
-                });
-            }
-            else
-            {
-                console.log("Client ID  not found  "+userID);
-                res.end();
-            }
         }
+
     });
 
     return next();
 });
 
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Unsubscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
+{
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    var userID= req.params.username;
+    console.log(req.body.querykey);
+
+    redisManager.QueryUnsubscriber(req.body.querykey,userID, function (errSubs,resSubs) {
+
+
+        if(errSubs)
+        {
+            console.log("Unsubcriber record saving error "+errSubs);
+            res.end();
+        }
+
+        else if(!resSubs)
+        {
+
+            console.log("No sunscribed user found "+userID);
+            res.end();
+
+        }
+        else
+        {
+            console.log("Successfully unubscribed user: "+userID+" from Query : "+req.body.querykey);
+            res.end();
+
+        }
+
+    });
+
+    return next();
+});
+
+/*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
+ {
+ try
+ {
+ if(!req.user.company || !req.user.tenant)
+ {
+ throw new Error("Invalid company or tenant");
+ }
+
+ var Company=req.user.company;
+ var Tenant=req.user.tenant;
+
+ var queryKey = req.body.refID;
+ var msgObj = req.body;
+ if(queryKey)
+ {
+ redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
+
+ if(errSubs)
+ {
+ console.log(errSubs);
+ res.end();
+ }
+ else
+ {
+ if(!resSubs)
+ {
+ console.log("No Subscribers found");
+ res.end();
+ }
+ else
+ {
+ PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
+
+ if(errPublish)
+ {
+ //res.end("Error");
+ console.log(errPublish);
+ res.end();
+
+ }
+ else
+ {
+ console.log("Success");
+ //res.end("Done");
+ res.end();
+ }
+ });
+
+ }
+ }
+
+ });
+ }
+ else
+ {
+ console.log("Invalid query key");
+ res.end();
+
+ }
+ }
+ catch (e)
+ {
+ console.log(e);
+ res.end();
+ }
+ return next();
+
+ });*/
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
+    console.log("Hit");
+    var subscriberArray=[];
+    var eventName=req.headers.eventname;
+    var eventUuid=req.headers.eventuuid;
+
+    var parellalErrors=[];
+    var parellalResults=[];
+
     try
     {
         if(!req.user.company || !req.user.tenant)
@@ -1778,55 +1688,352 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
 
         var Company=req.user.company;
         var Tenant=req.user.tenant;
+        var compInfo = Tenant + ':' + Company;
 
-        var queryKey = req.body.refID;
-        var msgObj = req.body;
+        var queryKey = req.body.querykey;
+        var msgObj = req.body.message;
+
         if(queryKey)
         {
-            redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
-
-                if(errSubs)
+            redisManager.QueryKeySubscriberPicker(queryKey, function (errSubscribers,resSubscribers)
+            {
+                if(errSubscribers)
                 {
-                    console.log(errSubs);
+                    console.log(errSubscribers);
                     res.end();
                 }
                 else
                 {
-                    if(!resSubs)
+                    if(resSubscribers.length==0)
                     {
                         console.log("No Subscribers found");
                         res.end();
                     }
                     else
                     {
-                        PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
+                        resSubscribers.forEach(function (clientID) {
 
-                            if(errPublish)
+                            subscriberArray.push(function createContact(callback)
                             {
-                                //res.end("Error");
-                                console.log(errPublish);
-                                res.end();
 
-                            }
-                            else
-                            {
-                                console.log("Success");
-                                //res.end("Done");
-                                res.end();
-                            }
+                                redisManager.LocationListPicker(clientID, function (errList,resList)
+                                {
+
+                                    if(resList.length>0)
+                                    {
+                                        if(resList.indexOf(MyID)!=-1 && resList.length==1)
+                                        {
+                                            if(Clients[clientID])
+                                            {
+                                                var instanceArray = Clients[clientID];
+                                                for(var i=0;i<instanceArray.length;i++)
+                                                {
+                                                    var instanceSocket = instanceArray[i];
+
+                                                    console.log("Publish : Event Name : "+eventName);
+                                                    console.log("Publish : Event Message : "+msgObj);
+
+                                                    instanceSocket.emit(eventName,msgObj);
+
+                                                    parellalResults.push("Only registered users in this servers : success");
+
+                                                    if(i==instanceArray.length-1)
+                                                    {
+                                                        callback(parellalErrors,parellalResults);
+
+                                                    }
+
+                                                }
+                                            }
+                                            else
+                                            {
+                                                parellalErrors.push("Unregisterd user : "+clientID);
+                                                if(i==instanceArray.length-1)
+                                                {
+                                                    callback(parellalErrors,parellalResults);
+                                                }
+                                            }
+                                        }
+                                        else if(resList.indexOf(MyID)!=-1 && resList.length>1)
+                                        {
+                                            for(var i=0;i<resList.length;i++)
+                                            {
+                                                if(resList[i]!==MyID)
+                                                {
+                                                    DBController.ClientServerPicker(resList[i],i, function (errServ,resServ,index) {
+                                                        if(errServ)
+                                                        {
+                                                            console.log("Error in Server picking "+errServ);
+                                                            parellalErrors.push("Error in Server picking "+errServ);
+                                                            if(index==resList.length-1)
+                                                            {
+
+                                                                callback(parellalErrors,parellalResults);
+
+                                                            }
+                                                        }
+                                                        else if(!resServ)
+                                                        {
+                                                            console.log("No server found ");
+                                                            parellalErrors.push("No server found ");
+                                                            if(index==resList.length-1)
+                                                            {
+
+                                                                callback(parellalErrors,parellalResults);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            var ServerIP = resServ.URL;
+                                                            console.log(ServerIP);
+                                                            req.body.To=clientID;
+
+
+                                                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/publish/fromRemoteserver', ServerIP, version);
+                                                            console.log("URL "+httpUrl);
+                                                            var options = {
+                                                                url : httpUrl,
+                                                                method : 'POST',
+                                                                json : req.body,
+                                                                headers:{
+                                                                    'eventName':eventName,
+                                                                    'eventUuid':eventUuid,
+                                                                    'authorization':"bearer "+token,
+                                                                    'topic':eventUuid,
+                                                                    'companyInfo':compInfo
+
+                                                                }
+
+                                                            };
+
+
+                                                            httpReq(options, function (error, response, body)
+                                                            {
+                                                                console.log("Error "+error);
+                                                                console.log("response "+response);
+
+                                                                if (!error && response.statusCode == 200)
+                                                                {
+                                                                    parellalResults.push("Requested to remote servers Succeess");
+                                                                    if(index= resList.length)
+                                                                    {
+                                                                        callback(parellalErrors,parellalResults);
+
+                                                                    }
+                                                                    //console.log(JSON.stringify(response));
+
+                                                                }
+                                                                else
+                                                                {
+                                                                    console.log("errors  "+error);
+                                                                    parellalErrors.push("Error found pushing to remote servers "+error);
+                                                                    if(index==resList.length-1)
+                                                                    {
+                                                                        callback(parellalErrors,parellalResults);
+
+                                                                    }
+
+                                                                }
+
+                                                            });
+                                                        }
+
+                                                    });
+                                                }
+                                                else
+                                                {
+                                                    if(Clients[clientID])
+                                                    {
+                                                        var instanceArray = Clients[clientID];
+                                                        for(var j=0;j<instanceArray.length;j++)
+                                                        {
+                                                            var instanceSocket = instanceArray[j];
+
+                                                            console.log("Publish : Event Name : "+eventName);
+                                                            console.log("Publish : Event Message : "+msgObj);
+                                                            instanceSocket.emit(eventName,msgObj);
+
+                                                        }
+                                                        parellalResults.push("Pushed to Clients of this server "+clientID);
+                                                        if(i==resList.length-1)
+                                                        {
+                                                            callback(parellalErrors,parellalResults);
+                                                        }
+                                                    }
+                                                }
+
+
+                                            }
+                                        }
+                                        else
+                                        {
+                                            for(var i=0;i<resList.length;i++)
+                                            {
+                                                DBController.ClientServerPicker(resList[i],i, function (errServ,resServ,index) {
+                                                    if(errServ)
+                                                    {
+                                                        console.log("Error in Server picking "+errServ);
+                                                        parellalErrors.push("Error found pushing to remote servers "+error);
+                                                        if(index==resList.length-1)
+                                                        {
+                                                            callback(parellalErrors,parellalResults);
+                                                        }
+                                                    }
+                                                    else if(!resServ)
+                                                    {
+                                                        parellalErrors.push("No remote servers found "+resList[i]);
+                                                        if(index==resList.length-1)
+                                                        {
+                                                            callback(parellalErrors,parellalResults);
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        var ServerIP = resServ.URL;
+                                                        console.log(ServerIP);
+                                                        req.body.To=clientID;
+
+
+                                                        var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/publish/fromRemoteserver', ServerIP, version);
+                                                        console.log("URL "+httpUrl);
+                                                        var options = {
+                                                            url : httpUrl,
+                                                            method : 'POST',
+                                                            json : req.body,
+                                                            headers:{
+                                                                'eventName':eventName,
+                                                                'eventUuid':eventUuid,
+                                                                'authorization':"bearer "+token,
+                                                                'topic':eventUuid,
+                                                                'companyInfo':compInfo
+                                                            }
+
+                                                        };
+
+
+                                                        httpReq(options, function (error, response, body)
+                                                        {
+                                                            console.log("Error "+error);
+                                                            console.log("response "+response);
+
+                                                            if (!error && response.statusCode == 200)
+                                                            {
+                                                                parellalResults.push("Pushed to remote server Success : "+ServerIP);
+                                                                if(index= resList.length)
+                                                                {
+                                                                    callback(parellalErrors,parellalResults);
+                                                                }
+                                                                //console.log(JSON.stringify(response));
+
+                                                            }
+                                                            else
+                                                            {
+                                                                parellalErrors.push("Remote server pushing error "+error);
+                                                                if(index==resList.length-1)
+                                                                {
+                                                                    callback(parellalErrors,parellalResults);
+                                                                }
+
+                                                            }
+
+                                                        });
+                                                    }
+
+                                                });
+                                            }
+                                        }
+
+                                        /* for(var i=0;i<resList.length;i++)
+                                         {
+                                         if(MyID==resList[i])
+                                         {
+                                         if(Clients[clientID])
+                                         {
+                                         var instanceArray = Clients[clientID];
+                                         for(var i=0;i<instanceArray.length;i++)
+                                         {
+                                         var instanceSocket = instanceArray[i];
+                                         instanceSocket.emit(eventName,msgObj);
+
+                                         }
+
+                                         }
+                                         }
+                                         }*/
+                                    }
+                                    else
+                                    {
+                                        parellalErrors.push("No servers found");
+                                        callback(parellalErrors,parellalResults);
+                                    }
+
+                                });
+
+
+                            });
                         });
+                        async.parallel(subscriberArray, function (errBulkSend,resSend) {
 
+                            console.log("Sending to Remote servers Errors: "+errBulkSend);
+                            res.end();
+
+                        });
                     }
                 }
-
             });
         }
         else
         {
-            console.log("Invalid query key");
+            console.log("No Query key found");
             res.end();
-
         }
+
+        /* if(queryKey)
+         {
+         redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
+
+         if(errSubs)
+         {
+         console.log(errSubs);
+         res.end();
+         }
+         else
+         {
+         if(!resSubs)
+         {
+         console.log("No Subscribers found");
+         res.end();
+         }
+         else
+         {
+         PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
+
+         if(errPublish)
+         {
+         //res.end("Error");
+         console.log(errPublish);
+         res.end();
+
+         }
+         else
+         {
+         console.log("Success");
+         //res.end("Done");
+         res.end();
+         }
+         });
+
+         }
+         }
+
+         });
+         }
+         else
+         {
+         console.log("Invalid query key");
+         res.end();
+
+         }*/
     }
     catch (e)
     {
@@ -1836,8 +2043,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
     return next();
 
 });
-
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
     console.log("HIT publish");
     if(!req.user.company || !req.user.tenant)
@@ -1856,27 +2063,39 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:
         socket.emit('publish',req.body);
         res.end("Success");
     }
-    else
-    {
-
-        DBController.PersistencePubSubMessageRecorder(req.body,clientID, function (errSave,resSave) {
-            if(errSave)
-            {
-                console.log("Error Save "+errSave);
-                res.end();
-            }
-            else
-            {
-                console.log("Success ");
-                res.end();
-            }
-        });
+    else {
+        if (inboxMode) {
+            DBController.InboxMessageSender(req, function (errInbox, resInbox) {
+                if (errInbox) {
+                    console.log("Error in Message Saving ", errInbox);
+                    res.end();
+                }
+                else {
+                    console.log("Message saving succeeded ", resInbox);
+                    res.end("Message saved to related client's inbox");
+                }
+            });
+        }
+        else
+        {
+            DBController.PersistencePubSubMessageRecorder(req.body, clientID, function (errSave, resSave) {
+                if (errSave) {
+                    console.log("Error Save " + errSave);
+                    res.end();
+                }
+                else {
+                    console.log("Success ");
+                    res.end();
+                }
+            });
+        }
     }
 
 
 
     return next();
 });
+
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', function (req,res,next){
 
@@ -1935,14 +2154,15 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
         "eventName":eventName,
         "eventUuid":eventUuid,
         "Company":Company,
-        "Tenant":Tenant
+        "Tenant":Tenant,
+        "From":req.body.From
 
     };
 
 
     if(Clients[clientID])
     {
-        GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+        /*GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
             if(errGnotf)
             {
                 console.log("Error in Google notifications:  "+errGnotf);
@@ -1952,37 +2172,86 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
                 console.log("Success. Google notifications sent:  "+resGnotf);
             }
 
-        });
+        });*/
+
+        /* if(!isNaN(clientID))
+         {
+         GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+         if(errGnotf)
+         {
+         console.log("Error in Google notifications:  "+errGnotf);
+         }
+         else
+         {
+         console.log("Success. Google notifications sent:  "+resGnotf);
+         }
+
+         });
+         }
+         else
+         {
+         DBController.SipUserDetailsPicker(clientID,Company,Tenant, function (errSipData,resSipData) {
+
+         if(errSipData)
+         {
+         console.log("Error in searching user data");
+         }
+         else
+         {
+         GooglePushMessageSender(resSipData.id,msgObj, function (errGnotf,resGnotf) {
+         if(errGnotf)
+         {
+         console.log("Error in Google notifications:  "+errGnotf);
+         }
+         else
+         {
+         console.log("Success. Google notifications sent:  "+resGnotf);
+         }
+
+         });
+         }
+
+         })
+         }*/
+
+
 
         var insArray =Clients[clientID];
         for(var i=0;i<insArray.length;i++)
         {
             var insSocket=insArray[i];
 
-            if(eventName=="agent_connected")
-            {
-                insSocket.emit('agent_connected',msgObj);
-                console.log("Event notification sent : "+JSON.stringify(msgObj));
-            }
-            else if(eventName=="agent_disconnected")
-            {
-                insSocket.emit('agent_disconnected',msgObj);
-                console.log("Event notification sent : "+JSON.stringify(msgObj));
-            }
-            else if(eventName=="agent_found") {
-                insSocket.emit('agent_found',msgObj);
-                console.log("Event notification sent : "+JSON.stringify(msgObj));
-            }
-            else if(eventName=="agent_rejected")
-            {
-                insSocket.emit('agent_rejected',msgObj);
-                console.log("Event notification sent : "+JSON.stringify(msgObj));
-            }
-            else
-            {
-                insSocket.emit('message',msgObj);
-                console.log("Message sent : "+JSON.stringify(msgObj));
-            }
+            console.log("Publish : Event Name : "+eventName);
+            console.log("Publish : Event Message : "+msgObj);
+
+            insSocket.emit(eventName,msgObj);
+            console.log("Event notification sent : "+JSON.stringify(msgObj));
+
+
+            /* if(eventName=="agent_connected")
+             {
+             insSocket.emit('agent_connected',msgObj);
+             console.log("Event notification sent : "+JSON.stringify(msgObj));
+             }
+             else if(eventName=="agent_disconnected")
+             {
+             insSocket.emit('agent_disconnected',msgObj);
+             console.log("Event notification sent : "+JSON.stringify(msgObj));
+             }
+             else if(eventName=="agent_found") {
+             insSocket.emit('agent_found',msgObj);
+             console.log("Event notification sent : "+JSON.stringify(msgObj));
+             }
+             else if(eventName=="agent_rejected")
+             {
+             insSocket.emit('agent_rejected',msgObj);
+             console.log("Event notification sent : "+JSON.stringify(msgObj));
+             }
+             else
+             {
+             insSocket.emit('message',msgObj);
+             console.log("Message sent : "+JSON.stringify(msgObj));
+             }*/
 
 
             if(i==insArray.length-1)
@@ -1997,19 +2266,37 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
     {
         if(req.body.Persistency)
         {
-            DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+            if(inboxMode)
+            {
+                DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                    if(errInbox)
+                    {
+                        console.log("Error in Message Saving ",errInbox);
+                        res.end();
+                    }
+                    else
+                    {
+                        console.log("Message saving succeeded ",resInbox);
+                        res.end("Message saved to related client's inbox");
+                    }
+                });
+            }
+            else
+            {
 
-                if(errSave)
-                {
-                    console.log("Error in Message Saving ",errSave);
-                    res.end();
-                }
-                else
-                {
-                    console.log("Message saving succeeded ");
-                    res.end();
-                }
-            });
+
+                DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+
+                    if (errSave) {
+                        console.log("Error in Message Saving ", errSave);
+                        res.end();
+                    }
+                    else {
+                        console.log("Message saving succeeded ");
+                        res.end();
+                    }
+                });
+            }
         }
         else
         {
@@ -2023,22 +2310,128 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
 
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
+
+    var AppKey=req.headers.appkey;
+    var username = req.user.iss;
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+
+    DBController.GCMRegistrator(username,AppKey,res);
+
+
+    /* DBController.SipUserDetailsPicker(username,Company,Tenant, function (errSipData,resSipData) {
+
+     if(errSipData)
+     {
+     console.log("Error in registration ",errSipData);
+     res.end();
+     }
+     else
+     {
+     var userID = resSipData.id;
+     console.log("APPkey "+AppKey);
+     console.log("User "+userID);
+
+     console.log("hitz");
+     DBController.GCMRegistrator(userID,AppKey,res);
+     }
+
+     });*/
+
+    return next();
+
+});
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCM/Unregister',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+
+
+    var AppKey=req.body.appkey;
+    var username = req.user.iss;
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+
+    DBController.GCMKeyRemover(username,AppKey,res);
+
+
+    /* DBController.SipUserDetailsPicker(username,Company,Tenant, function (errSipData,resSipData) {
+
+     if(errSipData)
+     {
+     console.log("Error in registration ",errSipData);
+     res.end();
+     }
+     else
+     {
+     var userID = resSipData.id;
+     console.log("APPkey "+AppKey);
+     console.log("User "+userID);
+
+     console.log("hitz");
+     DBController.GCMRegistrator(userID,AppKey,res);
+     }
+
+     });*/
+
+    return next();
+
+});
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+
     /*if(!req.user.company || !req.user.tenant)
      {
      throw new Error("Invalid company or tenant");
      }*/
 
-    var AppKey=req.headers.appkey;
-    var userID = req.user.client;
+    console.log("Hit");
 
-    console.log("APPkey "+AppKey);
-    console.log("User "+userID);
+    var clientID= req.body.To;
+    console.log(clientID);
+    var eventName=req.headers.eventname;
+    var eventUuid=req.headers.eventuuid;
 
-    console.log("hitz");
-    DBController.GCMRegistrator(userID,AppKey,res);
-    return next();
+
+    if(Clients[clientID])
+    {
+        var insArray =Clients[clientID];
+        for(var i=0;i<insArray.length;i++)
+        {
+            var instanceSocket = insArray[i];
+            instanceSocket.emit(eventName,req.body.message);
+
+            if(i==insArray.length-1)
+            {
+                res.end();
+            }
+        }
+    }
+    else
+    {
+        console.log("Client "+clientID+" is not registed in this server");
+    }
+
 });
 
+RestServer.post('/DVP/API/'+version+'/NotificationService/TestMessage',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+
+    DBController.InboxMessageSender(req, function (err,response) {
+        if(err)
+        {
+            console.log("Error "+err);
+            res.end();
+        }
+        else
+        {
+            console.log("Response "+response);
+            res.end();
+        }
+
+
+    });
+
+    return next();
+});
 
 
 TopicIdGenerator = function ()
@@ -2515,122 +2908,532 @@ QueuedMessageOperator = function (msgObj,socketObj) {
 
 };
 
-BroadcastMessageHandler = function (msgObj,clientData,callback) {
+BroadcastMessageHandler = function (messageData,compInfo,callbackResult) {
+
+    var broadcastArray=[];
+    var processData=[];
+
+    var clientArray=messageData.clients;
 
 
-    try {
-        var msgBody = msgObj;
-        msgBody.To = clientData;
-        msgBody.Ref = "";
-        msgBody.Direction = "STATELESS";
-        msgBody.Topic = "";
-        msgBody.Callback = "";
+    clientArray.forEach(function (clientData) {
 
-        console.log("Message Body " + JSON.stringify(msgBody));
-        redisManager.GetClientsServer(clientData, function (errServer, resServer) {
+        broadcastArray.push(function createContact(callback)
+        {
+            redisManager.GetClientsServer(clientData, function (errServer, resServer) {
 
-            if (errServer) {
-                console.log("Error in server searching for client " + clientData);
-
-                msgBody.To = clientData;
-                console.log("Error Client " + msgBody.To);
-                console.log("my Client " + clientData);
-                DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave, resSave) {
-                    if (errSave) {
-                        callback(errSave, undefined);
+                if (errServer)
+                {
+                    console.log("Error in server searching for client " + clientData,errServer);
+                    var processStatus =
+                    {
+                        clientStatus:clientData+" : failed"
                     }
-                    else {
-                        callback(undefined, resSave);
-                    }
-
-                });
-            }
-            else {
-                console.log("Server " + resServer + " found for client " + clientData);
-
-                if (MyID == resServer) {
-                    console.log("Client " + clientData + " is a registerd client");
-                    if (Clients[clientData]) {
-                        var socket = Clients[clientData];
-                        var BcMsgObj = {
-
-                            "Message": msgObj.Message
-                        };
-                        socket.emit('broadcast', BcMsgObj);
-                        callback(undefined, clientData);
-
-
-                    }
-                    else {
-                        //record in DB
-                        console.log("Not in clientList " + clientData);
-                        msgBody.To = clientData;
-                        DBController.PersistenceGroupMessageRecorder(msgBody, function (errSave, resSave) {
-                            if (errSave) {
-                                callback(errSave, undefined);
-                            }
-                            else {
-                                callback(undefined, resSave);
-                            }
-
-                        });
-                    }
+                    processData.push(processStatus);
+                    callback(null,processData);
                 }
-                else {
-                    console.log("SERVER " + resServer);
-                    console.log("My ID " + MyID);
+                else
+                {
 
-                    console.log("Client " + clientData + " is not a registerd client");
-                    DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+                    /*for(var i=0;i<resServer.length;i++)
+                     {
+                     console.log("Server " + resServer + " found for client " + clientData);
 
-                        if (errSvrPick) {
-                            console.log("error in Picking server from DB");
-                            console.log("Destination user not found");
-                            console.log("error " + errSvrPick);
-                            callback(errSvrPick, undefined);
+                     if (MyID == resServer[i]) {
+                     console.log("Server id of client "+resServer[i]);
+                     console.log("Client " + clientData + " is a registerd client");
 
-                        }
-                        else {
-                            var ServerIP = resSvrPick.URL;
-                            console.log(ServerIP);
-                            var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
-                            var options = {
-                                url: httpUrl,
-                                method: 'POST',
-                                json: msgObj
+                     if (Clients[clientData])
+                     {
 
-                            };
 
-                            console.log(options);
-                            try {
-                                httpReq(options, function (error, response, body) {
-                                    if (!error && response.statusCode == 200) {
-                                        console.log("no errrs in request 200 ok");
-                                        callback(undefined, response.statusCode);
+                     var instanceArray = Clients[clientData];
+
+                     for(var j=0;j<instanceArray.length;j++)
+                     {
+                     var socket =instanceArray[j];
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     }
+
+                     /!*instanceArray.forEach(function (clientInstance)
+                     {
+                     instanceData.push(function createContact(instanceCallback)
+                     {
+                     var socket=clientInstance;
+
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     instanceCallback(processData);
+                     });
+                     async.parallel(instanceArray, function (processStatus) {
+
+                     callbackResult(processStatus);
+
+
+                     });
+
+                     });*!/
+
+
+
+
+                     }
+                     else
+                     {
+                     //record in DB
+                     console.log("Requested client recorded in this server but not in clientList " + clientData);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     }
+                     else
+                     {
+                     console.log("SERVER " + resServer);
+                     console.log("My ID " + MyID);
+
+                     console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                     DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                     if (errSvrPick) {
+                     console.log("error in Picking server from DB");
+                     console.log("Destination user not found");
+                     console.log("error " + errSvrPick);
+
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     var ServerIP = resSvrPick.URL;
+                     console.log(ServerIP);
+                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                     var options = {
+                     url: httpUrl,
+                     method: 'POST',
+                     json: messageData
+
+                     };
+
+                     console.log(options);
+                     try
+                     {
+                     httpReq(options, function (error, response, body) {
+                     if (!error && response.statusCode == 200) {
+                     console.log("no errrs in request 200 ok");
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     console.log("error in request  " + error);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     });
+                     }
+                     catch (ex) {
+                     console.log("exception" + ex);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+
+                     }
+
+                     }
+                     });
+                     }
+
+                     if(i==resServer.length-1)
+                     {
+                     callback(processData);
+                     }
+                     }*/
+                    var serverData=[];
+                    resServer.forEach(function (serverItem) {
+
+
+                        console.log("Server " + resServer + " found for client " + clientData);
+
+                        console.log("Client " + clientData + " is a registered client");
+
+
+                        serverData.push(function createContact(serverCallback)
+                        {
+                            console.log("Server id of client "+serverItem);
+
+                            if (MyID == serverItem)     {
+
+                                console.log("My Client "+clientData);
+                                if (Clients[clientData])
+                                {
+
+                                    var instanceArray = Clients[clientData];
+
+                                    console.log("My instances "+clientData+":"+instanceArray.length);
+                                    /*for(var j=0;j<instanceArray.length;j++)
+                                     {
+                                     var socket =instanceArray[j];
+                                     var BcMsgObj = {
+
+                                     "Message": messageData.Message
+                                     };
+                                     socket.emit('broadcast', BcMsgObj);
+                                     var processStatus =
+                                     {
+                                     clientStatus:clientData+" : success"
+                                     }
+                                     processData.push(processStatus);
+
+
+                                     if(j==instanceArray.length-1)
+                                     {
+                                     serverCallback(processData);
+                                     }
+                                     }*/
+                                    var instanceData=[];
+                                    instanceArray.forEach(function (clientInstance)
+                                    {
+                                        instanceData.push(function createContact(instanceCallback)
+                                        {
+                                            var socket=clientInstance;
+                                            console.log("My socket "+clientData);
+
+                                            var BcMsgObj = {
+
+                                                "Message": messageData.Message,
+                                                "From":messageData.From
+                                            };
+                                            socket.emit('broadcast', BcMsgObj);
+                                            var processStatus =
+                                            {
+                                                clientStatus:clientData+" : success"
+                                            };
+                                            processData.push(processStatus);
+                                            instanceCallback(null,processData);
+                                        });
+
+
+                                    });
+
+                                    async.parallel(instanceData, function (processStatus) {
+
+                                        console.log("instance sending ends here for "+clientData);
+                                        serverCallback(null,processStatus);
+
+
+                                    });
+
+
+                                }
+                                else
+                                {
+                                    //record in DB
+                                    console.log("Requested client recorded in this server but not in clientList " + clientData);
+                                    var processStatus =
+                                    {
+                                        clientStatus:clientData+" : failed"
+                                    }
+                                    processData.push(processStatus);
+                                    serverCallback(null,processData);
+
+                                }
+                            }
+                            else
+                            {
+                                console.log("SERVER " + resServer);
+                                console.log("My ID " + MyID);
+
+                                console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                                DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                                    if (errSvrPick) {
+                                        console.log("error in Picking server from DB");
+                                        console.log("Destination user not found");
+                                        console.log("error " + errSvrPick);
+
+                                        var processStatus =
+                                        {
+                                            clientStatus:clientData+" : failed"
+                                        }
+
+                                        processData.push(processStatus);
+                                        serverCallback(null,processData);
 
                                     }
                                     else {
-                                        console.log("errrs in request  " + error);
-                                        callback(error, undefined);
+                                        var ServerIP = resSvrPick.URL;
+                                        console.log(ServerIP);
+                                        var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                                        var options = {
+                                            url: httpUrl,
+                                            method: 'POST',
+                                            json: messageData,
+                                            headers:{
+                                                'authorization':"bearer "+token,
+                                                'companyInfo':compInfo
+                                            }
+
+
+                                        };
+
+                                        console.log(options);
+                                        try
+                                        {
+                                            httpReq(options, function (error, response, body) {
+                                                if (!error && response.statusCode == 200) {
+                                                    console.log("no errrs in request 200 ok");
+                                                    var processStatus =
+                                                    {
+                                                        clientStatus:clientData+" : success"
+                                                    }
+
+                                                    processData.push(processStatus);
+                                                    serverCallback(null,processData);
+
+                                                }
+                                                else {
+                                                    console.log("error in request  " + error);
+                                                    var processStatus =
+                                                    {
+                                                        clientStatus:clientData+" : falied"
+                                                    }
+                                                    processData.push(processStatus);
+                                                    serverCallback(null,processData);
+
+                                                }
+                                            });
+                                        }
+                                        catch (ex) {
+                                            console.log("exception" + ex);
+                                            var processStatus =
+                                            {
+                                                clientStatus:clientData+" : falied"
+                                            }
+                                            processData.push(processStatus);
+                                            serverCallback(null,processData);
+
+
+                                        }
 
                                     }
                                 });
                             }
-                            catch (ex) {
-                                console.log("ex..." + ex);
-                                callback(ex, undefined);
 
-                            }
-
-                        }
+                        });
                     });
+
+                    async.parallel(serverData, function (processStatus) {
+
+                        console.log("Server data ends here");
+                        callback(null,processStatus);
+
+
+                    });
+
+                    /*for(var i=0;i<resServer.length;i++)
+                     {
+                     console.log("Server " + resServer + " found for client " + clientData);
+
+                     if (MyID == resServer[i]) {
+                     console.log("Server id of client "+resServer[i]);
+                     console.log("Client " + clientData + " is a registerd client");
+
+                     if (Clients[clientData])
+                     {
+
+
+                     var instanceArray = Clients[clientData];
+
+                     for(var j=0;j<instanceArray.length;j++)
+                     {
+                     var socket =instanceArray[j];
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     }
+
+                     /!*instanceArray.forEach(function (clientInstance)
+                     {
+                     instanceData.push(function createContact(instanceCallback)
+                     {
+                     var socket=clientInstance;
+
+                     var BcMsgObj = {
+
+                     "Message": messageData.Message
+                     };
+                     socket.emit('broadcast', BcMsgObj);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+                     processData.push(processStatus);
+                     instanceCallback(processData);
+                     });
+                     async.parallel(instanceArray, function (processStatus) {
+
+                     callbackResult(processStatus);
+
+
+                     });
+
+                     });*!/
+
+
+
+
+                     }
+                     else
+                     {
+                     //record in DB
+                     console.log("Requested client recorded in this server but not in clientList " + clientData);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     }
+                     else
+                     {
+                     console.log("SERVER " + resServer);
+                     console.log("My ID " + MyID);
+
+                     console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                     DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                     if (errSvrPick) {
+                     console.log("error in Picking server from DB");
+                     console.log("Destination user not found");
+                     console.log("error " + errSvrPick);
+
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : failed"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     var ServerIP = resSvrPick.URL;
+                     console.log(ServerIP);
+                     var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                     var options = {
+                     url: httpUrl,
+                     method: 'POST',
+                     json: messageData
+
+                     };
+
+                     console.log(options);
+                     try
+                     {
+                     httpReq(options, function (error, response, body) {
+                     if (!error && response.statusCode == 200) {
+                     console.log("no errrs in request 200 ok");
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : success"
+                     }
+
+                     processData.push(processStatus);
+
+                     }
+                     else {
+                     console.log("error in request  " + error);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+                     }
+                     });
+                     }
+                     catch (ex) {
+                     console.log("exception" + ex);
+                     var processStatus =
+                     {
+                     clientStatus:clientData+" : falied"
+                     }
+                     processData.push(processStatus);
+
+
+                     }
+
+                     }
+                     });
+                     }
+
+                     if(i==resServer.length-1)
+                     {
+                     callback(processData);
+                     }
+                     }*/
+
+
                 }
 
-            }
+
+
+            });
+
         });
-    } catch (e) {
-        callback(e,undefined);
-    }
+    });
+
+    async.parallel(broadcastArray, function (processStatus) {
+
+        console.log("Users ends here");
+        callbackResult(null,processData);
+
+
+    });
+
 
 };
 
@@ -2702,7 +3505,7 @@ SubscribeDataRecorder = function (dataObj,userId) {
 
 };
 
-PublishToUser = function (clientID,msgObj,callback) {
+PublishToUser = function (clientID,msgObj,compInfo,callback) {
 
     /* redisManager.IsRegisteredClient(clientID, function (errAvbl,status,resAvbl) {
 
@@ -2763,6 +3566,7 @@ PublishToUser = function (clientID,msgObj,callback) {
                     }
                     else {
                         console.log("Offline user");
+
                         DBController.PersistencePubSubMessageRecorder(msgObj,clientID, function (errSave,resSave) {
                             if(errSave)
                             {
@@ -2789,7 +3593,13 @@ PublishToUser = function (clientID,msgObj,callback) {
                             var options = {
                                 url: httpUrl,
                                 method: 'POST',
-                                json: msgObj
+                                json: msgObj,
+                                headers:{
+                                    'eventName':eventName,
+                                    'eventUuid':eventUuid,
+                                    'authorization':"bearer "+token,
+                                    'companyInfo':compInfo
+                                }
 
                             };
 
@@ -2865,7 +3675,12 @@ InitiateSubscriber = function (clientID,msgObj,callback) {
                             var options = {
                                 url : httpUrl,
                                 method : 'POST',
-                                json : msgObj
+                                json : msgObj,
+                                headers:{
+                                    'eventName':eventName,
+                                    'eventUuid':eventUuid,
+                                    'authorization':"bearer "+token,
+                                }
 
                             };
 
@@ -2914,6 +3729,7 @@ InitiateSubscriber = function (clientID,msgObj,callback) {
 
 GooglePushMessageSender = function (clientId,msgObj,callback) {
 
+
     DBController.GoogleNotificationKeyPicker(clientId, function (errKey,resKey) {
 
         if(errKey)
@@ -2923,7 +3739,8 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
         else
         {
             console.log("type: "+typeof (resKey));
-            var message = new gcm.Message();
+            var message = new gcm.Message({data:msgObj});
+            //var message = new gcm.Message();
 
             /*message.addData("EventUuid  ", msgObj.eventUuid);
              message.addData("TopicID  ", msgObj.topicID);
@@ -2932,14 +3749,19 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
              message.addData("Message  ", msgObj.Message);
              message.addData("EventName  ", msgObj.eventName);*/
 
-            message.addNotification(msgObj);
+            //message.addNotification(msgObj);
 
             //var icon = 'https://raw.githubusercontent.com/deanhume/typography/gh-pages/icons/typography.png';
             //message.addNotification('icon', icon);
 
 
+            message.addNotification('title', msgObj.eventName);
+            message.addNotification('icon', 'ic_launcher');
+            //message.addNotification('body', msgObj);
 
             // Sender.send(message, { registrationTokens: [regToken] }, function (err, response) {
+            console.log("Recepients "+resKey);
+            console.log("Message "+JSON.stringify(message));
             Sender.send(message, { registrationTokens: resKey }, function (err, response) {
 
 
@@ -2954,6 +3776,80 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
 
 
 };
+
+ClientServerPicker = function (clientArray,messageData,callback) {
+    var serverResponse=[];
+    var processData=[];
+
+    clientArray.forEach(function (clientData)
+    {
+        serverResponse.push(function createContact(serverCallback)
+        {
+            redisManager.GetClientsServer(clientData, function (errServer, resServer) {
+                if(errServer)
+                {
+                    console.log("Error in server searching for client " + clientData,errServer);
+                    var processStatus =
+                    {
+                        clientStatus:clientData+" : failed"
+                    }
+                    processData.push(processStatus);
+                    serverCallback(processData);
+                }
+                else
+                {
+                    if(resServer.length==1 && resServer.indexOf(MyID)!=-1)
+                    {
+                        InstanceMessageHandler(clientData,Clients[clientData],messageData, function (instanceCallback) {
+                            serverCallback(instanceCallback);
+                        });
+                    }
+                    else if(resServer.length>1 && resServer.indexOf(MyID)!=-1)
+                    {
+
+                    }
+
+
+                }
+            });
+        });
+    });
+
+
+};
+
+InstanceMessageHandler = function (clientData,instanceArray,messageData,callback) {
+
+    var instanceResponse=[];
+    var processData=[];
+
+    instanceArray.forEach(function (instanceItem) {
+
+        instanceResponse.push(function createContact(Instancecallback)
+        {
+            var socket =instanceItem;
+            var BcMsgObj = {
+
+                "Message": messageData.Message
+            };
+            socket.emit('broadcast', BcMsgObj);
+            var processStatus =
+            {
+                clientStatus:clientData+" : success"
+            }
+            processData.push(processStatus);
+
+        });
+    });
+
+    async.parallel(instanceResponse, function (processStatus)
+    {
+        callback(processStatus);
+    });
+};
+
+
+
 
 function Crossdomain(req,res,next){
 
