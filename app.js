@@ -10,6 +10,16 @@ var util = require('util');
 var uuid = require('node-uuid');
 var async= require('async');
 var gcm = require('node-gcm');
+var redisManager=require('./RedisManager.js');
+var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
+var DBController = require('./DBController.js');
+
+
+var secret = require('dvp-common/Authentication/Secret.js');
+var socketioJwt =  require("socketio-jwt");
+var jwt = require('restify-jwt');
+var authorization = require('dvp-common/Authentication/Authorization.js');
+
 
 
 var opt = {
@@ -28,19 +38,14 @@ var version=config.Host.version;
 var token=config.Token;
 var Sender = new gcm.Sender(config.SENDER);
 
-var redisManager=require('./RedisManager.js');
-var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
-var DBController = require('./DBController.js');
 
 var TTL = config.TTL.ttl;
 var MyID = config.ID;
 
 
-var secret = require('dvp-common/Authentication/Secret.js');
-var socketioJwt =  require("socketio-jwt");
-var jwt = require('restify-jwt');
-var authorization = require('dvp-common/Authentication/Authorization.js');
-
+var Notice = require('dvp-mongomodels/model/Notice').Notice;
+var User = require('dvp-mongomodels/model/User');
+var UserGroup = require('dvp-mongomodels/model/UserGroup').UserGroup;
 
 
 var RestServer = restify.createServer({
@@ -75,29 +80,84 @@ var inboxMode=config.PERSISTENCY.inbox_mode;
 
 //Server listen
 
-RestServer.listen(port, function () {
-    console.log('%s listening at %s', RestServer.name, RestServer.url);
-    redisManager.LocationListPicker("aps", function (e,r) {
+var mongoip=config.Mongo.ip;
+var mongoport=config.Mongo.port;
+var mongodb=config.Mongo.dbname;
+var mongouser=config.Mongo.user;
+var mongopass = config.Mongo.password;
+var mongoreplicaset= config.Mongo.replicaset;
 
-        if(typeof r !== 'undefined' && r.length > 0)
-        {
-            console.log(r);
-            if(r.indexOf(MyID)==-1)
-            {
-                console.log("new");
-            }
-            else
-            {
-                console.log("new Instance");
-            }
-        }
-        else
-        {
-            console.log("Empty");
-        }
+var mongoose = require('mongoose');
+var connectionstring = '';
+if(util.isArray(mongoip)){
+
+    mongoip.forEach(function(item){
+        connectionstring += util.format('%s:%d,',item,mongoport)
     });
 
+    connectionstring = connectionstring.substring(0, connectionstring.length - 1);
+    connectionstring = util.format('mongodb://%s:%s@%s/%s',mongouser,mongopass,connectionstring,mongodb);
+
+    if(mongoreplicaset){
+        connectionstring = util.format('%s?replicaSet=%s',connectionstring,mongoreplicaset) ;
+    }
+}else{
+
+    connectionstring = util.format('mongodb://%s:%s@%s:%d/%s',mongouser,mongopass,mongoip,mongoport,mongodb)
+}
+
+
+mongoose.connect(connectionstring,{server:{auto_reconnect:true}});
+
+
+mongoose.connection.on('error', function (err) {
+    console.error( new Error(err));
+    mongoose.disconnect();
+
 });
+
+mongoose.connection.on('opening', function() {
+    console.log("reconnecting... %d", mongoose.connection.readyState);
+});
+
+
+mongoose.connection.on('disconnected', function() {
+    console.error( new Error('Could not connect to database'));
+    mongoose.connect(connectionstring,{server:{auto_reconnect:true}});
+});
+
+mongoose.connection.once('open', function() {
+    console.log("Connected to db");
+
+});
+
+
+mongoose.connection.on('reconnected', function () {
+    console.log('MongoDB reconnected!');
+});
+
+mongoose.connection.on('error', function(err) {
+    console.error('MongoDB error: %s', err);
+});
+
+process.on('SIGINT', function() {
+    mongoose.connection.close(function () {
+        console.log('Mongoose default connection disconnected through app termination');
+        process.exit(0);
+    });
+});
+
+
+
+RestServer.listen(port, function () {
+    console.log('%s listening at %s', RestServer.name, RestServer.url);
+
+});
+
+
+var Schema = mongoose.Schema;
+var ObjectId = Schema.ObjectId;
+
 
 
 
@@ -641,17 +701,17 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                             {
 
 
-                               /* GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
-                                    if(errGnotf)
-                                    {
-                                        console.log("Error in Google notifications:  "+errGnotf);
-                                    }
-                                    else
-                                    {
-                                        console.log("Success. Google notifications sent:  "+resGnotf);
-                                    }
+                                /* GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+                                 if(errGnotf)
+                                 {
+                                 console.log("Error in Google notifications:  "+errGnotf);
+                                 }
+                                 else
+                                 {
+                                 console.log("Success. Google notifications sent:  "+resGnotf);
+                                 }
 
-                                });*/
+                                 });*/
 
                                 /*DBController.SipUserDetailsPicker(clientID,Company,Tenant, function (errSipData,resSipData) {
 
@@ -2163,16 +2223,16 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
     if(Clients[clientID])
     {
         /*GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
-            if(errGnotf)
-            {
-                console.log("Error in Google notifications:  "+errGnotf);
-            }
-            else
-            {
-                console.log("Success. Google notifications sent:  "+resGnotf);
-            }
+         if(errGnotf)
+         {
+         console.log("Error in Google notifications:  "+errGnotf);
+         }
+         else
+         {
+         console.log("Success. Google notifications sent:  "+resGnotf);
+         }
 
-        });*/
+         });*/
 
         /* if(!isNaN(clientID))
          {
@@ -2431,6 +2491,111 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/TestMessage',authoriza
     });
 
     return next();
+});
+
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notice',authorization({resource:"notification", action:"write"}),function(req,res,next)
+{
+
+    console.log("Notice service started");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+
+    if(req.body)
+    {
+        NoticeMessageHandler(req,Company,Tenant, function (error,processStatus)
+        {
+            res.end(JSON.stringify(processStatus));
+        });
+    }
+    else
+    {
+        res.end("Empty client list received ");
+
+    }
+
+    return next();
+});
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notice/:userName',authorization({resource:"notification", action:"write"}),function(req,res,next)
+{
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    var user = req.params.userName;
+    var userData = req.body;
+
+
+    if(Clients[user])
+    {
+        var socket=Clients[user];
+        var BcMsgObj={
+
+            from:req.user.iss,
+            title:userData.title,
+            message:userData.message,
+            attachments:userData.attachments,
+            priority:userData.priority,
+            company:userData,
+            tenant:userData
+        };
+        socket.emit('notice',BcMsgObj);
+        res.end();
+        //callback(undefined,user);
+
+    }
+    else
+    {
+        res.end("User not in the list");
+        /*console.log("Not in clientList "+clientData);
+        userData.To=user;
+        if(inboxMode)
+        {
+            DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                if(errInbox)
+                {
+                    console.log("Error in Message Saving ",errInbox);
+                    res.end();
+                }
+                else
+                {
+                    console.log("Message saving succeeded ",resInbox);
+                    res.end("Message saved to related client's inbox");
+                }
+            });
+        }
+        else
+        {
+
+            DBController.PersistenceGroupMessageRecorder(userData, function (errSave, resSave) {
+                if (errSave) {
+                    //callback(errSave,undefined);
+                    console.log("DB error " + errSave);
+                    res.end();
+                }
+                else {
+                    //callback(undefined,resSave);
+                    console.log("DB kk " + resSave);
+                    res.end(resSave);
+                }
+
+            });
+        }*/
+    }
+
+
+
 });
 
 
@@ -3849,7 +4014,679 @@ InstanceMessageHandler = function (clientData,instanceArray,messageData,callback
 };
 
 
+NoticeMessageHandler = function (req,company,tenant,callbackResult) {
 
+    var broadcastArray=[];
+    var processData=[];
+    var userListArray=[];
+    var compInfo = tenant + ':' + company;
+    var clientArray=[];
+    var groupList=[];
+    var messageData=req.body;
+    var fromUser;
+
+
+    User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,owner) {
+
+        if(err)
+        {
+            var processStatus =
+            {
+                Owner:"Error in searching owner"
+            }
+            callbackResult(null,processStatus);
+        }
+        else
+        {
+            if(owner)
+            {
+                fromUser=owner.id;
+
+                userListArray.push(function createContact(listCallBack) {
+
+                    if(messageData.toUser && messageData.toUser.length>0)
+                    {
+                        //clientArray=messageData.toUser;
+                        var clientObj =
+                        {
+                            company:company,
+                            tenant:tenant,
+                            $or:[]
+                        }
+
+                        messageData.toUser.map(function (user) {
+
+                            clientObj.$or.push({username:user});
+
+                        });
+
+                        try
+                        {
+                            User.find(clientObj, function (err,users) {
+
+                                if(err)
+                                {
+                                    console.log("Error in searching users");
+                                    listCallBack(new Error("Error in searching users"),false);
+                                }
+                                else
+                                {
+                                    if(users)
+                                    {
+                                        console.log("Users found");
+                                        users.map(function (user) {
+
+
+                                            clientArray.push(user);
+                                        });
+                                        listCallBack(undefined,true);
+                                    }
+                                    else
+                                    {
+                                        console.log("No users found");
+                                        listCallBack(new Error("No users found"),false);
+                                    }
+                                }
+                            });
+                        }
+                        catch(ex)
+                        {
+                            console.log(ex);
+                        }
+
+
+
+
+                    }
+                    else if(messageData.toGroup && messageData.toGroup.length>0)
+                    {
+
+
+                        var grpObj =
+                        {
+                            company:company,
+                            tenant:tenant,
+                            $or:[]
+                        }
+
+                        messageData.toGroup.map(function (group) {
+
+                            grpObj.$or.push({name:group});
+
+                        });
+
+                        UserGroup.find(grpObj, function (err,groups) {
+
+                            if(err)
+                            {
+                                console.log("Error in searching groups");
+                                listCallBack(new Error("Error in searching groups"),false);
+                            }
+                            else
+                            {
+                                if(groups)
+                                {
+
+                                    groups.map(function (group) {
+
+                                        groupList.push(group._id);
+                                    });
+
+                                    var groupObj={
+                                        company:company,
+                                        tenat:tenant,
+                                        Active:true,
+                                        $or:[]
+
+                                    }
+
+                                    groupList.filter(function (item) {
+                                        groupObj.$or.push({group:item.id});
+                                    });
+
+                                    User.find(groupObj, function (err,Users) {
+
+                                        if(err)
+                                        {
+                                            console.log("No group users found");
+                                            listCallBack(new Error("No group users found"),false);
+
+
+                                        }
+                                        else
+                                        {
+                                            if(Users)
+                                            {
+                                                console.log("group users found");
+
+                                                Users.map(function (user) {
+                                                    clientArray.push(user)
+                                                });
+                                                listCallBack(undefined,true);
+                                            }
+                                            else
+                                            {
+                                                console.log("No group users found");
+                                                listCallBack(new Error("No group users found"),false);
+
+                                            }
+
+                                        }
+                                    });
+
+
+
+                                }
+                                else
+                                {
+                                    console.log("No Group found");
+                                    listCallBack(new Error("No Group found"),false);
+
+                                }
+                            }
+                        });
+
+
+                    }
+                    else
+                    {
+                        console.log("No user or group data");
+
+                        listCallBack(new Error("No user or group data"),false);
+                    }
+                });
+                async.parallel(userListArray, function (processStatus) {
+
+
+                    if(clientArray && clientArray.length>0)
+                    {
+                        var NoticeObj = {
+                            from:fromUser,
+                            title:messageData.title,
+                            message:messageData.message,
+                            attachments:messageData.attachments,
+                            priority:messageData.priority,
+                            company:company,
+                            tenant:tenant,
+                            toUser:null,
+                            toGroup:null
+
+                        }
+                        if(messageData.toUser)
+                        {
+                            console.log("User list attached");
+                            NoticeObj.toUser=clientArray.map(function (user) {
+                                return user._id;
+                            });
+                        }
+                        if(messageData.toGroup)
+                        {
+                            console.log("group list attached");
+                            NoticeObj.toGroup=groupList;
+                        }
+
+                        var notice = Notice(NoticeObj);
+                        notice.save(function (err,notice) {
+
+                            if(err)
+                            {
+                                console.log("Error in saving notice data");
+                                var processStatus =
+                                {
+                                    NoticeStatus:"Notice saving failed"
+                                }
+                                callbackResult(null,processStatus);
+                            }
+                            else
+                            {
+                                if(notice)
+                                {
+                                    console.log("Notice saved");
+                                    clientArray.forEach(function (clientDetails) {
+
+
+                                        broadcastArray.push(function createContact(callback)
+                                        {
+                                            var clientData = clientDetails.username;
+
+                                            redisManager.GetClientsServer(clientData, function (errServer, resServer) {
+
+                                                if (errServer)
+                                                {
+                                                    console.log("Error in server searching for client " + clientData,errServer);
+                                                    var processStatus =
+                                                    {
+                                                        clientStatus:clientData+" : failed"
+                                                    }
+                                                    processData.push(processStatus);
+                                                    callback(null,processData);
+                                                }
+                                                else
+                                                {
+
+                                                    var serverData=[];
+                                                    resServer.forEach(function (serverItem) {
+
+
+                                                        console.log("Server " + resServer + " found for client " + clientData);
+
+                                                        console.log("Client " + clientData + " is a registered client");
+
+
+                                                        serverData.push(function createContact(serverCallback)
+                                                        {
+                                                            console.log("Server id of client "+serverItem);
+
+
+                                                            if (MyID == serverItem)     {
+
+                                                                console.log("My Client "+clientData);
+                                                                if (Clients[clientData])
+                                                                {
+
+                                                                    var instanceArray = Clients[clientData];
+
+                                                                    console.log("My instances "+clientData+":"+instanceArray.length);
+                                                                    /*for(var j=0;j<instanceArray.length;j++)
+                                                                     {
+                                                                     var socket =instanceArray[j];
+                                                                     var BcMsgObj = {
+
+                                                                     "Message": messageData.Message
+                                                                     };
+                                                                     socket.emit('broadcast', BcMsgObj);
+                                                                     var processStatus =
+                                                                     {
+                                                                     clientStatus:clientData+" : success"
+                                                                     }
+                                                                     processData.push(processStatus);
+
+
+                                                                     if(j==instanceArray.length-1)
+                                                                     {
+                                                                     serverCallback(processData);
+                                                                     }
+                                                                     }*/
+                                                                    var instanceData=[];
+                                                                    instanceArray.forEach(function (clientInstance)
+                                                                    {
+                                                                        instanceData.push(function createContact(instanceCallback)
+                                                                        {
+                                                                            var socket=clientInstance;
+                                                                            console.log("My socket "+clientData);
+
+                                                                            var BcMsgObj = {
+
+                                                                                from:req.user.iss,
+                                                                                title:messageData.title,
+                                                                                message:messageData.message,
+                                                                                attachments:messageData.attachments,
+                                                                                priority:messageData.priority,
+                                                                                company:company,
+                                                                                tenant:tenant
+
+                                                                            };
+                                                                            socket.emit('notice', BcMsgObj);
+                                                                            var processStatus =
+                                                                            {
+                                                                                clientStatus:clientData+" : success"
+                                                                            };
+                                                                            processData.push(processStatus);
+                                                                            instanceCallback(null,processData);
+                                                                        });
+
+
+                                                                    });
+
+                                                                    async.parallel(instanceData, function (processStatus) {
+
+                                                                        console.log("instance sending ends here for "+clientData);
+                                                                        serverCallback(null,processStatus);
+
+
+                                                                    });
+
+
+                                                                }
+                                                                else
+                                                                {
+                                                                    //record in DB
+                                                                    console.log("Requested client recorded in this server but not in clientList " + clientData);
+                                                                    var processStatus =
+                                                                    {
+                                                                        clientStatus:clientData+" : failed"
+                                                                    }
+                                                                    processData.push(processStatus);
+                                                                    serverCallback(null,processData);
+
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                console.log("SERVER " + resServer);
+                                                                console.log("My ID " + MyID);
+
+                                                                console.log("Client " + clientData + " is not a registered client in this server, serching in other servers");
+                                                                DBController.ServerPicker(resServer, function (errSvrPick, resSvrPick) {
+
+                                                                    if (errSvrPick) {
+                                                                        console.log("error in Picking server from DB");
+                                                                        console.log("Destination user not found");
+                                                                        console.log("error " + errSvrPick);
+
+                                                                        var processStatus =
+                                                                        {
+                                                                            clientStatus:clientData+" : failed"
+                                                                        }
+
+                                                                        processData.push(processStatus);
+                                                                        serverCallback(null,processData);
+
+                                                                    }
+                                                                    else {
+                                                                        var ServerIP = resSvrPick.URL;
+                                                                        console.log(ServerIP);
+                                                                        var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/Broadcast/' + clientData, ServerIP, version);
+                                                                        var options = {
+                                                                            url: httpUrl,
+                                                                            method: 'POST',
+                                                                            json: messageData,
+                                                                            headers:{
+                                                                                'authorization':"bearer "+token,
+                                                                                'companyInfo':compInfo
+                                                                            }
+
+
+                                                                        };
+
+                                                                        console.log(options);
+                                                                        try
+                                                                        {
+                                                                            httpReq(options, function (error, response, body) {
+                                                                                if (!error && response.statusCode == 200) {
+                                                                                    console.log("no errrs in request 200 ok");
+                                                                                    var processStatus =
+                                                                                    {
+                                                                                        clientStatus:clientData+" : success"
+                                                                                    }
+
+                                                                                    processData.push(processStatus);
+                                                                                    serverCallback(null,processData);
+
+                                                                                }
+                                                                                else {
+                                                                                    console.log("error in request  " + error);
+                                                                                    var processStatus =
+                                                                                    {
+                                                                                        clientStatus:clientData+" : falied"
+                                                                                    }
+                                                                                    processData.push(processStatus);
+                                                                                    serverCallback(null,processData);
+
+                                                                                }
+                                                                            });
+                                                                        }
+                                                                        catch (ex) {
+                                                                            console.log("exception" + ex);
+                                                                            var processStatus =
+                                                                            {
+                                                                                clientStatus:clientData+" : falied"
+                                                                            }
+                                                                            processData.push(processStatus);
+                                                                            serverCallback(null,processData);
+
+
+                                                                        }
+
+                                                                    }
+                                                                });
+                                                            }
+
+                                                        });
+                                                    });
+
+                                                    async.parallel(serverData, function (processStatus) {
+
+                                                        console.log("Server data ends here");
+                                                        callback(null,processStatus);
+
+
+                                                    });
+
+
+                                                }
+
+
+
+                                            });
+
+                                        });
+                                    });
+
+                                    async.parallel(broadcastArray, function (processStatus) {
+
+                                        console.log("Users ends here");
+
+                                        callbackResult(null,processData);
+
+
+                                    });
+                                }
+                                else
+                                {
+                                    console.log("Error in saving notice data");
+                                    var processStatus =
+                                    {
+                                        NoticeStatus:"Notice saving failed"
+                                    }
+                                    callbackResult(null,processStatus);
+
+
+                                }
+
+                            }
+                        });
+
+
+
+
+                    }
+                    else
+                    {
+                        var processStatus =
+                        {
+                            ClientsList:"Empty Client List"
+                        }
+                        callbackResult(null,processStatus);
+                    }
+
+
+                });
+
+            }
+            else
+            {
+                var processStatus =
+                {
+                    Owner:"Invalid owner"
+                }
+                callbackResult(null,processStatus);
+            }
+        }
+    });
+
+
+
+    //var clientArray=messageData.clients
+
+};
+
+NoticeMessageHandlerTest = function (messageData,company,tenant,callbackResult) {
+
+    var broadcastArray=[];
+    var processData=[];
+    var userListArray=[];
+    var compInfo = company + ':' + company;
+    var clientArray=[];
+    var groupList=[];
+
+    userListArray.push(function createContact(listCallBack) {
+
+        if(messageData.toUser && messageData.toUser.length>0)
+        {
+            //clientArray=messageData.toUser;
+            var clientObj =
+            {
+                company:company,
+                tenant:tenant,
+                $or:[]
+            }
+
+            messageData.toUser.map(function (user) {
+
+                clientObj.$or.push({username:user});
+
+            });
+
+            try
+            {
+                User.find(clientObj, function (err,users) {
+
+                    if(err)
+                    {
+                        console.log("Error in searching users");
+                        listCallBack(false);
+                    }
+                    else
+                    {
+                        if(users)
+                        {
+                            console.log("Users found");
+                            users.map(function (user) {
+
+                                clientArray.push(user._id);
+                            });
+                            listCallBack(true);
+                        }
+                        else
+                        {
+                            console.log("No users found");
+                            listCallBack(false);
+                        }
+                    }
+                });
+            }
+            catch(ex)
+            {
+                console.log(ex);
+                listCallBack(false);
+            }
+
+
+
+
+
+        }
+        else if(messageData.toGroup && messageData.toGroup.length>0)
+        {
+
+
+            var grpObj =
+            {
+                company:company,
+                tenant:tenant,
+                $or:[]
+            }
+
+            messageData.toGroup.map(function (group) {
+
+                clientObj.$or.push({name:group});
+
+            });
+
+            UserGroup.find(grpObj, function (err,groups) {
+
+                if(err)
+                {
+                    console.log("Error in searching groups");
+                    listCallBack(true);
+                }
+                else
+                {
+                    if(groups)
+                    {
+                        console.log("groups found");
+                        groups.map(function (group) {
+
+                            groupList.push(group._id);
+                        });
+
+                        var groupObj={
+                            company:company,
+                            tenat:tenant,
+                            Active:true,
+                            $or:[]
+
+                        }
+
+                        groupList.map(function (item) {
+                            groupObj.$or.push({group:item.id});
+                        });
+
+                        User.find(groupObj, function (err,Users) {
+
+                            if(err)
+                            {
+                                console.log("No group users found");
+                                clientArray=[];
+                                listCallBack(true);
+                            }
+                            else
+                            {
+                                if(Users)
+                                {
+                                    console.log("group users found");
+                                    Users.map(function (user) {
+                                        clientArray.push(user._id)
+                                    });
+                                    listCallBack(true);
+                                }
+                                else
+                                {
+                                    console.log("No group users found");
+                                    clientArray=[];
+                                    listCallBack(true);
+                                }
+
+                            }
+                        });
+
+
+
+                    }
+                    else
+                    {
+                        console.log("No Group found");
+                        listCallBack(true);
+                    }
+                }
+            });
+
+
+        }
+        else
+        {
+            console.log("No user or group data");
+            clientArray=[];
+            listCallBack(true);
+        }
+    });
+    async.parallel(userListArray, function (processStatus)
+    {
+        callbackResult(null,processStatus);
+    });
+
+}
 
 function Crossdomain(req,res,next){
 
