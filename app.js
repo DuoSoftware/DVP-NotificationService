@@ -166,26 +166,6 @@ io.sockets.on('connection',socketioJwt.authorize({
 
                                 console.log("New Client Registered : "+clientID);
 
-                                /*DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
-
-                                 if(errMsg)
-                                 {
-                                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                                 }
-                                 else
-                                 {
-                                 console.log(resMsg.length+" Messages found for Client : "+clientID);
-                                 for(i=0 ;i<resMsg.length;i++)
-                                 {
-                                 QueuedMessageOperator(resMsg[i]);
-                                 }
-
-
-
-
-
-                                 }
-                                 });*/
                             }
                         });
                     }
@@ -210,26 +190,6 @@ io.sockets.on('connection',socketioJwt.authorize({
 
                             console.log("New Client Registered FirstTime : "+clientID);
 
-                            /*DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
-
-                             if(errMsg)
-                             {
-                             console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                             }
-                             else
-                             {
-                             console.log(resMsg.length+" Messages found for Client : "+clientID);
-                             for(i=0 ;i<resMsg.length;i++)
-                             {
-                             QueuedMessageOperator(resMsg[i]);
-                             }
-
-
-
-
-
-                             }
-                             });*/
                         }
                     });
 
@@ -253,150 +213,6 @@ io.sockets.on('connection',socketioJwt.authorize({
 
                     }
                 });
-
-
-                /*
-                 else
-                 {
-
-                 console.log("KEY "+dataKey);
-                 var serverID = dataKey.split(":")[3];
-                 console.log("Server ID "+serverID);
-                 if(serverID==MyID)
-                 {
-                 console.log("Registered Client on This server Client : "+clientID);
-
-                 Clients[clientID]=socket;
-
-                 DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg)
-                 {
-
-                 if(errMsg)
-                 {
-                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                 }
-                 else
-                 {
-
-                 for(var i=0 ;i<resMsg.length;i++)
-                 {
-
-                 QueuedMessageOperator(resMsg[i]);
-
-                 }
-
-
-
-
-                 }
-                 });
-                 }
-                 else
-                 {
-                 console.log("Not registered client in this server");
-
-                 DBController.ServerPicker(serverID, function (errPick,resPick) {
-
-                 if(errPick)
-                 {
-                 console.log("Error in Searching Server IP "+errPick);
-                 }
-                 else
-                 {
-                 console.log("Server record found  "+JSON.stringify(resPick));
-                 var URL="http://"+resPick.URL+"/DVP/API/"+version+"/NotificationService/Notification/Server/"+serverID+"/Availability";
-                 console.log(URL);
-                 var optionsX = {url: URL, method: "GET"};
-                 httpReq(optionsX, function (errorX, responseX, dataX) {
-
-
-                 if(errorX )
-                 {
-                 console.log("ERROR in searching server location "+errorX);
-
-                 redisManager.UserServerUpdater(clientID,serverID,MyID,function (errRecord,resRecord)
-                 {
-                 if(errRecord)
-                 {
-                 console.log("Error in client data : "+clientID+" saving with server : "+serverID,errRecord);
-                 }
-                 else
-                 {
-                 Clients[clientID]=socket;
-                 console.log("Client registered to Server ID : "+MyID);
-
-                 DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
-
-                 if(errMsg)
-                 {
-                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                 }
-                 else
-                 {
-                 for(var i=0 ;i<resMsg.length;i++)
-                 {
-                 QueuedMessageOperator(resMsg[i]);
-                 }
-
-                 }
-                 });
-
-
-
-                 }
-
-                 });
-
-                 }
-
-                 else if (!errorX && responseX.statusCode  == 200 ) {
-
-
-                 console.log("Client is already registered in another Active server, Try with another client");
-
-                 }
-                 else
-                 {
-                 redisManager.RecordUserServer(clientID,serverID, function (errRecord,resRecord) {
-
-                 if(errRecord)
-                 {
-                 console.log("Error in client data : "+clientID+" saving with server : "+serverID,errRecord);
-                 }
-                 else
-                 {
-                 Clients[clientID]=socket;
-                 console.log("Client registered successfully "+clientID);
-
-                 DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
-
-                 if(errMsg)
-                 {
-                 console.log("Error in queued messages searching for Client : "+clientID,errMsg);
-                 }
-                 else
-                 {
-
-                 console.log(resMsg.length+" Messages found ");
-                 for(var i=0 ;i<resMsg.length;i++)
-                 {
-                 QueuedMessageOperator(resMsg[i]);
-                 }
-
-                 }
-                 });
-                 }
-
-                 });
-                 }
-                 });
-                 }
-
-                 });
-                 }
-
-                 }
-                 */
             }
 
         });
@@ -640,86 +456,97 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                             if(Clients[clientID])
                             {
 
-
-                               /* GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
-                                    if(errGnotf)
-                                    {
-                                        console.log("Error in Google notifications:  "+errGnotf);
-                                    }
-                                    else
-                                    {
-                                        console.log("Success. Google notifications sent:  "+resGnotf);
-                                    }
-
-                                });*/
-
-                                /*DBController.SipUserDetailsPicker(clientID,Company,Tenant, function (errSipData,resSipData) {
-
-                                 if(errSipData)
-                                 {
-                                 console.log("Error in searching user data");
-                                 }
-                                 else
-                                 {
-                                 GooglePushMessageSender(resSipData.id,msgObj, function (errGnotf,resGnotf) {
-                                 if(errGnotf)
-                                 {
-                                 console.log("Error in Google notifications:  "+errGnotf);
-                                 }
-                                 else
-                                 {
-                                 console.log("Success. Google notifications sent:  "+resGnotf);
-                                 }
-
-                                 });
-                                 }
-
-                                 })*/
-
-
                                 var insArray =Clients[clientID];
-                                for(var i=0;i<insArray.length;i++)
-                                {
-                                    var insSocket=insArray[i];
+                                for(var i=0;i<insArray.length;i++) {
+                                    var insSocket = insArray[i];
 
 
-                                    console.log("Event Name : "+eventName);
-                                    console.log("Event Message : "+msgObj);
+                                    console.log("Event Name : " + eventName);
+                                    console.log("Event Message : " + msgObj);
 
-                                    insSocket.emit(eventName,msgObj);
-                                    console.log("Notification sent : "+JSON.stringify(msgObj));
+                                    insSocket.emit(eventName, msgObj);
+                                    console.log("Notification sent : " + JSON.stringify(msgObj));
 
-                                    /*
 
-                                     if(eventName=="agent_connected")
-                                     {
-                                     insSocket.emit('agent_connected',msgObj);
-                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                     }
-                                     else if(eventName=="agent_disconnected")
-                                     {
-                                     insSocket.emit('agent_disconnected',msgObj);
-                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                     }
-                                     else if(eventName=="agent_found") {
-                                     insSocket.emit('agent_found',msgObj);
-                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                     }
-                                     else if(eventName=="agent_rejected")
-                                     {
-                                     insSocket.emit('agent_rejected',msgObj);
-                                     console.log("Event notification sent : "+JSON.stringify(msgObj));
-                                     }
-                                     else
-                                     {
-                                     insSocket.emit('message',msgObj);
-                                     console.log("Message sent : "+JSON.stringify(msgObj));
-                                     }*/
+                                    ////////////////////////////////////////////////on special call status events//////////
+                                    var isCallEvent = false;
+                                    var callObject = {};
+                                    //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
+                                    var messageList = message.split('|');
+                                    if (eventName == "agent_connected") {
 
-                                    if(i==insArray.length-1)
-                                    {
+                                        isCallEvent = true;
+                                        if (Array.isArray(messageList) && messageList.length > 9) {
+
+                                            callObject.action = "connectec";
+                                            callObject.session = messageList[1];
+                                            callObject.from = messageList[3];
+                                            callObject.to = messageList[5];
+                                            callObject.profile = messageList[9];
+                                        }
+
+                                    }
+                                    else if (eventName == "agent_disconnected") {
+
+                                        isCallEvent = true;
+
+                                        if (Array.isArray(messageList) && messageList.length > 11) {
+
+                                            callObject.action = "hangup";
+                                            callObject.session = messageList[1];
+                                            callObject.from = messageList[3];
+                                            callObject.to = messageList[5];
+                                            callObject.profile = messageList[9];
+                                            callObject.starttime = messageList[10];
+                                            callObject.direction = messageList[7];
+                                            callObject.duration = messageList[11];
+                                            callObject.description = messageList[8];
+
+                                        }
+
+                                    }
+                                    else if (eventName == "agent_found") {
+
+                                        isCallEvent = true;
+
+                                        if (Array.isArray(messageList) && messageList.length > 9) {
+
+                                            callObject.action = "received";
+                                            callObject.session = messageList[1];
+                                            callObject.from = messageList[3];
+                                            callObject.to = messageList[5];
+                                            callObject.profile = messageList[9];
+                                        }
+
+                                    }
+                                    else if (eventName == "agent_rejected") {
+
+                                        isCallEvent = true;
+
+                                        if (Array.isArray(messageList) && messageList.length > 9) {
+
+                                            callObject.action = "missed";
+                                            callObject.session = messageList[1];
+                                            callObject.from = messageList[3];
+                                            callObject.to = messageList[5];
+                                            callObject.profile = messageList[9];
+                                            callObject.missedtime = messageList[11];
+                                            callObject.sequential = true;
+                                        }
+
+                                    }
+
+                                    if(isCallEvent){
+
+
+                                        CallCRM(Company,Tenant,callObject);
+                                    }
+                                    ////////////////////////////////////////////////////////////////////////////////////////
+
+
+                                    if (i == insArray.length - 1) {
                                         //res.end();
-                                        callback(undefined,"Success");
+                                        callback(undefined, "Success");
                                     }
                                 }
 
@@ -1386,104 +1213,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     }
 });
 
-/*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
- {
- if(!req.user.company || !req.user.tenant)
- {
- throw new Error("Invalid company or tenant");
- }
 
- var Company=req.user.company;
- var Tenant=req.user.tenant;
-
- var userID= req.params.username;
-
- redisManager.IsRegisteredClient(userID, function (errReg,status,resReg) {
-
- if(errReg)
- {
- console.log("Error in client registration checking "+errReg);
- res.end();
- }
- else
- {
- if(resReg && status)
- {
- var key = req.body.querykey;
-
- redisManager.QuerySubscriberRecorder(key,userID, function (errSubs,resSubs) {
-
- if(errSubs)
- {
- console.log("Subcriber record saving error "+errSubs);
- res.end();
- }
- else
- {
- if(!resSubs)
- {
- console.log("Unable to save subs record");
- res.end();
- }
- else
- {
- req.body.RefId=key;
- var ServerIP="127.0.0.1:8050";
- var httpUrl = util.format('http://%s/DVP/API/%s/CEP/ActivateQuery', ServerIP, version);
- var msgObj=req.body;
- // msgObj.callbackURL=util.format('http://%s/DVP/API/%s/NotificationService/Notification/Publish', ServerIP, version);
- msgObj.CallbackURL="http://192.168.0.88:8080/DVP/API/6.0/NotificationService/Notification/Publish";
- var options = {
- url : httpUrl,
- method : 'POST',
- json : msgObj
-
- };
-
- console.log(options);
- try
- {
- httpReq(options, function (error, response, body)
- {
- if (!error && response.statusCode == 200)
- {
- console.log("no errrs in request 200 ok");
- //callback(undefined,response.statusCode);
- res.end(key);
-
- }
- else
- {
- console.log("errrs in request  "+error);
- res.end("Error");
- //callback(error,undefined);
-
- }
- });
- }
- catch(ex)
- {
- console.log("ex..."+ex);
- res.end("Exception");
- //callback(ex,undefined);
-
- }
-
-
- }
- }
- });
- }
- else
- {
- console.log("Client ID  not found  "+userID);
- res.end();
- }
- }
- });
-
- return next();
- });*/
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
@@ -1600,75 +1330,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Unsubscri
     return next();
 });
 
-/*RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
- {
- try
- {
- if(!req.user.company || !req.user.tenant)
- {
- throw new Error("Invalid company or tenant");
- }
 
- var Company=req.user.company;
- var Tenant=req.user.tenant;
-
- var queryKey = req.body.refID;
- var msgObj = req.body;
- if(queryKey)
- {
- redisManager.QueryKeySubscriberPicker(queryKey, function (errSubs,resSubs) {
-
- if(errSubs)
- {
- console.log(errSubs);
- res.end();
- }
- else
- {
- if(!resSubs)
- {
- console.log("No Subscribers found");
- res.end();
- }
- else
- {
- PublishToUser(resSubs,msgObj, function (errPublish,resPublish) {
-
- if(errPublish)
- {
- //res.end("Error");
- console.log(errPublish);
- res.end();
-
- }
- else
- {
- console.log("Success");
- //res.end("Done");
- res.end();
- }
- });
-
- }
- }
-
- });
- }
- else
- {
- console.log("Invalid query key");
- res.end();
-
- }
- }
- catch (e)
- {
- console.log(e);
- res.end();
- }
- return next();
-
- });*/
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
     console.log("Hit");
@@ -3876,6 +3538,53 @@ function Clientaccesspolicy(req,res,next){
     res.end(xml);
 
 }
+
+function CallCRM(company, tenant, object){
+
+    if((config.Services && config.Services.zohoserviceurl && config.Services.zohoserviceport && config.Services.zohoserviceversion)) {
+
+
+        var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.zohoserviceurl, config.Services.zohoserviceversion);
+        if (validator.isIP(config.Services.zohoserviceurl))
+            zohoserviceURL = format("http://{0}:{1}/DVP/API/{2}/CRM/Integration/Emit"+attribute, config.Services.zohoserviceurl, config.Services.zohoserviceport, config.Services.zohoserviceversion);
+
+
+
+        logger.debug("Calling Zoho service URL %s", userserviceURL);
+        request({
+            method: "POST",
+            url: zohoserviceURL,
+            headers: {
+                authorization: token,
+                companyinfo: format("{0}:{1}", tenant, company)
+            },
+            json: object
+        }, function (_error, _response, datax) {
+
+            try {
+
+                if (!_error && _response && _response.statusCode == 200, _response.body && _response.body.IsSuccess) {
+
+                    //cb(true,_response.body.Result);
+                    logger.info("Event emitted to zoho successfully");
+
+                }else{
+
+                    logger.error("There is an error in emitting events to zoho");
+                   // cb(false,{});
+
+                }
+            }
+            catch (excep) {
+
+               // cb(false,{});
+                logger.error("There is an error in emitting events to zoho ",excep);
+
+            }
+        });
+    }
+}
+
 
 RestServer.get("/crossdomain.xml",Crossdomain);
 RestServer.get("/clientaccesspolicy.xml",Clientaccesspolicy);
