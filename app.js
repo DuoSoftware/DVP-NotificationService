@@ -10,6 +10,7 @@ var util = require('util');
 var uuid = require('node-uuid');
 var async= require('async');
 var gcm = require('node-gcm');
+var moment = require('moment');
 
 
 var opt = {
@@ -500,7 +501,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                             callObject.from = messageList[3];
                                             callObject.to = messageList[5];
                                             callObject.profile = messageList[9];
-                                            callObject.starttime = messageList[10];
+                                            var startTime = messageList[10];
+                                            var m = moment.unix(startTime);
+                                            callObject.starttime = m.format("yyyy-MM-dd HH:mm:ss");
                                             callObject.direction = messageList[7];
                                             callObject.duration = messageList[11];
                                             callObject.description = messageList[8];
@@ -533,7 +536,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                             callObject.from = messageList[3];
                                             callObject.to = messageList[5];
                                             callObject.profile = messageList[9];
-                                            callObject.missedtime = messageList[11];
+                                            var startTime = messageList[11];
+                                            var m = moment.unix(startTime);
+                                            callObject.missedtime =  m.format("yyyy-MM-dd HH:mm:ss");
                                             callObject.sequential = true;
                                         }
 
@@ -3544,16 +3549,18 @@ function Clientaccesspolicy(req,res,next){
 
 function CallCRM(company, tenant, object){
 
-    if((config.Services && config.Services.zohoserviceurl && config.Services.zohoserviceport && config.Services.zohoserviceversion)) {
+    if((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort && config.Services.crmIntegrationVersion && object && object.action)) {
 
 
-        var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.zohoserviceurl, config.Services.zohoserviceversion);
-        if (validator.isIP(config.Services.zohoserviceurl))
-            zohoserviceURL = format("http://{0}:{1}/DVP/API/{2}/CRM/Integration/Emit"+attribute, config.Services.zohoserviceurl, config.Services.zohoserviceport, config.Services.zohoserviceversion);
+        console.log(object);
+
+        var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.crmIntegrationHost, config.Services.crmIntegrationVersion);
+        if (validator.isIP(config.Services.crmIntegrationHost))
+            zohoserviceURL = format("http://{0}:{1}/DVP/API/{2}/CRM/Integration/Emit"+object.action, config.Services.crmIntegrationHost, config.Services.crmIntegrationPort, config.Services.crmIntegrationVersion);
 
 
 
-        logger.debug("Calling Zoho service URL %s", userserviceURL);
+        logger.debug("Calling Zoho service URL %s", zohoserviceURL);
         request({
             method: "POST",
             url: zohoserviceURL,
