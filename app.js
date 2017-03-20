@@ -473,6 +473,9 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                     var callObject = {};
                                     //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
                                     var messageList = message.split('|');
+
+                                    console.log(messageList);
+
                                     if (eventName == "agent_connected") {
 
                                         isCallEvent = true;
