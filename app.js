@@ -489,7 +489,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                         if (Array.isArray(messageList) && messageList.length > 9) {
 
 
-                                            callObject.action = "connected";
+                                            callObject.action = "answered";
                                             callObject.session = messageList[1];
                                             callObject.from = messageList[3];
                                             callObject.to = messageList[5];
@@ -503,7 +503,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                         if (Array.isArray(messageList) && messageList.length > 11) {
 
-                                            callObject.action = "hangup";
+                                            callObject.action = "hungup";
                                             callObject.session = messageList[1];
                                             callObject.from = messageList[3];
                                             callObject.to = messageList[5];
