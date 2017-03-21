@@ -479,6 +479,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                     console.log("Message list object is" + JSON.stringify(messageList) );
 
+                                    console.log("Message list object length is " + messageList.length );
+
                                     if (eventName == "agent_connected") {
 
 
@@ -535,7 +537,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                         isCallEvent = true;
 
-                                        if (Array.isArray(messageList) && messageList.length > 9) {
+                                        if (Array.isArray(messageList) && messageList.length > 11) {
 
                                             callObject.action = "missed";
                                             callObject.session = messageList[1];
@@ -552,6 +554,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                     if(isCallEvent){
 
+                                        console.log("Call Object is "+ JSON.stringify(callObject));
                                         CallCRM(Company,Tenant,callObject);
                                     }
                                     ////////////////////////////////////////////////////////////////////////////////////////
