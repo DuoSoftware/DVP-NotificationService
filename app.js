@@ -3555,7 +3555,7 @@ function Clientaccesspolicy(req,res,next){
 
 }
 
-function CallCRM(company, tenant, object){
+function CallCRM(company, tenant, object) {
 
     console.log(object);
 
@@ -3567,9 +3567,9 @@ function CallCRM(company, tenant, object){
     console.log((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort &&
     config.Services.crmIntegrationVersion && object && object.action))
 
-    if((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort &&
-        config.Services.crmIntegrationVersion && object && object.action)) {
-
+    //if((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort &&
+    //    config.Services.crmIntegrationVersion && object && object.action)) {
+    try {
 
         var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.crmIntegrationHost,
             config.Services.crmIntegrationVersion);
@@ -3577,7 +3577,7 @@ function CallCRM(company, tenant, object){
             zohoserviceURL = format("http://{0}:{1}/DVP/API/{2}/CRM/Integration/Emit{3}",
                 config.Services.crmIntegrationHost, config.Services.crmIntegrationPort, config.Services.crmIntegrationVersion, object.action);
 
-        console.log("Calling Zoho service URL "+ zohoserviceURL);
+        console.log("Calling Zoho service URL " + zohoserviceURL);
         httpReq({
             method: "POST",
             url: zohoserviceURL,
@@ -3595,21 +3595,24 @@ function CallCRM(company, tenant, object){
                     //cb(true,_response.body.Result);
                     logger.info("Event emitted to zoho successfully");
 
-                }else{
+                } else {
 
                     logger.error("There is an error in emitting events to zoho");
-                   // cb(false,{});
+                    // cb(false,{});
 
                 }
             }
             catch (excep) {
 
-               // cb(false,{});
-                logger.error("There is an error in emitting events to zoho ",excep);
+                // cb(false,{});
+                logger.error("There is an error in emitting events to zoho ", excep);
 
             }
         });
+    } catch (_ex) {
+        console.log(_ex);
     }
+    // }
 }
 
 
