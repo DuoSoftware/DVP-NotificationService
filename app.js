@@ -3559,6 +3559,12 @@ function CallCRM(company, tenant, object){
 
     console.log(object);
 
+    console.log(config.Services.crmIntegrationHost);
+    console.log(config.Services.crmIntegrationPort);
+    console.log(config.Services.crmIntegrationVersion);
+    console.log(object);
+    console.log(object.action);
+
     if((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort && config.Services.crmIntegrationVersion && object && object.action)) {
 
 
