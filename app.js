@@ -3571,10 +3571,10 @@ function CallCRM(company, tenant, object) {
     //    config.Services.crmIntegrationVersion && object && object.action)) {
     try {
 
-        var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.crmIntegrationHost,
-            config.Services.crmIntegrationVersion);
+        var zohoserviceURL = util.format("http://%s/DVP/API/%s/CRM/Integration/Emit/%s", config.Services.crmIntegrationHost,
+            config.Services.crmIntegrationVersion,object.action);
         if (validator.isIP(config.Services.crmIntegrationHost))
-            zohoserviceURL = format("http://{0}:{1}/DVP/API/{2}/CRM/Integration/Emit{3}",
+            zohoserviceURL = util.format("http://%s:%s/DVP/API/{2}/CRM/Integration/Emit/%s",
                 config.Services.crmIntegrationHost, config.Services.crmIntegrationPort, config.Services.crmIntegrationVersion, object.action);
 
         console.log("Calling Zoho service URL " + zohoserviceURL);
