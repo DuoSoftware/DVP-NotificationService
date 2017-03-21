@@ -473,9 +473,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                     var isCallEvent = false;
                                     var callObject = {};
                                     //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
+
+                                   console.log("Message is "+message);
                                     var messageList = message.split('|');
 
-                                    console.log(messageList);
+                                    console.log("Message list object is" + JSON.stringify(messageList) );
 
                                     if (eventName == "agent_connected") {
 
@@ -549,7 +551,6 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                     }
 
                                     if(isCallEvent){
-
 
                                         CallCRM(Company,Tenant,callObject);
                                     }
@@ -3558,13 +3559,9 @@ function CallCRM(company, tenant, object){
     if((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort && config.Services.crmIntegrationVersion && object && object.action)) {
 
 
-
-
         var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.crmIntegrationHost, config.Services.crmIntegrationVersion);
         if (validator.isIP(config.Services.crmIntegrationHost))
             zohoserviceURL = format("http://{0}:{1}/DVP/API/{2}/CRM/Integration/Emit"+object.action, config.Services.crmIntegrationHost, config.Services.crmIntegrationPort, config.Services.crmIntegrationVersion);
-
-
 
         logger.debug("Calling Zoho service URL %s", zohoserviceURL);
         request({
