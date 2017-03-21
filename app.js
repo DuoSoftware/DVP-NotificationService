@@ -54,6 +54,17 @@ var io = socketio.listen(RestServer.server);
 //restify.CORS.ALLOW_HEADERS.push('authorization');
 
 
+//var utcSeconds = parseInt("139981498411584")/1000000;
+//var m = moment.unix(utcSeconds);
+//var date = m.format("YYYY-MM-DD HH:mm:ss");
+
+
+//var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+//d.setUTCSeconds(utcSeconds);
+//eventTime = moment(d).format("yyyy-MM-dd HH:mm:ss");
+
+
+
 restify.CORS.ALLOW_HEADERS.push('authorization');
 restify.CORS.ALLOW_HEADERS.push('eventname');
 restify.CORS.ALLOW_HEADERS.push('eventuuid');
@@ -509,8 +520,12 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                             callObject.to = messageList[5];
                                             callObject.profile = messageList[9];
                                             var startTime = messageList[10];
-                                            var m = moment.unix(startTime);
-                                            callObject.starttime = m.format("yyyy-MM-dd HH:mm:ss");
+                                            var utcSeconds = parseInt(startTime)/1000000;
+                                            var m = moment.unix(utcSeconds);
+                                            var date = m.format("YYYY-MM-DD HH:mm:ss");
+
+
+                                            callObject.starttime = date;
                                             callObject.direction = messageList[7];
                                             callObject.duration = messageList[11];
                                             callObject.description = messageList[8];
@@ -545,9 +560,13 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
                                             callObject.from = messageList[3];
                                             callObject.to = messageList[5];
                                             callObject.profile = messageList[9];
+
                                             var startTime = messageList[11];
-                                            var m = moment.unix(startTime);
-                                            callObject.missedtime =  m.format("yyyy-MM-dd HH:mm:ss");
+                                            var utcSeconds = parseInt(startTime)/1000000;
+                                            var m = moment.unix(utcSeconds);
+                                            var date = m.format("YYYY-MM-DD HH:mm:ss");
+
+                                            callObject.missedtime =  date;
                                             callObject.sequential = true;
                                         }
 
