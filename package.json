@@ -8,7 +8,7 @@
     "config": "^1.16.0",
     "dvp-common": "^0.1.3",
     "dvp-dbmodels": "0.0.64",
-    "dvp-mongomodels": "^4.5.6",
+    "dvp-mongomodels": "^4.6.1",
     "ip": "^1.1.0",
     "moment": "^2.15.0",
     "mongoose": "^4.9.0",

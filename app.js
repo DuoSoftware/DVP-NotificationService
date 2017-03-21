@@ -13,6 +13,7 @@ var gcm = require('node-gcm');
 var redisManager=require('./RedisManager.js');
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
 var DBController = require('./DBController.js');
+var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
 
 
 var secret = require('dvp-common/Authentication/Secret.js');
@@ -2559,44 +2560,81 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notice/:userName',auth
     {
         res.end("User not in the list");
         /*console.log("Not in clientList "+clientData);
-        userData.To=user;
-        if(inboxMode)
-        {
-            DBController.InboxMessageSender(req, function (errInbox,resInbox) {
-                if(errInbox)
-                {
-                    console.log("Error in Message Saving ",errInbox);
-                    res.end();
-                }
-                else
-                {
-                    console.log("Message saving succeeded ",resInbox);
-                    res.end("Message saved to related client's inbox");
-                }
-            });
-        }
-        else
-        {
+         userData.To=user;
+         if(inboxMode)
+         {
+         DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+         if(errInbox)
+         {
+         console.log("Error in Message Saving ",errInbox);
+         res.end();
+         }
+         else
+         {
+         console.log("Message saving succeeded ",resInbox);
+         res.end("Message saved to related client's inbox");
+         }
+         });
+         }
+         else
+         {
 
-            DBController.PersistenceGroupMessageRecorder(userData, function (errSave, resSave) {
-                if (errSave) {
-                    //callback(errSave,undefined);
-                    console.log("DB error " + errSave);
-                    res.end();
-                }
-                else {
-                    //callback(undefined,resSave);
-                    console.log("DB kk " + resSave);
-                    res.end(resSave);
-                }
+         DBController.PersistenceGroupMessageRecorder(userData, function (errSave, resSave) {
+         if (errSave) {
+         //callback(errSave,undefined);
+         console.log("DB error " + errSave);
+         res.end();
+         }
+         else {
+         //callback(undefined,resSave);
+         console.log("DB kk " + resSave);
+         res.end(resSave);
+         }
 
-            });
-        }*/
+         });
+         }*/
     }
 
 
 
 });
+
+RestServer.get('/DVP/API/'+version+'/NotificationService/Notices',authorization({resource:"notification", action:"write"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+    console.log("Notice service started");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    StoredNoticePicker(req,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.StoredNoticePicker] - [%s] - Error occurred on method StoredNoticePicker',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.StoredNoticePicker] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.StoredNoticePicker] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
+
+
 
 
 TopicIdGenerator = function ()
@@ -4013,7 +4051,7 @@ InstanceMessageHandler = function (clientData,instanceArray,messageData,callback
     });
 };
 
-
+mongoose.set('debug', true);
 NoticeMessageHandler = function (req,company,tenant,callbackResult) {
 
     var broadcastArray=[];
@@ -4129,27 +4167,28 @@ NoticeMessageHandler = function (req,company,tenant,callbackResult) {
 
                                     groups.map(function (group) {
 
-                                        groupList.push(group._id);
+                                        groupList.push(group);
                                     });
 
                                     var groupObj={
                                         company:company,
-                                        tenat:tenant,
+                                        tenant:tenant,
                                         Active:true,
                                         $or:[]
 
                                     }
 
-                                    groupList.filter(function (item) {
-                                        groupObj.$or.push({group:item.id});
+                                    groupList.map(function (item) {
+                                        groupObj.$or.push({group:new ObjectId(item._id).path});
+                                        console.log(JSON.stringify(new ObjectId(item._id)));
                                     });
 
                                     User.find(groupObj, function (err,Users) {
 
                                         if(err)
                                         {
-                                            console.log("No group users found");
-                                            listCallBack(new Error("No group users found"),false);
+                                            console.log("Error in serching group users");
+                                            listCallBack(new Error("Error in serching group users"),false);
 
 
                                         }
@@ -4520,173 +4559,230 @@ NoticeMessageHandler = function (req,company,tenant,callbackResult) {
     //var clientArray=messageData.clients
 
 };
+StoredNoticePicker = function (req,company,tenant,callbackResult) {
 
-NoticeMessageHandlerTest = function (messageData,company,tenant,callbackResult) {
+    if(req.user.iss)
+    {
+        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
 
-    var broadcastArray=[];
-    var processData=[];
-    var userListArray=[];
-    var compInfo = company + ':' + company;
-    var clientArray=[];
-    var groupList=[];
-
-    userListArray.push(function createContact(listCallBack) {
-
-        if(messageData.toUser && messageData.toUser.length>0)
-        {
-            //clientArray=messageData.toUser;
-            var clientObj =
+            if(err)
             {
-                company:company,
-                tenant:tenant,
-                $or:[]
+                callbackResult(err,undefined);
             }
-
-            messageData.toUser.map(function (user) {
-
-                clientObj.$or.push({username:user});
-
-            });
-
-            try
+            else
             {
-                User.find(clientObj, function (err,users) {
-
-                    if(err)
+                if(user)
+                {
+                    var qObj =
                     {
-                        console.log("Error in searching users");
-                        listCallBack(false);
+                        company:company,
+                        tenant:tenant,
+                        $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
+
+
                     }
-                    else
+                    if(user.group)
                     {
-                        if(users)
-                        {
-                            console.log("Users found");
-                            users.map(function (user) {
+                        qObj.$or.push({toGroup:{$in:[user.group]}});
 
-                                clientArray.push(user._id);
-                            });
-                            listCallBack(true);
+                    }
+
+
+                    Notice.find(qObj).populate("attachments","url").exec(function (errNotices,resNotices) {
+
+                        if(errNotices)
+                        {
+                            callbackResult(errNotices,undefined);
                         }
                         else
                         {
-                            console.log("No users found");
-                            listCallBack(false);
+                            callbackResult(undefined,resNotices);
                         }
-                    }
-                });
-            }
-            catch(ex)
-            {
-                console.log(ex);
-                listCallBack(false);
-            }
+                    });
 
-
-
-
-
-        }
-        else if(messageData.toGroup && messageData.toGroup.length>0)
-        {
-
-
-            var grpObj =
-            {
-                company:company,
-                tenant:tenant,
-                $or:[]
-            }
-
-            messageData.toGroup.map(function (group) {
-
-                clientObj.$or.push({name:group});
-
-            });
-
-            UserGroup.find(grpObj, function (err,groups) {
-
-                if(err)
-                {
-                    console.log("Error in searching groups");
-                    listCallBack(true);
                 }
                 else
                 {
-                    if(groups)
-                    {
-                        console.log("groups found");
-                        groups.map(function (group) {
-
-                            groupList.push(group._id);
-                        });
-
-                        var groupObj={
-                            company:company,
-                            tenat:tenant,
-                            Active:true,
-                            $or:[]
-
-                        }
-
-                        groupList.map(function (item) {
-                            groupObj.$or.push({group:item.id});
-                        });
-
-                        User.find(groupObj, function (err,Users) {
-
-                            if(err)
-                            {
-                                console.log("No group users found");
-                                clientArray=[];
-                                listCallBack(true);
-                            }
-                            else
-                            {
-                                if(Users)
-                                {
-                                    console.log("group users found");
-                                    Users.map(function (user) {
-                                        clientArray.push(user._id)
-                                    });
-                                    listCallBack(true);
-                                }
-                                else
-                                {
-                                    console.log("No group users found");
-                                    clientArray=[];
-                                    listCallBack(true);
-                                }
-
-                            }
-                        });
-
-
-
-                    }
-                    else
-                    {
-                        console.log("No Group found");
-                        listCallBack(true);
-                    }
+                    callbackResult(new Error("No No user found"),undefined);
                 }
-            });
-
-
-        }
-        else
-        {
-            console.log("No user or group data");
-            clientArray=[];
-            listCallBack(true);
-        }
-    });
-    async.parallel(userListArray, function (processStatus)
+            }
+        });
+    }
+    else
     {
-        callbackResult(null,processStatus);
-    });
+        callbackResult(new Error("No username found"),undefined);
+    }
 
-}
+
+
+};
+
+/*NoticeMessageHandlerTest = function (messageData,company,tenant,callbackResult) {
+
+ var broadcastArray=[];
+ var processData=[];
+ var userListArray=[];
+ var compInfo = company + ':' + company;
+ var clientArray=[];
+ var groupList=[];
+
+ userListArray.push(function createContact(listCallBack) {
+
+ if(messageData.toUser && messageData.toUser.length>0)
+ {
+ //clientArray=messageData.toUser;
+ var clientObj =
+ {
+ company:company,
+ tenant:tenant,
+ $or:[]
+ }
+
+ messageData.toUser.map(function (user) {
+
+ clientObj.$or.push({username:user});
+
+ });
+
+ try
+ {
+ User.find(clientObj, function (err,users) {
+
+ if(err)
+ {
+ console.log("Error in searching users");
+ listCallBack(false);
+ }
+ else
+ {
+ if(users)
+ {
+ console.log("Users found");
+ users.map(function (user) {
+
+ clientArray.push(user._id);
+ });
+ listCallBack(true);
+ }
+ else
+ {
+ console.log("No users found");
+ listCallBack(false);
+ }
+ }
+ });
+ }
+ catch(ex)
+ {
+ console.log(ex);
+ listCallBack(false);
+ }
+
+
+
+
+
+ }
+ else if(messageData.toGroup && messageData.toGroup.length>0)
+ {
+
+
+ var grpObj =
+ {
+ company:company,
+ tenant:tenant,
+ $or:[]
+ }
+
+ messageData.toGroup.map(function (group) {
+
+ clientObj.$or.push({name:group});
+
+ });
+
+ UserGroup.find(grpObj, function (err,groups) {
+
+ if(err)
+ {
+ console.log("Error in searching groups");
+ listCallBack(true);
+ }
+ else
+ {
+ if(groups)
+ {
+ console.log("groups found");
+ groups.map(function (group) {
+
+ groupList.push(group._id);
+ });
+
+ var groupObj={
+ company:company,
+ tenat:tenant,
+ Active:true,
+ $or:[]
+
+ }
+
+ groupList.map(function (item) {
+ groupObj.$or.push({group:item.id});
+ });
+
+ User.find(groupObj, function (err,Users) {
+
+ if(err)
+ {
+ console.log("No group users found");
+ clientArray=[];
+ listCallBack(true);
+ }
+ else
+ {
+ if(Users)
+ {
+ console.log("group users found");
+ Users.map(function (user) {
+ clientArray.push(user._id)
+ });
+ listCallBack(true);
+ }
+ else
+ {
+ console.log("No group users found");
+ clientArray=[];
+ listCallBack(true);
+ }
+
+ }
+ });
+
+
+
+ }
+ else
+ {
+ console.log("No Group found");
+ listCallBack(true);
+ }
+ }
+ });
+
+
+ }
+ else
+ {
+ console.log("No user or group data");
+ clientArray=[];
+ listCallBack(true);
+ }
+ });
+ async.parallel(userListArray, function (processStatus)
+ {
+ callbackResult(null,processStatus);
+ });
+
+ }*/
 
 function Crossdomain(req,res,next){
 
