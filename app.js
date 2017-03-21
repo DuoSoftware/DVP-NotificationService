@@ -3564,16 +3564,21 @@ function CallCRM(company, tenant, object){
     console.log(config.Services.crmIntegrationVersion);
     console.log(object);
     console.log(object.action);
+    console.log((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort &&
+    config.Services.crmIntegrationVersion && object && object.action))
 
-    if((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort && config.Services.crmIntegrationVersion && object && object.action)) {
+    if((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort &&
+        config.Services.crmIntegrationVersion && object && object.action)) {
 
 
-        var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.crmIntegrationHost, config.Services.crmIntegrationVersion);
+        var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.crmIntegrationHost,
+            config.Services.crmIntegrationVersion);
         if (validator.isIP(config.Services.crmIntegrationHost))
-            zohoserviceURL = format("http://{0}:{1}/DVP/API/{2}/CRM/Integration/Emit"+object.action, config.Services.crmIntegrationHost, config.Services.crmIntegrationPort, config.Services.crmIntegrationVersion);
+            zohoserviceURL = format("http://{0}:{1}/DVP/API/{2}/CRM/Integration/Emit"+object.action,
+                config.Services.crmIntegrationHost, config.Services.crmIntegrationPort, config.Services.crmIntegrationVersion);
 
-        logger.debug("Calling Zoho service URL %s", zohoserviceURL);
-        request({
+        console.log("Calling Zoho service URL "+ zohoserviceURL);
+        httpReq({
             method: "POST",
             url: zohoserviceURL,
             headers: {
