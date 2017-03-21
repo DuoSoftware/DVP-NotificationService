@@ -3583,7 +3583,7 @@ function CallCRM(company, tenant, object) {
             method: "POST",
             url: zohoserviceURL,
             headers: {
-                authorization: token,
+                authorization: "bearer "+token,
                 companyinfo: util.format("%s:%s", tenant, company)
             },
             json: object
