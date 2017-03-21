@@ -11,6 +11,7 @@ var uuid = require('node-uuid');
 var async= require('async');
 var gcm = require('node-gcm');
 var moment = require('moment');
+var validator = require('validator');
 
 
 var opt = {
