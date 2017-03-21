@@ -3572,10 +3572,10 @@ function CallCRM(company, tenant, object) {
     //    config.Services.crmIntegrationVersion && object && object.action)) {
     try {
 
-        var zohoserviceURL = util.format("http://%s/DVP/API/%s/CRM/Integration/Emit/%s", config.Services.crmIntegrationHost,
-            config.Services.crmIntegrationVersion,object.action);
+        var zohoserviceURL = util.format("http://%s/DVP/API/%s/Zoho/Integration/Emit", config.Services.crmIntegrationHost,
+            config.Services.crmIntegrationVersion);
         if (validator.isIP(config.Services.crmIntegrationHost))
-            zohoserviceURL = util.format("http://%s:%s/DVP/API/{2}/CRM/Integration/Emit/%s",
+            zohoserviceURL = util.format("http://%s:%s/DVP/API/{2}/Zoho/Integration/Emit",
                 config.Services.crmIntegrationHost, config.Services.crmIntegrationPort, config.Services.crmIntegrationVersion, object.action);
 
         console.log("Calling Zoho service URL " + zohoserviceURL);
@@ -3590,6 +3590,8 @@ function CallCRM(company, tenant, object) {
         }, function (_error, _response, datax) {
 
             try {
+
+                console.log(_response);
 
                 if (!_error && _response && _response.statusCode == 200, _response.body && _response.body.IsSuccess) {
 
