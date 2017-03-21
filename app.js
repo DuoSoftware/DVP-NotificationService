@@ -479,8 +479,10 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                     if (eventName == "agent_connected") {
 
+
                                         isCallEvent = true;
                                         if (Array.isArray(messageList) && messageList.length > 9) {
+
 
                                             callObject.action = "connected";
                                             callObject.session = messageList[1];
@@ -517,6 +519,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
                                         if (Array.isArray(messageList) && messageList.length > 9) {
 
+
+                                            console.log("Agents found crm ready to call .....");
                                             callObject.action = "received";
                                             callObject.session = messageList[1];
                                             callObject.from = messageList[3];
@@ -3549,10 +3553,12 @@ function Clientaccesspolicy(req,res,next){
 
 function CallCRM(company, tenant, object){
 
+    console.log(object);
+
     if((config.Services && config.Services.crmIntegrationHost && config.Services.crmIntegrationPort && config.Services.crmIntegrationVersion && object && object.action)) {
 
 
-        console.log(object);
+
 
         var zohoserviceURL = format("http://{0}/DVP/API/{1}/CRM/Integration/Emit", config.Services.crmIntegrationHost, config.Services.crmIntegrationVersion);
         if (validator.isIP(config.Services.crmIntegrationHost))
