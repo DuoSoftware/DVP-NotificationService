@@ -2495,7 +2495,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/TestMessage',authoriza
 });
 
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notice',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notice',authorization({resource:"notice", action:"write"}),function(req,res,next)
 {
 
     console.log("Notice service started");
@@ -2524,7 +2524,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notice',authorization(
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notice/:userName',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notice/:userName',authorization({resource:"notice", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
     {
@@ -2599,11 +2599,11 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notice/:userName',auth
 
 });
 
-RestServer.get('/DVP/API/'+version+'/NotificationService/Notices',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.get('/DVP/API/'+version+'/NotificationService/Notices',authorization({resource:"notice", action:"read"}),function(req,res,next)
 {
     var reqId= uuid.v1();
 
-    console.log("Notice service started");
+    console.log("Notice picking service started");
     if(!req.user.company || !req.user.tenant)
     {
         throw new Error("Invalid company or tenant");
@@ -2634,6 +2634,75 @@ RestServer.get('/DVP/API/'+version+'/NotificationService/Notices',authorization(
     return next();
 });
 
+RestServer.get('/DVP/API/'+version+'/NotificationService/SentNotices',authorization({resource:"notice", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+    console.log("Sent Notices searching service started");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    SentNoticePicker(req,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.SentNoticePicker] - [%s] - Error occurred on method StoredNoticePicker',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.SentNoticePicker] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.SentNoticePicker] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
+
+RestServer.del('/DVP/API/'+version+'/NotificationService/Notice/:id',authorization({resource:"notice", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+    console.log("Notice removing service started");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    RemoveNotice(req,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.RemoveNotice] - [%s] - Error occurred on method StoredNoticePicker',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.RemoveNotice] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.RemoveNotice] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
 
 
 
@@ -4051,7 +4120,6 @@ InstanceMessageHandler = function (clientData,instanceArray,messageData,callback
     });
 };
 
-mongoose.set('debug', true);
 NoticeMessageHandler = function (req,company,tenant,callbackResult) {
 
     var broadcastArray=[];
@@ -4063,7 +4131,7 @@ NoticeMessageHandler = function (req,company,tenant,callbackResult) {
     var messageData=req.body;
     var fromUser;
 
-
+console.log("Requested user "+req.user.iss);
     User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,owner) {
 
         if(err)
@@ -4603,7 +4671,112 @@ StoredNoticePicker = function (req,company,tenant,callbackResult) {
                 }
                 else
                 {
-                    callbackResult(new Error("No No user found"),undefined);
+                    callbackResult(new Error("No user found"),undefined);
+                }
+            }
+        });
+    }
+    else
+    {
+        callbackResult(new Error("No username found"),undefined);
+    }
+
+
+
+};
+
+SentNoticePicker = function (req,company,tenant,callbackResult) {
+
+    if(req.user.iss)
+    {
+        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+
+            if(err)
+            {
+                callbackResult(err,undefined);
+            }
+            else
+            {
+                if(user)
+                {
+                    var qObj =
+                    {
+                        company:company,
+                        tenant:tenant,
+                        from:user.id
+
+
+                    }
+
+                    Notice.find(qObj).populate("attachments","url").populate("toUser","username").populate("toGroup","name").exec(function (errNotices,resNotices) {
+
+                        if(errNotices)
+                        {
+                            callbackResult(errNotices,undefined);
+                        }
+                        else
+                        {
+                            callbackResult(undefined,resNotices);
+                        }
+                    });
+
+                }
+                else
+                {
+                    callbackResult(new Error("No user found"),undefined);
+                }
+            }
+        });
+    }
+    else
+    {
+        callbackResult(new Error("No username found"),undefined);
+    }
+
+
+
+};
+
+RemoveNotice = function (req,company,tenant,callbackResult) {
+
+    if(req.user.iss)
+    {
+        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+
+            if(err)
+            {
+                callbackResult(err,undefined);
+            }
+            else
+            {
+                if(user)
+                {
+                    var qObj =
+                    {
+                        company:company,
+                        tenant:tenant,
+                        from:user.id,
+                        _id:new ObjectId(req.params.id).path
+
+
+                    }
+
+                    Notice.remove(qObj,function (errNotices,resNotices) {
+
+                        if(errNotices)
+                        {
+                            callbackResult(errNotices,undefined);
+                        }
+                        else
+                        {
+                            callbackResult(undefined,resNotices);
+                        }
+                    });
+
+                }
+                else
+                {
+                    callbackResult(new Error("No user found"),undefined);
                 }
             }
         });
