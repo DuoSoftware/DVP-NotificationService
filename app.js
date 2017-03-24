@@ -4656,7 +4656,7 @@ StoredNoticePicker = function (req,company,tenant,callbackResult) {
                     }
 
 
-                    Notice.find(qObj).populate("attachments","url").exec(function (errNotices,resNotices) {
+                    Notice.find(qObj).populate("attachments","url type file").exec(function (errNotices,resNotices) {
 
                         if(errNotices)
                         {
