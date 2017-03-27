@@ -46,6 +46,14 @@ module.exports = {
     {
         "inbox_mode":"SYS_INBOX_MODE"
     },
+    "Mongo":
+    {
+        "ip":"SYS_MONGO_HOST",
+        "port":"SYS_MONGO_PORT",
+        "dbname":"SYS_MONGO_DB",
+        "password":"SYS_MONGO_PASSWORD",
+        "user":"SYS_MONGO_USER"
+    },
     "ID":"SYS_NS_ID",
     "Token":"HOST_TOKEN"
 };
