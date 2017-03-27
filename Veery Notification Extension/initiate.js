@@ -11,7 +11,7 @@ function setStatus(status) {
 }
 
 function register() {
-    var senderId ='260058487091';//document.getElementById("senderId").value;
+    var senderId ="260058487091";//document.getElementById("senderId").value;
     chrome.gcm.register([senderId], registerCallback);
 
     setStatus("Registering ...");
