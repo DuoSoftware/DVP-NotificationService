@@ -23,7 +23,7 @@ client.on("connect", function (result) {
 
 
 
-var SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,state,ttl,callback)
+SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk,state,ttl,callback)
 {
     console.log("Redis Callback "+clbk);
 
@@ -49,7 +49,7 @@ var SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk
 
 };
 
-var SocketFinder = function(TopicID,ttl,callback)
+SocketFinder = function(TopicID,ttl,callback)
 {
     try {
         var key = "notification:" + TopicID;
@@ -75,7 +75,7 @@ var SocketFinder = function(TopicID,ttl,callback)
     }
 };
 
-var SocketStateChanger = function(TopicID,State,ttl,callback)
+SocketStateChanger = function(TopicID,State,ttl,callback)
 {
     try {
         var key = "notification:" + TopicID;
@@ -115,12 +115,12 @@ var SocketStateChanger = function(TopicID,State,ttl,callback)
 
 };
 
-var TouchSession =function(TopicID,TTL)
+TouchSession =function(TopicID,TTL)
 {
     client.expire(TopicID, TTL);
 };
 
-var SocketObjectUpdater = function(TopicID,SocketID,callback)
+SocketObjectUpdater = function(TopicID,SocketID,callback)
 {
     console.log("TopicID "+TopicID);
     console.log("SOCKET "+SocketID);
@@ -164,7 +164,7 @@ var SocketObjectUpdater = function(TopicID,SocketID,callback)
 
 };
 
-var TokenObjectCreator = function(topicID,clientID,direction,sender,resURL,ttl,callback)
+TokenObjectCreator = function(topicID,clientID,direction,sender,resURL,ttl,callback)
 {
     console.log("Token Object creation started");
     try {
@@ -186,7 +186,7 @@ var TokenObjectCreator = function(topicID,clientID,direction,sender,resURL,ttl,c
 
 };
 
-var ResourceObjectCreator = function(clientID,TopicID,ttl,callback)
+ResourceObjectCreator = function(clientID,TopicID,ttl,callback)
 {
     console.log("Token Object creating");
     try {
@@ -214,7 +214,7 @@ var ResourceObjectCreator = function(clientID,TopicID,ttl,callback)
 
 };
 
-var ResourceObjectPicker = function(clientID,topicID,ttl,callback)
+ResourceObjectPicker = function(clientID,topicID,ttl,callback)
 {
     console.log("Token Object searching");
     try {
@@ -253,7 +253,7 @@ var ResourceObjectPicker = function(clientID,topicID,ttl,callback)
 
 };
 
-var ResponseUrlPicker = function(topicID,ttl,callback)
+ResponseUrlPicker = function(topicID,ttl,callback)
 {
     console.log("ResponseURL of "+topicID+ "picking ");
     try {
@@ -287,7 +287,7 @@ var ResponseUrlPicker = function(topicID,ttl,callback)
 
 // sprint DUO V6 Voice UI 2
 
-var RecordUserServer = function (clientName,server,callback)
+RecordUserServer = function (clientName,server,callback)
 {
     console.log("Client "+clientName);
     console.log("server "+server);
@@ -310,7 +310,7 @@ var RecordUserServer = function (clientName,server,callback)
     }
 };
 
-var UserServerUpdater = function (clientName,server,myID,callback)
+UserServerUpdater = function (clientName,server,myID,callback)
 {
     console.log("Client "+clientName);
     console.log("server "+server);
@@ -356,7 +356,7 @@ var UserServerUpdater = function (clientName,server,myID,callback)
 
 };
 
-var GetClientsServer = function (clientName,callback) {
+GetClientsServer = function (clientName,callback) {
 
     var key="notification:loc:"+clientName;
     console.log(key);
@@ -399,7 +399,7 @@ var GetClientsServer = function (clientName,callback) {
 
 
 
-var TopicObjectPicker = function (topicId,ttl,callback) {
+TopicObjectPicker = function (topicId,ttl,callback) {
 
     try
     {
@@ -417,7 +417,7 @@ var TopicObjectPicker = function (topicId,ttl,callback) {
 
 };
 
-var ClientLocationDataRemover = function (clientID,server,callback) {
+ClientLocationDataRemover = function (clientID,server,callback) {
 
     try {
         var key = "notification:loc:" + clientID;
@@ -430,7 +430,7 @@ var ClientLocationDataRemover = function (clientID,server,callback) {
     }
 };
 
-var SessionRemover = function (topicKey,callback) {
+SessionRemover = function (topicKey,callback) {
 
     try {
         var key = "notification:" + topicKey;
@@ -475,7 +475,7 @@ var SessionRemover = function (topicKey,callback) {
  }
  };*/
 
-var ResetServerData = function (serverID,callback) {
+ResetServerData = function (serverID,callback) {
 
     var key= "notification:loc:*:"+serverID;
     console.log("Key ..... ",key);
@@ -506,7 +506,7 @@ var ResetServerData = function (serverID,callback) {
 
 };
 
-var RemoveKeys = function (keys,callback) {
+RemoveKeys = function (keys,callback) {
 
     try {
         client.del(keys, function (e, r) {
@@ -550,7 +550,7 @@ var RemoveKeys = function (keys,callback) {
  }
  };*/
 
-var BroadcastTopicObjectCreator = function (topicId,msgObj,clients,callback) {
+BroadcastTopicObjectCreator = function (topicId,msgObj,clients,callback) {
 
     try {
         var groupTopicId = "Group:" + topicId;
@@ -583,7 +583,7 @@ var BroadcastTopicObjectCreator = function (topicId,msgObj,clients,callback) {
 
 };
 
-var ParamKeyGenerator = function (paramData) {
+ParamKeyGenerator = function (paramData) {
 
     try {
         if (paramData) {
@@ -612,7 +612,7 @@ var ParamKeyGenerator = function (paramData) {
 
 };
 
-var QueryKeyGenerator = function (dataObj,clientID,callback) {
+QueryKeyGenerator = function (dataObj,clientID,callback) {
 
     /* try {
      IsRegisteredClient(clientID, function (errAvbl, status, datakey) {
@@ -748,7 +748,7 @@ var QueryKeyGenerator = function (dataObj,clientID,callback) {
 
 };
 
-var SubsQueryUserAvailabitityChecker = function (queryKey,clientID,callback) {
+SubsQueryUserAvailabitityChecker = function (queryKey,clientID,callback) {
 
     try {
         client.LRANGE(queryKey, 0, -1, function (errSubs, resSubs) {
@@ -804,7 +804,7 @@ var SubsQueryUserAvailabitityChecker = function (queryKey,clientID,callback) {
  callback(e,undefined);
  }
  };*/
-var QueryKeySubscriberPicker = function (queryKey,callback) {
+QueryKeySubscriberPicker = function (queryKey,callback) {
 
     try {
         client.lrange(queryKey,0,-1, function (errSubs,resSubs) {
@@ -824,7 +824,7 @@ var QueryKeySubscriberPicker = function (queryKey,callback) {
     }
 };
 
-var QueryKeyAvailabilityChecker = function (key,callback) {
+QueryKeyAvailabilityChecker = function (key,callback) {
 
     try {
         client.keys(key, function (errKey, resKey) {
@@ -848,7 +848,7 @@ var QueryKeyAvailabilityChecker = function (key,callback) {
 
 };
 
-var QuerySubscriberRecorder = function (key,userID,callback) {
+QuerySubscriberRecorder = function (key,userID,callback) {
 
     client.lrange(key,0,-1, function (errList,resList)
     {
@@ -879,7 +879,7 @@ var QuerySubscriberRecorder = function (key,userID,callback) {
 
 };
 
-var QueryUnsubscriber = function (key,userID,callback) {
+QueryUnsubscriber = function (key,userID,callback) {
 
     client.lrem(key,-1,userID, function (errRem,resRem)
     {
@@ -896,7 +896,7 @@ var QueryUnsubscriber = function (key,userID,callback) {
 
 };
 
-var LocationListPicker = function (clientId,callback) {
+LocationListPicker = function (clientId,callback) {
 
     var key = "notification:loc:" + clientId;
     client.lrange(key,0,-1, function (errList,resList) {
