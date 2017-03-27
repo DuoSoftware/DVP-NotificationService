@@ -2908,7 +2908,7 @@ console.log("Requested user "+req.user.iss);
 
                         try
                         {
-                            User.find(clientObj,["_id"], function (err,users) {
+                            User.find(clientObj,'_id username', function (err,users) {
 
                                 if(err)
                                 {
@@ -2960,7 +2960,7 @@ console.log("Requested user "+req.user.iss);
 
                         });
 
-                        UserGroup.find(grpObj, function (err,groups) {
+                        UserGroup.find(grpObj,'_id', function (err,groups) {
 
                             if(err)
                             {
@@ -2972,11 +2972,6 @@ console.log("Requested user "+req.user.iss);
                                 if(groups)
                                 {
 
-                                    groups.map(function (group) {
-
-                                        groupList.push(group);
-                                    });
-
                                     var groupObj={
                                         company:company,
                                         tenant:tenant,
@@ -2985,12 +2980,13 @@ console.log("Requested user "+req.user.iss);
 
                                     }
 
-                                    groupList.map(function (item) {
-                                        groupObj.$or.push({group:new ObjectId(item._id).path});
-                                        console.log(JSON.stringify(new ObjectId(item._id)));
+                                    groups.map(function (item) {
+                                        groupList.push(item);
+                                        groupObj.$or.push({group:new ObjectId(item).path});
+                                        console.log(JSON.stringify(new ObjectId(item)));
                                     });
 
-                                    User.find(groupObj, function (err,Users) {
+                                    User.find(groupObj,'_id username', function (err,Users) {
 
                                         if(err)
                                         {
