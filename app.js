@@ -22,6 +22,18 @@ var secret = require('dvp-common/Authentication/Secret.js');
 var socketioJwt =  require("socketio-jwt");
 var jwt = require('restify-jwt');
 var authorization = require('dvp-common/Authentication/Authorization.js');
+var adapter = require('socket.io-redis');
+var redis = require('redis').createClient;
+
+
+
+////////////////////////////////redis////////////////////////////////////////
+var redisip = config.Redis.ip;
+var redisport = config.Redis.port;
+var redisdb = config.Redis.db;
+var redisuser = config.Redis.user;
+var redispass = config.Redis.password;
+////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -34,6 +46,10 @@ var opt = {
 };
 
 var socketio = require('socket.io',opt);
+
+
+var pub = redis(redisport, redisip, { auth_pass: redispass });
+var sub = redis(redisport, redisip, { auth_pass: redispass });
 
 
 var port = config.Host.port || 3000;
@@ -57,6 +73,7 @@ var RestServer = restify.createServer({
 });
 
 var io = socketio.listen(RestServer.server);
+io.adapter(adapter({ pubClient: pub, subClient: sub }));
 //restify.CORS.ALLOW_HEADERS.push('authorization');
 
 
@@ -178,7 +195,7 @@ var ObjectId = Schema.ObjectId;
 
 
 io.sockets.on('connection',socketioJwt.authorize({
-    secret:  secret.Secret,
+    secret:  'admin',
     timeout: 15000 // 15 seconds to send the authentication message
 })).on('authenticated',function (socket) {
 
@@ -496,297 +513,397 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
         {
             console.log("Success. Google notifications sent:  "+resGnotf);
         }
-
     });
 
 
+    console.log("Event Name : " + eventName);
+    console.log("Event Message : " + msgObj);
+
+    io.to(clientID).emit(eventName, msgObj);
+    console.log("Notification sent : " + JSON.stringify(msgObj));
 
 
+    ////////////////////////////////////////////////on special call status events//////////
+    var isCallEvent = false;
+    var callObject = {};
+    //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
+
+    console.log("Message is "+message);
+    var messageList = message.split('|');
+
+    console.log("Message list object is" + JSON.stringify(messageList) );
+
+    console.log("Message list object length is " + messageList.length );
+
+    if (eventName == "agent_connected") {
 
 
-    redisManager.LocationListPicker(clientID, function (errList,resList) {
+        isCallEvent = true;
+        if (Array.isArray(messageList) && messageList.length > 9) {
 
-        console.log("Checking Availability of Client :  "+clientID);
 
-        if(errList)
-        {
-            console.log("Client is not available.......................");
-            console.log("Error in Checking Availability ",errList);
-            res.end();
+            callObject.action = "answered";
+            callObject.session = messageList[1];
+            callObject.from = messageList[3];
+            callObject.to = messageList[5];
+            callObject.profile = messageList[9];
         }
-        else if(typeof resList !== 'undefined' && resList.length > 0)
-        {
 
-            redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
-            {
-                resList.forEach(function (serverId) {
+    }
+    else if (eventName == "agent_disconnected") {
 
-                    msgSenderArray.push(function createContact(callback)
-                    {
+        isCallEvent = true;
 
-                        if(serverId==MyID)
-                        {
+        if (Array.isArray(messageList) && messageList.length > 11) {
 
-                            if(Clients[clientID])
-                            {
+            callObject.action = "hungup";
+            callObject.session = messageList[1];
+            callObject.from = messageList[3];
+            callObject.to = messageList[5];
+            callObject.profile = messageList[9];
+            var startTime = messageList[10];
+            var utcSeconds = parseInt(startTime)/1000000;
+            var m = moment.unix(utcSeconds);
+            var date = m.format("YYYY-MM-DD HH:mm:ss");
 
-                                var insArray =Clients[clientID];
-                                for(var i=0;i<insArray.length;i++) {
-                                    var insSocket = insArray[i];
 
-
-                                    console.log("Event Name : " + eventName);
-                                    console.log("Event Message : " + msgObj);
-
-                                    insSocket.emit(eventName, msgObj);
-                                    console.log("Notification sent : " + JSON.stringify(msgObj));
-
-
-                                    ////////////////////////////////////////////////on special call status events//////////
-                                    var isCallEvent = false;
-                                    var callObject = {};
-                                    //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
-
-                                   console.log("Message is "+message);
-                                    var messageList = message.split('|');
-
-                                    console.log("Message list object is" + JSON.stringify(messageList) );
-
-                                    console.log("Message list object length is " + messageList.length );
-
-                                    if (eventName == "agent_connected") {
-
-
-                                        isCallEvent = true;
-                                        if (Array.isArray(messageList) && messageList.length > 9) {
-
-
-                                            callObject.action = "answered";
-                                            callObject.session = messageList[1];
-                                            callObject.from = messageList[3];
-                                            callObject.to = messageList[5];
-                                            callObject.profile = messageList[9];
-                                        }
-
-                                    }
-                                    else if (eventName == "agent_disconnected") {
-
-                                        isCallEvent = true;
-
-                                        if (Array.isArray(messageList) && messageList.length > 11) {
-
-                                            callObject.action = "hungup";
-                                            callObject.session = messageList[1];
-                                            callObject.from = messageList[3];
-                                            callObject.to = messageList[5];
-                                            callObject.profile = messageList[9];
-                                            var startTime = messageList[10];
-                                            var utcSeconds = parseInt(startTime)/1000000;
-                                            var m = moment.unix(utcSeconds);
-                                            var date = m.format("YYYY-MM-DD HH:mm:ss");
-
-
-                                            callObject.starttime = date;
-                                            callObject.direction = messageList[7];
-                                            callObject.duration = messageList[11];
-                                            callObject.description = messageList[8];
-
-                                        }
-
-                                    }
-                                    else if (eventName == "agent_found") {
-
-                                        isCallEvent = true;
-
-                                        if (Array.isArray(messageList) && messageList.length > 9) {
-
-
-                                            console.log("Agents found crm ready to call .....");
-                                            callObject.action = "received";
-                                            callObject.session = messageList[1];
-                                            callObject.from = messageList[3];
-                                            callObject.to = messageList[5];
-                                            callObject.profile = messageList[9];
-                                        }
-
-                                    }
-                                    else if (eventName == "agent_rejected") {
-
-                                        isCallEvent = true;
-
-                                        if (Array.isArray(messageList) && messageList.length > 11) {
-
-                                            callObject.action = "missed";
-                                            callObject.session = messageList[1];
-                                            callObject.from = messageList[3];
-                                            callObject.to = messageList[5];
-                                            callObject.profile = messageList[9];
-
-                                            var startTime = messageList[11];
-                                            var utcSeconds = parseInt(startTime)/1000000;
-                                            var m = moment.unix(utcSeconds);
-                                            var date = m.format("YYYY-MM-DD HH:mm:ss");
-
-                                            callObject.missedtime =  date;
-                                            callObject.sequential = true;
-                                        }
-
-                                    }
-
-                                    if(isCallEvent){
-
-                                        console.log("Call Object is "+ JSON.stringify(callObject));
-                                        CallCRM(Company,Tenant,callObject);
-                                    }
-                                    ////////////////////////////////////////////////////////////////////////////////////////
-
-
-                                    if (i == insArray.length - 1) {
-                                        //res.end();
-                                        callback(undefined, "Success");
-                                    }
-                                }
-
-                            }
-                            else
-                            {
-                                console.log("hit No client");
-                                callback(new Error("No registered Client found"),undefined);
-                            }
-                        }
-                        else
-                        {
-                            console.log("Remote Client Instance found");
-                            DBController.ServerPicker(serverId, function (errServ,resServ) {
-                                if(errServ)
-                                {
-                                    console.log("Error in server picking");
-                                    callback(errServ,undefined);
-                                }
-                                else if(!resServ)
-                                {
-                                    console.log("Invalid server ID");
-                                    callback(new Error("Invalid Server ID"),undefined);
-                                }
-                                else
-                                {
-                                    var ServerIP = resServ.URL;
-                                    console.log(ServerIP);
-
-
-                                    var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
-                                    console.log("URL "+httpUrl);
-
-                                    var options = {
-                                        url : httpUrl,
-                                        method : 'POST',
-                                        json : req.body,
-                                        headers:{
-                                            'eventName':req.headers.eventname,
-                                            'eventUuid':req.headers.eventuuid,
-                                            'authorization':"bearer "+token,
-                                            'topic':topicID,
-                                            'companyinfo': compInfo
-                                        }
-
-                                    };
-
-
-                                    httpReq(options, function (error, response, body)
-                                    {
-                                        if (!error && response.statusCode == 200)
-                                        {
-                                            console.log("no errrs");
-                                            //console.log(JSON.stringify(response));
-                                            callback(undefined,"Success")
-                                        }
-                                        else
-                                        {
-                                            console.log("errrs  "+error);
-                                            callback(error,undefined);
-
-
-                                        }
-                                    });
-                                }
-                            });
-                        }
-
-
-                    });
-
-
-
-                });
-                async.parallel(msgSenderArray, function (errBulkSend,resSend) {
-
-                    if(errBulkSend)
-                    {
-                        console.log(errBulkSend);
-                        //res.end(errBulkSend.toString());
-                    }
-
-
-                });
-
-            });
-
-
-
-
-            res.end(topicID);
-
+            callObject.starttime = date;
+            callObject.direction = messageList[7];
+            callObject.duration = messageList[11];
+            callObject.description = messageList[8];
 
         }
-        else
-        {
-            console.log("No client found.....................");
-            if(req.body.Persistency)
-            {
-                console.log("No client found,  backing up messages ");
 
-                if(inboxMode)
-                {
-                    DBController.InboxMessageSender(req, function (errInbox,resInbox) {
-                        if(errInbox)
-                        {
-                            console.log("Error in Message Saving ",errInbox);
-                            res.end();
-                        }
-                        else
-                        {
-                            console.log("Message saving succeeded ");
-                            res.end("Message saved to related client's inbox");
-                        }
-                    });
-                }
-                else
-                {
-                    DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+    }
+    else if (eventName == "agent_found") {
 
-                        if(errSave)
-                        {
-                            console.log("Error in Message Saving ",errSave);
-                            res.end();
-                        }
-                        else
-                        {
-                            console.log("Message saving succeeded ",resSave);
-                            res.end("Message saved until related client is online");
-                        }
-                    });
-                }
+        isCallEvent = true;
+
+        if (Array.isArray(messageList) && messageList.length > 9) {
 
 
-            }
-            else
-            {
-                console.log("No client found, Operation ends without backing up messages");
-                res.end();
-            }
-
+            console.log("Agents found crm ready to call .....");
+            callObject.action = "received";
+            callObject.session = messageList[1];
+            callObject.from = messageList[3];
+            callObject.to = messageList[5];
+            callObject.profile = messageList[9];
         }
-    });
+
+    }
+    else if (eventName == "agent_rejected") {
+
+        isCallEvent = true;
+
+        if (Array.isArray(messageList) && messageList.length > 11) {
+
+            callObject.action = "missed";
+            callObject.session = messageList[1];
+            callObject.from = messageList[3];
+            callObject.to = messageList[5];
+            callObject.profile = messageList[9];
+
+            var startTime = messageList[11];
+            var utcSeconds = parseInt(startTime)/1000000;
+            var m = moment.unix(utcSeconds);
+            var date = m.format("YYYY-MM-DD HH:mm:ss");
+
+            callObject.missedtime =  date;
+            callObject.sequential = true;
+        }
+
+    }
+
+    if(isCallEvent){
+
+        console.log("Call Object is "+ JSON.stringify(callObject));
+        CallCRM(Company,Tenant,callObject);
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    //redisManager.LocationListPicker(clientID, function (errList,resList) {
+    //
+    //    console.log("Checking Availability of Client :  "+clientID);
+    //
+    //    if(errList)
+    //    {
+    //        console.log("Client is not available.......................");
+    //        console.log("Error in Checking Availability ",errList);
+    //        res.end();
+    //    }
+    //    else if(typeof resList !== 'undefined' && resList.length > 0)
+    //    {
+    //
+    //        redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj)
+    //        {
+    //            resList.forEach(function (serverId) {
+    //
+    //                msgSenderArray.push(function createContact(callback)
+    //                {
+    //
+    //                    if(serverId==MyID)
+    //                    {
+    //
+    //                        if(Clients[clientID])
+    //                        {
+    //
+    //                            var insArray =Clients[clientID];
+    //                            for(var i=0;i<insArray.length;i++) {
+    //                                var insSocket = insArray[i];
+    //
+    //
+    //                                console.log("Event Name : " + eventName);
+    //                                console.log("Event Message : " + msgObj);
+    //
+    //                                insSocket.emit(eventName, msgObj);
+    //                                console.log("Notification sent : " + JSON.stringify(msgObj));
+    //
+    //
+    //                                ////////////////////////////////////////////////on special call status events//////////
+    //                                var isCallEvent = false;
+    //                                var callObject = {};
+    //                                //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
+    //
+    //                               console.log("Message is "+message);
+    //                                var messageList = message.split('|');
+    //
+    //                                console.log("Message list object is" + JSON.stringify(messageList) );
+    //
+    //                                console.log("Message list object length is " + messageList.length );
+    //
+    //                                if (eventName == "agent_connected") {
+    //
+    //
+    //                                    isCallEvent = true;
+    //                                    if (Array.isArray(messageList) && messageList.length > 9) {
+    //
+    //
+    //                                        callObject.action = "answered";
+    //                                        callObject.session = messageList[1];
+    //                                        callObject.from = messageList[3];
+    //                                        callObject.to = messageList[5];
+    //                                        callObject.profile = messageList[9];
+    //                                    }
+    //
+    //                                }
+    //                                else if (eventName == "agent_disconnected") {
+    //
+    //                                    isCallEvent = true;
+    //
+    //                                    if (Array.isArray(messageList) && messageList.length > 11) {
+    //
+    //                                        callObject.action = "hungup";
+    //                                        callObject.session = messageList[1];
+    //                                        callObject.from = messageList[3];
+    //                                        callObject.to = messageList[5];
+    //                                        callObject.profile = messageList[9];
+    //                                        var startTime = messageList[10];
+    //                                        var utcSeconds = parseInt(startTime)/1000000;
+    //                                        var m = moment.unix(utcSeconds);
+    //                                        var date = m.format("YYYY-MM-DD HH:mm:ss");
+    //
+    //
+    //                                        callObject.starttime = date;
+    //                                        callObject.direction = messageList[7];
+    //                                        callObject.duration = messageList[11];
+    //                                        callObject.description = messageList[8];
+    //
+    //                                    }
+    //
+    //                                }
+    //                                else if (eventName == "agent_found") {
+    //
+    //                                    isCallEvent = true;
+    //
+    //                                    if (Array.isArray(messageList) && messageList.length > 9) {
+    //
+    //
+    //                                        console.log("Agents found crm ready to call .....");
+    //                                        callObject.action = "received";
+    //                                        callObject.session = messageList[1];
+    //                                        callObject.from = messageList[3];
+    //                                        callObject.to = messageList[5];
+    //                                        callObject.profile = messageList[9];
+    //                                    }
+    //
+    //                                }
+    //                                else if (eventName == "agent_rejected") {
+    //
+    //                                    isCallEvent = true;
+    //
+    //                                    if (Array.isArray(messageList) && messageList.length > 11) {
+    //
+    //                                        callObject.action = "missed";
+    //                                        callObject.session = messageList[1];
+    //                                        callObject.from = messageList[3];
+    //                                        callObject.to = messageList[5];
+    //                                        callObject.profile = messageList[9];
+    //
+    //                                        var startTime = messageList[11];
+    //                                        var utcSeconds = parseInt(startTime)/1000000;
+    //                                        var m = moment.unix(utcSeconds);
+    //                                        var date = m.format("YYYY-MM-DD HH:mm:ss");
+    //
+    //                                        callObject.missedtime =  date;
+    //                                        callObject.sequential = true;
+    //                                    }
+    //
+    //                                }
+    //
+    //                                if(isCallEvent){
+    //
+    //                                    console.log("Call Object is "+ JSON.stringify(callObject));
+    //                                    CallCRM(Company,Tenant,callObject);
+    //                                }
+    //                                ////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //
+    //                                if (i == insArray.length - 1) {
+    //                                    //res.end();
+    //                                    callback(undefined, "Success");
+    //                                }
+    //                            }
+    //
+    //                        }
+    //                        else
+    //                        {
+    //                            console.log("hit No client");
+    //                            callback(new Error("No registered Client found"),undefined);
+    //                        }
+    //                    }
+    //                    else
+    //                    {
+    //                        console.log("Remote Client Instance found");
+    //                        DBController.ServerPicker(serverId, function (errServ,resServ) {
+    //                            if(errServ)
+    //                            {
+    //                                console.log("Error in server picking");
+    //                                callback(errServ,undefined);
+    //                            }
+    //                            else if(!resServ)
+    //                            {
+    //                                console.log("Invalid server ID");
+    //                                callback(new Error("Invalid Server ID"),undefined);
+    //                            }
+    //                            else
+    //                            {
+    //                                var ServerIP = resServ.URL;
+    //                                console.log(ServerIP);
+    //
+    //
+    //                                var httpUrl = util.format('http://%s/DVP/API/%s/NotificationService/Notification/initiate/fromRemoteserver', ServerIP, version);
+    //                                console.log("URL "+httpUrl);
+    //
+    //                                var options = {
+    //                                    url : httpUrl,
+    //                                    method : 'POST',
+    //                                    json : req.body,
+    //                                    headers:{
+    //                                        'eventName':req.headers.eventname,
+    //                                        'eventUuid':req.headers.eventuuid,
+    //                                        'authorization':"bearer "+token,
+    //                                        'topic':topicID,
+    //                                        'companyinfo': compInfo
+    //                                    }
+    //
+    //                                };
+    //
+    //
+    //                                httpReq(options, function (error, response, body)
+    //                                {
+    //                                    if (!error && response.statusCode == 200)
+    //                                    {
+    //                                        console.log("no errrs");
+    //                                        //console.log(JSON.stringify(response));
+    //                                        callback(undefined,"Success")
+    //                                    }
+    //                                    else
+    //                                    {
+    //                                        console.log("errrs  "+error);
+    //                                        callback(error,undefined);
+    //
+    //
+    //                                    }
+    //                                });
+    //                            }
+    //                        });
+    //                    }
+    //
+    //
+    //                });
+    //
+    //
+    //
+    //            });
+    //            async.parallel(msgSenderArray, function (errBulkSend,resSend) {
+    //
+    //                if(errBulkSend)
+    //                {
+    //                    console.log(errBulkSend);
+    //                    //res.end(errBulkSend.toString());
+    //                }
+    //
+    //
+    //            });
+    //
+    //        });
+    //
+    //
+    //
+    //
+    //        res.end(topicID);
+    //
+    //
+    //    }
+    //    else
+    //    {
+    //        console.log("No client found.....................");
+    //        if(req.body.Persistency)
+    //        {
+    //            console.log("No client found,  backing up messages ");
+    //
+    //            if(inboxMode)
+    //            {
+    //                DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+    //                    if(errInbox)
+    //                    {
+    //                        console.log("Error in Message Saving ",errInbox);
+    //                        res.end();
+    //                    }
+    //                    else
+    //                    {
+    //                        console.log("Message saving succeeded ");
+    //                        res.end("Message saved to related client's inbox");
+    //                    }
+    //                });
+    //            }
+    //            else
+    //            {
+    //                DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
+    //
+    //                    if(errSave)
+    //                    {
+    //                        console.log("Error in Message Saving ",errSave);
+    //                        res.end();
+    //                    }
+    //                    else
+    //                    {
+    //                        console.log("Message saving succeeded ",resSave);
+    //                        res.end("Message saved until related client is online");
+    //                    }
+    //                });
+    //            }
+    //
+    //
+    //        }
+    //        else
+    //        {
+    //            console.log("No client found, Operation ends without backing up messages");
+    //            res.end();
+    //        }
+    //
+    //    }
+    //});
     return next();
 
 });
