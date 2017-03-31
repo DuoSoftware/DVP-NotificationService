@@ -518,6 +518,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
     console.log("Event Name : " + eventName);
     console.log("Event Message : " + msgObj);
+    console.log("Event User : " + clientID);
 
     io.to(clientID).emit(eventName, msgObj);
     console.log("Notification sent : " + JSON.stringify(msgObj));
