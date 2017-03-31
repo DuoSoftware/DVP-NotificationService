@@ -3539,6 +3539,8 @@ console.log("Requested user "+req.user.iss);
                                         //});
                                     });
 
+                                    callbackResult(null,processStatus);
+
                                     //async.parallel(broadcastArray, function (processStatus) {
                                     //
                                     //    console.log("Users ends here");
