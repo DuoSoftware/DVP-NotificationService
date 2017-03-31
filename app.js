@@ -2536,6 +2536,7 @@ BroadcastMessageHandler = function (messageData,compInfo,callbackResult) {
     clientArray.forEach(function (clientData) {
 
 
+        console.log(clientData);
         var BcMsgObj = {
 
             "Message": messageData.Message,
@@ -2745,6 +2746,8 @@ BroadcastMessageHandler = function (messageData,compInfo,callbackResult) {
         //
         //});
     });
+
+    callbackResult(null,processData);
 
     //async.parallel(broadcastArray, function (processStatus) {
     //
