@@ -620,6 +620,8 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
         console.log("Call Object is "+ JSON.stringify(callObject));
         CallCRM(Company,Tenant,callObject);
     }
+
+    res.end();
     ////////////////////////////////////////////////////////////////////////////////////////
 
     //redisManager.LocationListPicker(clientID, function (errList,resList) {
