@@ -515,6 +515,12 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
         }
     });
 
+    if(eventName == 'message'){
+
+        eventName = 'notice_message';
+
+    }
+
 
     console.log("Event Name : " + eventName);
     console.log("Event Message : " + msgObj);
