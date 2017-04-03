@@ -36,14 +36,16 @@ function  ClientConfiguration(eventObj,jwt)
     socketObj.conference_member_left=eventObj.Callbacks.onConferenceMemberLeft;
     socketObj.conference_member_status=eventObj.Callbacks.onConferenceMemberStatus;
     socketObj.conference_user_assigned=eventObj.Callbacks.onConferenceUserAdded;
+    socketObj.onNoticeReceived=eventObj.Callbacks.onNoticeReceived;
+
 
     socket
-        .on('authenticated', function () {
+        .on("authenticated", function () {
             //do other things
         })
-        .emit('authenticate', {token: jwt});
+        .emit("authenticate", {token: jwt});
 
-    socket.on('clientdetails', function (data) {
+    socket.on("clientdetails", function (data) {
 
         if(socketObj.onClientdetailsRecieved)
         {
@@ -52,7 +54,7 @@ function  ClientConfiguration(eventObj,jwt)
 
     });
 
-    socket.on('disconnect', function(reason)
+    socket.on("disconnect", function(reason)
     {
         if(socketObj.onDisconnected)
         {
@@ -61,7 +63,7 @@ function  ClientConfiguration(eventObj,jwt)
 
     });
 
-    socket.on('message', function(reason)
+    socket.on("message", function(reason)
     {
         if(socketObj.onMessageReceived);
         {
@@ -71,7 +73,7 @@ function  ClientConfiguration(eventObj,jwt)
 
     });
 
-    socket.on('broadcast', function(data){
+    socket.on("broadcast", function(data){
         if(socketObj.onBroadcastMessageReceived)
         {
             socketObj.onBroadcastMessageReceived(data);
@@ -80,7 +82,7 @@ function  ClientConfiguration(eventObj,jwt)
         //socket.disconnect();
     });
 
-    socket.on('publish', function(data){
+    socket.on("publish", function(data){
         if(socketObj.onPublishMessageReceived)
         {
             socketObj.onPublishMessageReceived(data);
@@ -89,28 +91,28 @@ function  ClientConfiguration(eventObj,jwt)
         //socket.disconnect();
     });
 
-    socket.on('agent_found', function (data) {
+    socket.on("agent_found", function (data) {
         if(socketObj.agent_found)
         {
             socketObj.agent_found(data);
         }
 
     });
-    socket.on('agent_connected', function (data) {
+    socket.on("agent_connected", function (data) {
         if(socketObj.agent_connected);
         {
             socketObj.agent_connected(data);
         }
 
     });
-    socket.on('agent_disconnected', function (data) {
+    socket.on("agent_disconnected", function (data) {
         if(socketObj.agent_disconnected)
         {
             socketObj.agent_disconnected(data);
         }
 
     });
-    socket.on('agent_rejected', function (data) {
+    socket.on("agent_rejected", function (data) {
         if(socketObj.agent_rejected)
         {
             socketObj.agent_rejected(data);
@@ -118,46 +120,54 @@ function  ClientConfiguration(eventObj,jwt)
 
 
     });
-    socket.on('conference_create', function (data) {
+    socket.on("conference_create", function (data) {
         if(socketObj.conference_create)
         {
             socketObj.conference_create(data);
         }
 
     });
-    socket.on('conference_destroy', function (data) {
+    socket.on("conference_destroy", function (data) {
         if(socketObj.conference_destroy(data))
         {
             socketObj.conference_destroy(data);
         }
 
     });
-    socket.on('conference_member_joined', function (data) {
+    socket.on("conference_member_joined", function (data) {
         if(socketObj.conference_member_joined)
         {
             socketObj.conference_member_joined(data);
         }
 
     });
-    socket.on('conference_member_left', function (data) {
+    socket.on("conference_member_left", function (data) {
         if(socketObj.conference_member_left)
         {
             socketObj.conference_member_left(data);
         }
 
     });
-    socket.on('conference_member_status', function (data) {
+    socket.on("conference_member_status", function (data) {
         if(socketObj.conference_member_status)
         {
             socketObj.conference_member_status(data);
         }
 
     });
-    socket.on('conference_user_assigned', function (data) {
+    socket.on("conference_user_assigned", function (data) {
         if(socketObj.conference_user_assigned)
         {
             socketObj.conference_user_assigned(data);
         }
+    });
+
+    socket.on("notice", function (data) {
+        if(socketObj.onNoticeReceived)
+        {
+            socketObj.onNoticeReceived(data);
+        }
+
     });
 
 
@@ -166,7 +176,7 @@ function  ClientConfiguration(eventObj,jwt)
 function  SendReply(Message,topicKey)
 {
     var msgObj={Message:Message,Tkey:topicKey};
-    socket.emit('reply',msgObj);
+    socket.emit("reply",msgObj);
 }
 
 

@@ -14,7 +14,7 @@ var token=config.Token;
 
 var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
 
-ServerPicker = function (SID,callback) {
+var ServerPicker = function (SID,callback) {
 
     try {
         DbConn.NotificationServer.find({where: {id: SID}}).then(function (resServ) {
@@ -34,7 +34,7 @@ ServerPicker = function (SID,callback) {
     }
 };
 
-ClientServerPicker = function (SID,index,callback) {
+var ClientServerPicker = function (SID,index,callback) {
 
 
     try {
@@ -55,7 +55,7 @@ ClientServerPicker = function (SID,index,callback) {
     }
 };
 
-PersistenceMessageRecorder = function (Obj,callback) {
+var PersistenceMessageRecorder = function (Obj,callback) {
 
     try {
         var dataBody = Obj.body;
@@ -104,7 +104,7 @@ PersistenceMessageRecorder = function (Obj,callback) {
     }
 };
 
-QueuedMessagesPicker = function (clientID,callback) {
+var QueuedMessagesPicker = function (clientID,callback) {
 
     try {
         DbConn.PersistenceMessages.findAll({where: {To: clientID}}).then(function (resMessages) {
@@ -119,7 +119,7 @@ QueuedMessagesPicker = function (clientID,callback) {
 
 };
 
-PersistenceMessageRemover = function (msgId,callback) {
+var PersistenceMessageRemover = function (msgId,callback) {
 
     try {
         DbConn.PersistenceMessages.destroy({where: {id: msgId}}).then(function (resRem) {
@@ -132,7 +132,7 @@ PersistenceMessageRemover = function (msgId,callback) {
     }
 };
 
-PersistenceGroupMessageRecorder = function (Obj,callback) {
+var PersistenceGroupMessageRecorder = function (Obj,callback) {
 
     try {
         var dataBody = Obj;
@@ -174,7 +174,7 @@ PersistenceGroupMessageRecorder = function (Obj,callback) {
     }
 };
 
-PersistencePubSubMessageRecorder = function (Obj,clientID,callback) {
+var PersistencePubSubMessageRecorder = function (Obj,clientID,callback) {
 
     try {
         var dataBody = Obj;
@@ -220,7 +220,7 @@ PersistencePubSubMessageRecorder = function (Obj,clientID,callback) {
     }
 };
 
-GCMRegistrator = function (clientID,regKey,res) {
+var GCMRegistrator = function (clientID,regKey,res) {
     var jsonString;
     try {
         var gcmKey = DbConn.GCMKeys
@@ -253,7 +253,7 @@ GCMRegistrator = function (clientID,regKey,res) {
 
 
 };
-GCMKeyRemover = function (clientID,regKey,res) {
+var GCMKeyRemover = function (clientID,regKey,res) {
     var jsonString;
 
 
@@ -273,7 +273,7 @@ GCMKeyRemover = function (clientID,regKey,res) {
 
 };
 
-GoogleNotificationKeyPicker = function (clientID,callback) {
+var GoogleNotificationKeyPicker = function (clientID,callback) {
 
     DbConn.GCMKeys.findAll({attributes: ['GCMKey'],where:{ClientID:clientID}}).then(function (resKeys) {
 
@@ -306,7 +306,7 @@ GoogleNotificationKeyPicker = function (clientID,callback) {
 
 };
 
-SipUserDetailsPicker = function (sipUsername,company,tenant,callback) {
+var SipUserDetailsPicker = function (sipUsername,company,tenant,callback) {
 
     DbConn.SipUACEndpoint.find({where:[{SipUsername:sipUsername},{CompanyId:company},{TenantId:tenant}]}).then(function (resSipUserData) {
         if(!resSipUserData)
@@ -323,7 +323,7 @@ SipUserDetailsPicker = function (sipUsername,company,tenant,callback) {
     });
 };
 
-InboxMessageSender = function (req,callback) {
+var InboxMessageSender = function (req,callback) {
 
     var messageData =
     {

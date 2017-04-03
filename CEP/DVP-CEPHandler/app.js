@@ -8,7 +8,7 @@ var version=config.Host.version;
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
 var DbConn = require('dvp-dbmodels');
 var httpReq = require('request');
-var redismanager = require('./RedisManager.js');
+var redismanager = require("./RedisManager.js");
 var util = require('util');
 
 var RestServer = restify.createServer({
@@ -142,7 +142,7 @@ RestServer.post('/DVP/API/'+version+'/CEPHandler/Notification/Publish', function
     return next();
 });
 
-ParamKeyGenerator = function (paramData) {
+var ParamKeyGenerator = function (paramData) {
 
     if(paramData)
     {
@@ -172,7 +172,7 @@ ParamKeyGenerator = function (paramData) {
 
 
 };
-QueryKeyGenerator = function (dataObj) {
+var QueryKeyGenerator = function (dataObj) {
 
     var paramKey = ParamKeyGenerator(dataObj.FilterData);
     if(paramKey)
@@ -194,7 +194,7 @@ QueryKeyGenerator = function (dataObj) {
 
     // client.RPUSH("key",)
 };
-PublishToUser = function (userID,msgObj,compInfo,callback) {
+var PublishToUser = function (userID,msgObj,compInfo,callback) {
 
     redismanager.ServerPicker(userID, function (errSID,resSID) {
 
@@ -256,7 +256,7 @@ PublishToUser = function (userID,msgObj,compInfo,callback) {
 
 
 };
-ServerLocationPicker = function (serverID,callback) {
+var ServerLocationPicker = function (serverID,callback) {
 
     DbConn.NotificationServer.find({where:{id:serverID}}).then(function (resServ) {
 
