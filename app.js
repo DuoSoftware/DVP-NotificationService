@@ -195,7 +195,7 @@ var ObjectId = Schema.ObjectId;
 
 
 io.sockets.on('connection',socketioJwt.authorize({
-    secret:  'admin',
+    secret:  secret.Secret,
     timeout: 15000 // 15 seconds to send the authentication message
 })).on('authenticated',function (socket) {
 
@@ -207,6 +207,8 @@ io.sockets.on('connection',socketioJwt.authorize({
     console.log(clientID);
 
 //get client's identity
+
+    socket.join(clientID);
 
     if(clientID)
     {
