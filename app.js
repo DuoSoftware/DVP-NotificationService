@@ -3820,12 +3820,13 @@ function CallCRM(company, tenant, object) {
 
             try {
 
-                console.log(_response);
+
 
                 if (!_error && _response && _response.statusCode == 200, _response.body && _response.body.IsSuccess) {
 
                     //cb(true,_response.body.Result);
                     logger.info("Event emitted to zoho successfully");
+                    console.log(_response.body);
 
                 } else {
 
