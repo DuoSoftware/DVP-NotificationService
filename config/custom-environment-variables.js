@@ -32,12 +32,6 @@ module.exports = {
         "version": "HOST_VERSION",
         "logfilepath": "LOG4JS_CONFIG"
     },
-    "Services" : {
-        "accessToken": "HOST_TOKEN",
-        "crmIntegrationHost": "SYS_CRMINTEGRATION_HOST",
-        "crmIntegrationPort": "SYS_CRMINTEGRATION_PORT",
-        "crmIntegrationVersion": "SYS_CRMINTEGRATION_VERSION"
-    },
     "TTL":
     {
         "ttl":"SYS_TTL"
