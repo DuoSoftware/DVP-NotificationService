@@ -32,6 +32,12 @@ module.exports = {
         "version": "HOST_VERSION",
         "logfilepath": "LOG4JS_CONFIG"
     },
+    "Services" : {
+        "accessToken": "HOST_TOKEN",
+        "crmIntegrationHost": "SYS_CRMINTEGRATION_HOST",
+        "crmIntegrationPort": "SYS_CRMINTEGRATION_PORT",
+        "crmIntegrationVersion": "SYS_CRMINTEGRATION_VERSION"
+    },
     "TTL":
     {
         "ttl":"SYS_TTL"
@@ -39,6 +45,14 @@ module.exports = {
     "PERSISTENCY":
     {
         "inbox_mode":"SYS_INBOX_MODE"
+    },
+    "Mongo":
+    {
+        "ip":"SYS_MONGO_HOST",
+        "port":"SYS_MONGO_PORT",
+        "dbname":"SYS_MONGO_DB",
+        "password":"SYS_MONGO_PASSWORD",
+        "user":"SYS_MONGO_USER"
     },
     "ID":"SYS_NS_ID",
     "Token":"HOST_TOKEN"
