@@ -960,7 +960,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 });
 
 
-RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/PublishRoom/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     console.log(req.params.room);
     if(!req.user.company || !req.user.tenant)
