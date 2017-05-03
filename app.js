@@ -455,7 +455,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
 // check and follow common format or res.end();
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
     {
@@ -960,7 +960,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 });
 
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     console.log(req.params.room);
     if(!req.user.company || !req.user.tenant)
@@ -993,7 +993,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/:Topic',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/Continue/:Topic',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     var Obj = req.body;
     var message= Obj.Message;
@@ -1181,7 +1181,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/DisconnectSession/:Topic',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/DisconnectSession/:Topic',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     var topicKey = req.params.Topic;
     if(!req.user.company || !req.user.tenant)
@@ -1314,7 +1314,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Disconnec
     return next();
 });
 
-RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id/Availability',authorization({resource:"notification", action:"read"}),function(req,res,next)
+RestServer.get('/DVP/API/:version/NotificationService/Notification/Server/:id/Availability',authorization({resource:"notification", action:"read"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
     {
@@ -1330,7 +1330,7 @@ RestServer.get('/DVP/API/'+version+'/NotificationService/Notification/Server/:id
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/Broadcast',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
 
     console.log("hit broadcast");
@@ -1359,7 +1359,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast/:userName',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/Broadcast/:userName',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
     {
@@ -1433,7 +1433,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Broadcast
 });
 
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
     {
@@ -1468,7 +1468,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Subscribe
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Unsubscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/Unsubscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
     {
@@ -1510,7 +1510,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Unsubscri
 });
 
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
     console.log("Hit");
     var subscriberArray=[];
@@ -1824,7 +1824,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish',
     return next();
 
 });
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
 
     console.log("HIT publish");
@@ -1883,7 +1883,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Publish/:
 });
 
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', function (req,res,next){
+RestServer.post('/DVP/API/:version/NotificationService/Notification/test', function (req,res,next){
 
     redisManager.SubsQueryUserAvailabitityChecker("Query:select * agents:1:3:name-saman-age-10","client1", function (e,r) {
 
@@ -1900,7 +1900,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/test', fu
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
 
     var AppKey=req.headers.appkey;
@@ -1915,7 +1915,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCMRegist
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCM/Unregister',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/GCM/Unregister',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
 
     var AppKey=req.body.appkey;
@@ -1931,7 +1931,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/GCM/Unreg
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
 
     var clientID= req.body.To;
@@ -1961,7 +1961,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/publish/f
 
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/TestMessage',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/TestMessage',authorization({resource:"notification", action:"write"}), function (req,res,next) {
 
     DBController.InboxMessageSender(req, function (err,response) {
         if(err)
@@ -1982,7 +1982,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/TestMessage',authoriza
 });
 
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notice',authorization({resource:"notice", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notice',authorization({resource:"notice", action:"write"}),function(req,res,next)
 {
 
     console.log("Notice service started");
@@ -2011,7 +2011,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notice',authorization(
     return next();
 });
 
-RestServer.post('/DVP/API/'+version+'/NotificationService/Notice/:userName',authorization({resource:"notice", action:"write"}),function(req,res,next)
+RestServer.post('/DVP/API/:version/NotificationService/Notice/:userName',authorization({resource:"notice", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
     {
@@ -2065,7 +2065,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notice/:userName',auth
 
 });
 
-RestServer.get('/DVP/API/'+version+'/NotificationService/NoticeBoard',authorization({resource:"notice", action:"read"}),function(req,res,next)
+RestServer.get('/DVP/API/:version/NotificationService/NoticeBoard',authorization({resource:"notice", action:"read"}),function(req,res,next)
 {
     var reqId= uuid.v1();
 
@@ -2100,7 +2100,7 @@ RestServer.get('/DVP/API/'+version+'/NotificationService/NoticeBoard',authorizat
     return next();
 });
 
-RestServer.get('/DVP/API/'+version+'/NotificationService/SubmittedNotices',authorization({resource:"notice", action:"read"}),function(req,res,next)
+RestServer.get('/DVP/API/:version/NotificationService/SubmittedNotices',authorization({resource:"notice", action:"read"}),function(req,res,next)
 {
     var reqId= uuid.v1();
 
@@ -2135,7 +2135,7 @@ RestServer.get('/DVP/API/'+version+'/NotificationService/SubmittedNotices',autho
     return next();
 });
 
-RestServer.del('/DVP/API/'+version+'/NotificationService/Notice/:id',authorization({resource:"notice", action:"read"}),function(req,res,next)
+RestServer.del('/DVP/API/:version/NotificationService/Notice/:id',authorization({resource:"notice", action:"read"}),function(req,res,next)
 {
     var reqId= uuid.v1();
 
