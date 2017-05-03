@@ -959,6 +959,40 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
 
 });
 
+
+RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
+{
+    console.log(req.params.room);
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+    var eventName=req.headers.eventname;
+    var sender = req.body.From;
+
+
+    var msgObj={
+        "Tenant":Tenant,
+        "Company":Company,
+        "Message":req.body.message,
+        "eventName":eventName,
+        "roomName":req.params.room,
+        "From":sender
+    };
+
+    var uniqueRoomName = util.format('%d:%d:subscribe:%s', Tenant, Company, req.params.room);
+
+    io.to(uniqueRoomName).emit('room:event', msgObj);
+
+    res.end();
+
+    return next();
+
+});
+
 RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/Continue/:Topic',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     var Obj = req.body;
