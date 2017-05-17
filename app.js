@@ -1432,7 +1432,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Broadcast/:u
     //}
 });
 
-
 RestServer.post('/DVP/API/:version/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
@@ -1508,7 +1507,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Unsubscribe/
 
     return next();
 });
-
 
 RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
@@ -1824,6 +1822,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish',aut
     return next();
 
 });
+
 RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
 
@@ -1882,8 +1881,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish/:use
     return next();
 });
 
-
-RestServer.post('/DVP/API/:version/NotificationService/Notification/test', function (req,res,next){
+RestServer.post('/DVP/API/:version/NotificationService/Notification/test', function (req,res,next)
+{
 
     redisManager.SubsQueryUserAvailabitityChecker("Query:select * agents:1:3:name-saman-age-10","client1", function (e,r) {
 
@@ -1900,7 +1899,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/test', funct
 
 });
 
-RestServer.post('/DVP/API/:version/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
 
     var AppKey=req.headers.appkey;
@@ -1915,7 +1915,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/GCMRegistrat
 
 });
 
-RestServer.post('/DVP/API/:version/NotificationService/Notification/GCM/Unregister',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/GCM/Unregister',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
 
     var AppKey=req.body.appkey;
@@ -1931,7 +1932,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/GCM/Unregist
 
 });
 
-RestServer.post('/DVP/API/:version/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
 
     var clientID= req.body.To;
@@ -1961,7 +1963,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/publish/from
 
 });
 
-RestServer.post('/DVP/API/:version/NotificationService/TestMessage',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/TestMessage',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
     DBController.InboxMessageSender(req, function (err,response) {
         if(err)
@@ -1980,7 +1983,6 @@ RestServer.post('/DVP/API/:version/NotificationService/TestMessage',authorizatio
 
     return next();
 });
-
 
 RestServer.post('/DVP/API/:version/NotificationService/Notice',authorization({resource:"notice", action:"write"}),function(req,res,next)
 {
