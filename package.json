@@ -20,6 +20,7 @@
     "restify-jwt": "^0.4.0",
     "socket.io": "^1.3.7",
     "socket.io-client": "^1.3.7",
+    "socket.io-redis": "^4.0.0",
     "socketio-jwt": "^4.3.4",
     "util": "^0.10.3",
     "validator": "^4.9.0"
