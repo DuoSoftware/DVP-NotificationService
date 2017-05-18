@@ -199,6 +199,7 @@ io.sockets.on('connection',socketioJwt.authorize({
     timeout: 15000 // 15 seconds to send the authentication message
 })).on('authenticated',function (socket) {
 
+    console.log(socket.decoded_token.iss);
     newSock=socket;
     console.log('authenticated received ');
     var clientID = socket.decoded_token.iss;
@@ -289,7 +290,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
                 }
 
-                DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+                /*DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
 
                     if(errMsg)
                     {
@@ -305,7 +306,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
 
                     }
-                });
+                });*/
             }
 
         });
@@ -535,7 +536,17 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
             io.to(clientID).emit(eventName, msgObj);
             console.log("Notification sent : " + JSON.stringify(msgObj));
-            res.end();
+            DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+
+                if (errSave) {
+                    console.log("Error in Message Saving ", errSave);
+                    res.end();
+                }
+                else {
+                    console.log("Message saving succeeded ");
+                    res.end("Message saved until related client is online");
+                }
+            });
 
 
         }else {
@@ -562,7 +573,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                         res.end();
                     }
                     else {
-                        console.log("Message saving succeeded ", resSave);
+                        console.log("Message saving succeeded ");
                         res.end("Message saved until related client is online");
                     }
                 });
@@ -2154,7 +2165,7 @@ RestServer.del('/DVP/API/:version/NotificationService/Notice/:id',authorization(
 
         if(err)
         {
-            logger.error('[DVP-NotificationService.RemoveNotice] - [%s] - Error occurred on method GetStoredNotices',reqId, err);
+            logger.error('[DVP-NotificationService.RemoveNotice] - [%s] - Error occurred on method RemoveNotice',reqId, err);
             var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
             logger.debug('[DVP-APPRegistry.RemoveNotice] - [%s] - Request response : %s ', reqId, jsonString);
             res.end(jsonString);
@@ -2172,6 +2183,145 @@ RestServer.del('/DVP/API/:version/NotificationService/Notice/:id',authorization(
     return next();
 });
 
+RestServer.del('/DVP/API/:version/NotificationService/Notifications',authorization({resource:"notice", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+    console.log("Notice removing service started");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+
+    RemoveNotice(req,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.RemoveNotice] - [%s] - Error occurred on method RemoveNotice',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.RemoveNotice] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.RemoveNotice] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
+
+RestServer.get('/DVP/API/:version/NotificationService/PersistenceMessages',authorization({resource:"notification", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+    console.log("Loading PersistenceMessages");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    DBController.GetPersistenceMessages(req.user.iss,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.GetPersistenceMessages] - [%s] - Error occurred on method QueuedMessagesPicker',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.GetPersistenceMessages] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.GetPersistenceMessages] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
+
+RestServer.del('/DVP/API/:version/NotificationService/PersistenceMessage/:id',authorization({resource:"notification", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    DBController.PersistenceMessageRemover(req.params.id,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.PersistenceMessageRemover] - [%s] - Error occurred on method PersistenceMessageRemover',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.PersistenceMessageRemover] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.PersistenceMessageRemover] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
+RestServer.del('/DVP/API/:version/NotificationService/PersistenceMessages',authorization({resource:"notification", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    DBController.RemoveAllPersistenceMessages(req.user.iss,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.RemoveAllPersistenceMessages] - [%s] - Error occurred on method RemoveAllPersistenceMessages',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.RemoveAllPersistenceMessages] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.RemoveAllPersistenceMessages] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
 
 
 TopicIdGenerator = function ()
@@ -2395,9 +2545,9 @@ QueuedContinueMessageSender = function (messageObj,socketObj,callback) {
 
 };
 
-QueuedMessagesPicker = function (clientID,callback) {
+/*QueuedMessagesPicker = function (clientID,company,tenant,callback) {
 
-    DbConn.PersistenceMessages.findAll({where:{To:clientID}}).then(function (resMessages)
+    DbConn.PersistenceMessages.find({where:{To:clientID}}).then(function (resMessages)
     {
         callback(undefined,resMessages);
 
@@ -2406,9 +2556,9 @@ QueuedMessagesPicker = function (clientID,callback) {
         callback(errMessages,undefined);
     });
 
-};
+};*/
 
-QueuedMessageOperator = function (msgObj,socketObj) {
+/*QueuedMessageOperator = function (msgObj,socketObj) {
 
     try {
         var topicKey = JSON.parse(msgObj.Callback).Topic;
@@ -2521,7 +2671,7 @@ QueuedMessageOperator = function (msgObj,socketObj) {
     }
 
 
-};
+};*/
 
 BroadcastMessageHandler = function (messageData,compInfo,callbackResult) {
 
@@ -3044,22 +3194,31 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
         }
         else
         {
-            console.log("type: "+typeof (resKey));
-            var message = new gcm.Message({data:msgObj});
+            if(resKey)
+            {
+                console.log("type: "+typeof (resKey));
+                var message = new gcm.Message({data:msgObj});
 
 
-            message.addNotification('title', msgObj.eventName);
-            message.addNotification('icon', 'ic_launcher');
+                message.addNotification('title', msgObj.eventName);
+                message.addNotification('icon', 'ic_launcher');
 
-            console.log("Recepients "+resKey);
-            console.log("Message "+JSON.stringify(message));
-            Sender.send(message, { registrationTokens: resKey }, function (err, response) {
+                console.log("Recepients "+resKey);
+                console.log("Message "+JSON.stringify(message));
+                Sender.send(message, { registrationTokens: resKey }, function (err, response) {
 
 
-                console.log(err);
-                console.log(response);
-                callback(err,response);
-            });
+                    console.log(err);
+                    console.log(response);
+                    callback(err,response);
+                });
+            }
+            else
+            {
+                callback(undefined,"done");
+            }
+
+
         }
     });
     //
@@ -3697,6 +3856,58 @@ GetStoredNotices = function (req,company,tenant,callbackResult) {
 
 };
 
+GetPersistenceMessages = function (req,company,tenant,callbackResult) {
+
+
+    DBController.
+
+
+        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+
+            if(err)
+            {
+                callbackResult(err,undefined);
+            }
+            else
+            {
+                if(user)
+                {
+                    var qObj =
+                        {
+                            company:company,
+                            tenant:tenant,
+                            $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
+
+
+                        }
+
+
+
+                    Notice.find(qObj).populate("attachments","url type file").exec(function (errNotices,resNotices) {
+
+                        if(errNotices)
+                        {
+                            callbackResult(errNotices,undefined);
+                        }
+                        else
+                        {
+                            callbackResult(undefined,resNotices);
+                        }
+                    });
+
+                }
+                else
+                {
+                    callbackResult(new Error("No user found"),undefined);
+                }
+            }
+        });
+
+
+
+
+};
+
 
 GetSubmitedNotices = function (req,company,tenant,callbackResult) {
 
@@ -3802,6 +4013,8 @@ RemoveNotice = function (req,company,tenant,callbackResult) {
 
 
 };
+
+
 
 
 function Crossdomain(req,res,next){
