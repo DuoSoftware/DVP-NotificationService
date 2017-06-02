@@ -486,10 +486,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
     Refs[topicID]=ref;
 
-    if(direction=="STATEFUL")
-    {
-        callbackURL=req.body.CallbackURL;
-    }
+
     var sender = req.body.From;
 
 
@@ -501,11 +498,18 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
         "Message":message,
         "eventName":eventName,
         "From":sender
-
-
-
-
     };
+
+
+    if(direction=="STATEFUL")
+    {
+        callbackURL=req.body.CallbackURL;
+        redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj){
+            if(errTobj){
+                logger.error('Set TokenObjectCreator Failed :: ' + errTobj);
+            }
+        });
+    }
 
     GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
         if(errGnotf)
