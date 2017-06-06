@@ -1032,7 +1032,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/reply',autho
                             else if (!errorX && responseX != undefined ) {
 
                                 console.log("Sent "+req.body+" To "+URL);
-                                jsonString = messageFormatter.FormatMessage(errorX, 'Successfully Send', false, undefined);
+                                jsonString = messageFormatter.FormatMessage(errorX, 'Successfully Send', true, undefined);
                                 res.end(jsonString);
 
                             }
