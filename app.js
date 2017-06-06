@@ -535,6 +535,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
 
     io.sockets.adapter.clients( [clientID], function (err, clients) {
+        logger.info('io.sockets.adapter.clients result :: clients :: '+ JSON.stringify(clients) +' :: err :: '+ err);
         if (!err && (Array.isArray(clients) && clients.length > 0) ) {
 
 
