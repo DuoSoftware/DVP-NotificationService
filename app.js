@@ -975,6 +975,93 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
 });
 
+RestServer.post('/DVP/API/:version/NotificationService/Notification/reply',authorization({resource:"notification", action:"write"}),function(req,res,next){
+
+    var jsonString;
+    try{
+
+        console.log("Reply received from client ");
+        console.log("Message : "+req.body.Message);
+        var clientTopic=req.body.Tkey;
+
+        console.log("Token key from Client "+clientTopic);
+
+
+        redisManager.ResponseUrlPicker(clientTopic,TTL, function (errURL,resURL) {
+
+            if(errURL)
+            {
+                console.log("Error in searching URL ",errURL);
+                jsonString = messageFormatter.FormatMessage(errURL, 'Error in searching URL', false, undefined);
+                res.end(jsonString);
+            }
+            else
+            {
+                if(!resURL || resURL==null || resURL=="")
+                {
+                    console.log("Invalid URL records found ",resURL);
+                    jsonString = messageFormatter.FormatMessage(undefined, 'Invalid URL records found', false, resURL);
+                    res.end(jsonString);
+                }
+                else
+                {
+                    var direction = resURL[0];
+                    var URL =resURL[1];
+
+                    console.log("URL "+URL);
+                    console.log("DIRECTION "+direction);
+
+                    if(direction=="STATEFUL" && URL!=null)
+                    {
+                        var replyObj={
+                            Reply:req.body,
+                            Ref:Refs[clientTopic]
+                        };
+
+                        console.log("Reply to sender .... "+JSON.stringify(replyObj));
+
+                        var optionsX = {url: URL, method: "POST", json: replyObj};
+                        httpReq(optionsX, function (errorX, responseX, dataX) {
+
+                            if(errorX)
+                            {
+                                console.log("ERROR sending request "+errorX);
+                                jsonString = messageFormatter.FormatMessage(errorX, 'ERROR sending request', false, undefined);
+                                res.end(jsonString);
+                            }
+                            else if (!errorX && responseX != undefined ) {
+
+                                console.log("Sent "+req.body+" To "+URL);
+                                jsonString = messageFormatter.FormatMessage(errorX, 'Successfully Send', false, undefined);
+                                res.end(jsonString);
+
+                            }
+                            else
+                            {
+                                console.log("No Result");
+                                jsonString = messageFormatter.FormatMessage(undefined, 'ERROR sending request', false, undefined);
+                                res.end(jsonString);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        console.log("Invalid Callback URL found "+resURL);
+                        jsonString = messageFormatter.FormatMessage(undefined, 'Invalid Callback URL found', false, resURL);
+                        res.end(jsonString);
+                    }
+
+
+                }
+            }
+        });
+
+    }catch(ex){
+        jsonString = messageFormatter.FormatMessage(ex, 'Error Occurred in Notification Reply', false, undefined);
+        res.end(jsonString);
+    }
+
+});
 
 RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
