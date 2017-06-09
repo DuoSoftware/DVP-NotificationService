@@ -57,6 +57,8 @@ var ClientServerPicker = function (SID,index,callback) {
 
 var PersistenceMessageRecorder = function (Obj,callback) {
 
+    console.log("Persistance message recorder starts");
+
     try {
         var dataBody = Obj.body;
         var topic = "";

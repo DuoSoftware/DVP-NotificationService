@@ -541,17 +541,27 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
             io.to(clientID).emit(eventName, msgObj);
             console.log("Notification sent : " + JSON.stringify(msgObj));
-            DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+            if(req.body.isPersist)
+            {
+                DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
 
-                if (errSave) {
-                    console.log("Error in Message Saving ", errSave);
-                    res.end();
-                }
-                else {
-                    console.log("Message saving succeeded ");
-                    res.end("Message saved until related client is online");
-                }
-            });
+                    if (errSave) {
+                        console.log("Error in Message Saving ", errSave);
+                        res.end();
+                    }
+                    else {
+                        console.log("Message saving succeeded ");
+                        res.end("Message saved until related client is online");
+                    }
+                });
+            }
+            else
+            {
+                console.log("Message saving succeeded ");
+                res.end("Message is not stored");
+            }
+
+
 
 
         }else {
