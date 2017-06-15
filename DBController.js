@@ -57,6 +57,8 @@ var ClientServerPicker = function (SID,index,callback) {
 
 var PersistenceMessageRecorder = function (Obj,callback) {
 
+    console.log("Persistance message recorder starts");
+
     try {
         var dataBody = Obj.body;
         var topic = "";
@@ -85,7 +87,9 @@ var PersistenceMessageRecorder = function (Obj,callback) {
                     From: dataBody.From,
                     To: dataBody.To,
                     Time: Date.now(),
-                    Callback: JSON.stringify(CallbackObj)
+                    Callback: JSON.stringify(CallbackObj),
+                    CompanyId:Obj.user.company,
+                    TenantId:Obj.user.tenant
 
                 }
             )
@@ -104,10 +108,10 @@ var PersistenceMessageRecorder = function (Obj,callback) {
     }
 };
 
-var QueuedMessagesPicker = function (clientID,callback) {
+var GetPersistenceMessages = function (clientID,company,tenant,callback) {
 
     try {
-        DbConn.PersistenceMessages.findAll({where: {To: clientID}}).then(function (resMessages) {
+        DbConn.PersistenceMessages.findAll({where: [{To: clientID},{CompanyId:company},{TenantId:tenant}]}).then(function (resMessages) {
             callback(undefined, resMessages);
 
         }).catch(function (errMessages) {
@@ -119,10 +123,23 @@ var QueuedMessagesPicker = function (clientID,callback) {
 
 };
 
-var PersistenceMessageRemover = function (msgId,callback) {
+var PersistenceMessageRemover = function (msgId,company,tenant,callback) {
 
     try {
-        DbConn.PersistenceMessages.destroy({where: {id: msgId}}).then(function (resRem) {
+        DbConn.PersistenceMessages.destroy({where: [{id: msgId},{CompanyId:company},{TenantId:tenant}]}).then(function (resRem) {
+            callback(undefined, resRem);
+        }).catch(function (errRem) {
+            callback(errRem, undefined);
+        });
+    } catch (e) {
+        callback(e,undefined);
+    }
+};
+
+var RemoveAllPersistenceMessages = function (user,company,tenant,callback) {
+
+    try {
+        DbConn.PersistenceMessages.destroy({where: [{To: user},{CompanyId:company},{TenantId:tenant}]}).then(function (resRem) {
             callback(undefined, resRem);
         }).catch(function (errRem) {
             callback(errRem, undefined);
@@ -277,7 +294,7 @@ var GoogleNotificationKeyPicker = function (clientID,callback) {
 
     DbConn.GCMKeys.findAll({attributes: ['GCMKey'],where:{ClientID:clientID}}).then(function (resKeys) {
 
-        if(resKeys)
+        if(resKeys.length>0)
         {
             var GCMkeys=[];
             for(var i=0;i<resKeys.length;i++)
@@ -290,11 +307,11 @@ var GoogleNotificationKeyPicker = function (clientID,callback) {
             }
 
         }
+
         else
         {
             console.log("Key not found");
-            callback("Key not found",undefined);
-
+            callback(undefined,null);
         }
 
     }).catch(function (errKeys) {
@@ -375,7 +392,7 @@ var InboxMessageSender = function (req,callback) {
 
 module.exports.ServerPicker = ServerPicker;
 module.exports.PersistenceMessageRecorder = PersistenceMessageRecorder;
-module.exports.QueuedMessagesPicker = QueuedMessagesPicker;
+module.exports.GetPersistenceMessages = GetPersistenceMessages;
 module.exports.PersistenceMessageRemover = PersistenceMessageRemover;
 module.exports.PersistenceGroupMessageRecorder = PersistenceGroupMessageRecorder;
 module.exports.PersistencePubSubMessageRecorder = PersistencePubSubMessageRecorder;
@@ -385,3 +402,4 @@ module.exports.ClientServerPicker = ClientServerPicker;
 module.exports.SipUserDetailsPicker = SipUserDetailsPicker;
 module.exports.InboxMessageSender = InboxMessageSender;
 module.exports.GCMKeyRemover = GCMKeyRemover;
+module.exports.RemoveAllPersistenceMessages = RemoveAllPersistenceMessages;
