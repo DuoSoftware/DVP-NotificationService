@@ -199,6 +199,7 @@ io.sockets.on('connection',socketioJwt.authorize({
     timeout: 15000 // 15 seconds to send the authentication message
 })).on('authenticated',function (socket) {
 
+    console.log(socket.decoded_token.iss);
     newSock=socket;
     console.log('authenticated received ');
     var clientID = socket.decoded_token.iss;
@@ -289,7 +290,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
                 }
 
-                DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
+                /*DBController.QueuedMessagesPicker(clientID, function (errMsg,resMsg) {
 
                     if(errMsg)
                     {
@@ -305,7 +306,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 
 
                     }
-                });
+                });*/
             }
 
         });
@@ -485,10 +486,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
     Refs[topicID]=ref;
 
-    if(direction=="STATEFUL")
-    {
-        callbackURL=req.body.CallbackURL;
-    }
+
     var sender = req.body.From;
 
 
@@ -500,11 +498,18 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
         "Message":message,
         "eventName":eventName,
         "From":sender
-
-
-
-
     };
+
+
+    if(direction=="STATEFUL")
+    {
+        callbackURL=req.body.CallbackURL;
+        redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj){
+            if(errTobj){
+                logger.error('Set TokenObjectCreator Failed :: ' + errTobj);
+            }
+        });
+    }
 
     GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
         if(errGnotf)
@@ -530,12 +535,33 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
 
     io.sockets.adapter.clients( [clientID], function (err, clients) {
+        logger.info('io.sockets.adapter.clients result :: clients :: '+ JSON.stringify(clients) +' :: err :: '+ err);
         if (!err && (Array.isArray(clients) && clients.length > 0) ) {
 
 
             io.to(clientID).emit(eventName, msgObj);
             console.log("Notification sent : " + JSON.stringify(msgObj));
-            res.end();
+            if(req.body.isPersist)
+            {
+                DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+
+                    if (errSave) {
+                        console.log("Error in Message Saving ", errSave);
+                        res.end();
+                    }
+                    else {
+                        console.log("Message saving succeeded ");
+                        res.end("Message saved until related client is online");
+                    }
+                });
+            }
+            else
+            {
+                console.log("Message saving succeeded ");
+                res.end("Message is not stored");
+            }
+
+
 
 
         }else {
@@ -562,7 +588,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                         res.end();
                     }
                     else {
-                        console.log("Message saving succeeded ", resSave);
+                        console.log("Message saving succeeded ");
                         res.end("Message saved until related client is online");
                     }
                 });
@@ -959,6 +985,93 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
 });
 
+RestServer.post('/DVP/API/:version/NotificationService/Notification/reply',authorization({resource:"notification", action:"write"}),function(req,res,next){
+
+    var jsonString;
+    try{
+
+        console.log("Reply received from client ");
+        console.log("Message : "+req.body.Message);
+        var clientTopic=req.body.Tkey;
+
+        console.log("Token key from Client "+clientTopic);
+
+
+        redisManager.ResponseUrlPicker(clientTopic,TTL, function (errURL,resURL) {
+
+            if(errURL)
+            {
+                console.log("Error in searching URL ",errURL);
+                jsonString = messageFormatter.FormatMessage(errURL, 'Error in searching URL', false, undefined);
+                res.end(jsonString);
+            }
+            else
+            {
+                if(!resURL || resURL==null || resURL=="")
+                {
+                    console.log("Invalid URL records found ",resURL);
+                    jsonString = messageFormatter.FormatMessage(undefined, 'Invalid URL records found', false, resURL);
+                    res.end(jsonString);
+                }
+                else
+                {
+                    var direction = resURL[0];
+                    var URL =resURL[1];
+
+                    console.log("URL "+URL);
+                    console.log("DIRECTION "+direction);
+
+                    if(direction=="STATEFUL" && URL!=null)
+                    {
+                        var replyObj={
+                            Reply:req.body,
+                            Ref:Refs[clientTopic]
+                        };
+
+                        console.log("Reply to sender .... "+JSON.stringify(replyObj));
+
+                        var optionsX = {url: URL, method: "POST", json: replyObj};
+                        httpReq(optionsX, function (errorX, responseX, dataX) {
+
+                            if(errorX)
+                            {
+                                console.log("ERROR sending request "+errorX);
+                                jsonString = messageFormatter.FormatMessage(errorX, 'ERROR sending request', false, undefined);
+                                res.end(jsonString);
+                            }
+                            else if (!errorX && responseX != undefined ) {
+
+                                console.log("Sent "+req.body+" To "+URL);
+                                jsonString = messageFormatter.FormatMessage(errorX, 'Successfully Send', true, undefined);
+                                res.end(jsonString);
+
+                            }
+                            else
+                            {
+                                console.log("No Result");
+                                jsonString = messageFormatter.FormatMessage(undefined, 'ERROR sending request', false, undefined);
+                                res.end(jsonString);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        console.log("Invalid Callback URL found "+resURL);
+                        jsonString = messageFormatter.FormatMessage(undefined, 'Invalid Callback URL found', false, resURL);
+                        res.end(jsonString);
+                    }
+
+
+                }
+            }
+        });
+
+    }catch(ex){
+        jsonString = messageFormatter.FormatMessage(ex, 'Error Occurred in Notification Reply', false, undefined);
+        res.end(jsonString);
+    }
+
+});
 
 RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
@@ -1432,7 +1545,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Broadcast/:u
     //}
 });
 
-
 RestServer.post('/DVP/API/:version/NotificationService/Notification/Subscribe/:username',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     if(!req.user.company || !req.user.tenant)
@@ -1508,7 +1620,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Unsubscribe/
 
     return next();
 });
-
 
 RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
@@ -1824,6 +1935,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish',aut
     return next();
 
 });
+
 RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish/:username',authorization({resource:"notification", action:"write"}), function (req,res,next)
 {
 
@@ -1882,8 +1994,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Publish/:use
     return next();
 });
 
-
-RestServer.post('/DVP/API/:version/NotificationService/Notification/test', function (req,res,next){
+RestServer.post('/DVP/API/:version/NotificationService/Notification/test', function (req,res,next)
+{
 
     redisManager.SubsQueryUserAvailabitityChecker("Query:select * agents:1:3:name-saman-age-10","client1", function (e,r) {
 
@@ -1900,7 +2012,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/test', funct
 
 });
 
-RestServer.post('/DVP/API/:version/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/GCMRegistration',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
 
     var AppKey=req.headers.appkey;
@@ -1915,7 +2028,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/GCMRegistrat
 
 });
 
-RestServer.post('/DVP/API/:version/NotificationService/Notification/GCM/Unregister',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/GCM/Unregister',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
 
     var AppKey=req.body.appkey;
@@ -1931,7 +2045,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/GCM/Unregist
 
 });
 
-RestServer.post('/DVP/API/:version/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/Notification/publish/fromRemoteserver',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
 
     var clientID= req.body.To;
@@ -1961,7 +2076,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/publish/from
 
 });
 
-RestServer.post('/DVP/API/:version/NotificationService/TestMessage',authorization({resource:"notification", action:"write"}), function (req,res,next) {
+RestServer.post('/DVP/API/:version/NotificationService/TestMessage',authorization({resource:"notification", action:"write"}), function (req,res,next)
+{
 
     DBController.InboxMessageSender(req, function (err,response) {
         if(err)
@@ -1980,7 +2096,6 @@ RestServer.post('/DVP/API/:version/NotificationService/TestMessage',authorizatio
 
     return next();
 });
-
 
 RestServer.post('/DVP/API/:version/NotificationService/Notice',authorization({resource:"notice", action:"write"}),function(req,res,next)
 {
@@ -2152,7 +2267,7 @@ RestServer.del('/DVP/API/:version/NotificationService/Notice/:id',authorization(
 
         if(err)
         {
-            logger.error('[DVP-NotificationService.RemoveNotice] - [%s] - Error occurred on method GetStoredNotices',reqId, err);
+            logger.error('[DVP-NotificationService.RemoveNotice] - [%s] - Error occurred on method RemoveNotice',reqId, err);
             var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
             logger.debug('[DVP-APPRegistry.RemoveNotice] - [%s] - Request response : %s ', reqId, jsonString);
             res.end(jsonString);
@@ -2170,6 +2285,145 @@ RestServer.del('/DVP/API/:version/NotificationService/Notice/:id',authorization(
     return next();
 });
 
+RestServer.del('/DVP/API/:version/NotificationService/Notifications',authorization({resource:"notice", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+    console.log("Notice removing service started");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+
+    RemoveNotice(req,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.RemoveNotice] - [%s] - Error occurred on method RemoveNotice',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.RemoveNotice] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.RemoveNotice] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
+
+RestServer.get('/DVP/API/:version/NotificationService/PersistenceMessages',authorization({resource:"notification", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+    console.log("Loading PersistenceMessages");
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    DBController.GetPersistenceMessages(req.user.iss,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.GetPersistenceMessages] - [%s] - Error occurred on method QueuedMessagesPicker',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.GetPersistenceMessages] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.GetPersistenceMessages] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
+
+RestServer.del('/DVP/API/:version/NotificationService/PersistenceMessage/:id',authorization({resource:"notification", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    DBController.PersistenceMessageRemover(req.params.id,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.PersistenceMessageRemover] - [%s] - Error occurred on method PersistenceMessageRemover',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.PersistenceMessageRemover] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.PersistenceMessageRemover] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
+RestServer.del('/DVP/API/:version/NotificationService/PersistenceMessages',authorization({resource:"notification", action:"read"}),function(req,res,next)
+{
+    var reqId= uuid.v1();
+
+
+    if(!req.user.company || !req.user.tenant)
+    {
+        throw new Error("Invalid company or tenant");
+    }
+
+    var Company=req.user.company;
+    var Tenant=req.user.tenant;
+
+    DBController.RemoveAllPersistenceMessages(req.user.iss,Company,Tenant, function (err,response) {
+
+        if(err)
+        {
+            logger.error('[DVP-NotificationService.RemoveAllPersistenceMessages] - [%s] - Error occurred on method RemoveAllPersistenceMessages',reqId, err);
+            var jsonString = messageFormatter.FormatMessage(err, "EXCEPTION", false, undefined);
+            logger.debug('[DVP-APPRegistry.RemoveAllPersistenceMessages] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }else
+        {
+
+            var jsonString = messageFormatter.FormatMessage(undefined, "SUCCESS", true, response);
+            logger.debug('[DVP-APPRegistry.RemoveAllPersistenceMessages] - [%s] - Request response : %s ', reqId, jsonString);
+            res.end(jsonString);
+        }
+    });
+
+
+
+    return next();
+});
 
 
 TopicIdGenerator = function ()
@@ -2393,9 +2647,9 @@ QueuedContinueMessageSender = function (messageObj,socketObj,callback) {
 
 };
 
-QueuedMessagesPicker = function (clientID,callback) {
+/*QueuedMessagesPicker = function (clientID,company,tenant,callback) {
 
-    DbConn.PersistenceMessages.findAll({where:{To:clientID}}).then(function (resMessages)
+    DbConn.PersistenceMessages.find({where:{To:clientID}}).then(function (resMessages)
     {
         callback(undefined,resMessages);
 
@@ -2404,9 +2658,9 @@ QueuedMessagesPicker = function (clientID,callback) {
         callback(errMessages,undefined);
     });
 
-};
+};*/
 
-QueuedMessageOperator = function (msgObj,socketObj) {
+/*QueuedMessageOperator = function (msgObj,socketObj) {
 
     try {
         var topicKey = JSON.parse(msgObj.Callback).Topic;
@@ -2519,7 +2773,7 @@ QueuedMessageOperator = function (msgObj,socketObj) {
     }
 
 
-};
+};*/
 
 BroadcastMessageHandler = function (messageData,compInfo,callbackResult) {
 
@@ -3042,22 +3296,31 @@ GooglePushMessageSender = function (clientId,msgObj,callback) {
         }
         else
         {
-            console.log("type: "+typeof (resKey));
-            var message = new gcm.Message({data:msgObj});
+            if(resKey)
+            {
+                console.log("type: "+typeof (resKey));
+                var message = new gcm.Message({data:msgObj});
 
 
-            message.addNotification('title', msgObj.eventName);
-            message.addNotification('icon', 'ic_launcher');
+                message.addNotification('title', msgObj.eventName);
+                message.addNotification('icon', 'ic_launcher');
 
-            console.log("Recepients "+resKey);
-            console.log("Message "+JSON.stringify(message));
-            Sender.send(message, { registrationTokens: resKey }, function (err, response) {
+                console.log("Recepients "+resKey);
+                console.log("Message "+JSON.stringify(message));
+                Sender.send(message, { registrationTokens: resKey }, function (err, response) {
 
 
-                console.log(err);
-                console.log(response);
-                callback(err,response);
-            });
+                    console.log(err);
+                    console.log(response);
+                    callback(err,response);
+                });
+            }
+            else
+            {
+                callback(undefined,"done");
+            }
+
+
         }
     });
     //
@@ -3695,6 +3958,58 @@ GetStoredNotices = function (req,company,tenant,callbackResult) {
 
 };
 
+GetPersistenceMessages = function (req,company,tenant,callbackResult) {
+
+
+    DBController.
+
+
+        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+
+            if(err)
+            {
+                callbackResult(err,undefined);
+            }
+            else
+            {
+                if(user)
+                {
+                    var qObj =
+                        {
+                            company:company,
+                            tenant:tenant,
+                            $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
+
+
+                        }
+
+
+
+                    Notice.find(qObj).populate("attachments","url type file").exec(function (errNotices,resNotices) {
+
+                        if(errNotices)
+                        {
+                            callbackResult(errNotices,undefined);
+                        }
+                        else
+                        {
+                            callbackResult(undefined,resNotices);
+                        }
+                    });
+
+                }
+                else
+                {
+                    callbackResult(new Error("No user found"),undefined);
+                }
+            }
+        });
+
+
+
+
+};
+
 
 GetSubmitedNotices = function (req,company,tenant,callbackResult) {
 
@@ -3800,6 +4115,8 @@ RemoveNotice = function (req,company,tenant,callbackResult) {
 
 
 };
+
+
 
 
 function Crossdomain(req,res,next){
