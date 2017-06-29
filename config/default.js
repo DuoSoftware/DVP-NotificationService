@@ -48,7 +48,7 @@ module.exports = {
 
   "PERSISTENCY":
   {
-    "inbox_mode":true
+    "inbox_mode":false
   },
   "Mongo":
   {
