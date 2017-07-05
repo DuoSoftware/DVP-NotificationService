@@ -369,9 +369,9 @@ var InboxMessageSender = function (req,callback) {
     {
         httpReq(options, function (error, response, body) {
 
-            if(body.Exception || error)
+            if(error)
             {
-                callback(body.Exception,null);
+                callback(error,null);
             }
             else
             {
