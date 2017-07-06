@@ -52,11 +52,11 @@ module.exports = {
   },
   "Mongo":
   {
-    "ip":"45.55.142.207",
-    "port":"27017",
-    "dbname":"dvpdb",
-    "password":"DuoS123",
-    "user":"duo"
+      "ip":"104.236.231.11",
+      "port":"27017",
+      "dbname":"dvpdb",
+      "password":"DuoS123",
+      "user":"duo"
   },
   "ID":"7",
   "SENDER":"AIzaSyC8baq_3YpwcOQt6wj4VNcOzC0VGc0jKlc",

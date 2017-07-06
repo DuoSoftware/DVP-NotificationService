@@ -741,7 +741,7 @@ RestServer.post('/DVP/API/'+version+'/NotificationService/Notification/initiate'
         else
         {
             console.log("No client found.....................");
-            if(req.body.Persistency)
+            if(req.body.isPersist)
             {
                 console.log("No client found,  backing up messages ");
 
