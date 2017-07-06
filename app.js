@@ -217,7 +217,7 @@ RestServer.use(jwt({secret: secret.Secret}));
 var Clients ={};//=new Array();
 var Refs=new Array();
 
-var newSock;
+//var newSock;
 
 var inboxMode=config.PERSISTENCY.inbox_mode;
 
@@ -313,7 +313,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 })).on('authenticated',function (socket) {
 
     console.log(socket.decoded_token.iss);
-    newSock=socket;
+   // newSock=socket;
     console.log('authenticated received ');
     var clientID = socket.decoded_token.iss;
     console.log("Client logged "+clientID);
@@ -670,7 +670,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
             }
             else
             {
-                console.log("Message saving succeeded ");
+                console.log("Message is not stored");
                 res.end("Message is not stored");
             }
 
@@ -701,7 +701,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                         res.end();
                     }
                     else {
-                        console.log("Message saving succeeded ");
+                        console.log("Message saved until related client is online");
                         res.end("Message saved until related client is online");
                     }
                 });
