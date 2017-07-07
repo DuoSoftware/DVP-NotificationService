@@ -807,7 +807,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Continue/:To
     var Obj = req.body;
     var message= Obj.Message;
     var topicKey = req.params.Topic;
-    var Persistency = req.body.Persistency;
+    var Persistency = req.body.isPersist;
 
     if(!req.user.company || !req.user.tenant)
     {
@@ -817,7 +817,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Continue/:To
     var Company=req.user.company;
     var Tenant=req.user.tenant;
     var compInfo = Tenant + ':' + Company;
-
 
 
     redisManager.TopicObjectPicker(topicKey,TTL, function (e,r) {
@@ -834,71 +833,58 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Continue/:To
                 console.log("Invalid or Expired Token given, Please try from initial step");
                 res.end("Invalid key");
             }
-            else
-            {
-                // console.log("Got token Data "+r);
-                redisManager.CheckClientAvailability(r.Client, function (errAvbl,resAvbl) {
+            else {
 
-                    console.log("Checking result "+resAvbl);
+                io.sockets.adapter.clients([r.Client], function (err, clients) {
+                    if (!err && (Array.isArray(clients) && clients.length > 0)) {
 
-                    if(resAvbl && Persistency)
-                    {
-                        console.log("Client is not available.......................");
-                        if(errAvbl)
-                        {
-                            console.log("Error in Checking Availability ",errAvbl);
+                        var msgObj = {
 
-                        }
+                            "Message": message,
+                            "TopicKey": topicKey
+                        };
 
-                        if(inboxMode)
-                        {
-                            DBController.InboxMessageSender(req, function (errInbox,resInbox) {
-                                if(errInbox)
-                                {
-                                    console.log("Error in Message Saving ",errInbox);
-                                    res.end();
-                                }
-                                else
-                                {
-                                    console.log("Message saving succeeded ",resInbox);
-                                    res.end("Message saved to related client's inbox");
-                                }
-                            });
-                        }
-                        else
-                        {
-
-                            DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
-
-                                if (errSave) {
-                                    console.log("Error in Message Saving ", errSave);
-                                    res.end();
-                                }
-                                else {
-                                    console.log("Message saving succeeded ", resSave);
-                                    res.end();
-                                }
-                            });
-                        }
-                    }
-                    else
-                    {
-
-                        io.to(r.Client).emit('message',msgObj);
+                        io.to(r.Client).emit('message', msgObj);
                         res.end();
 
+                    } else {
+
+                        if (Persistency) {
+                            if (inboxMode) {
+                                DBController.InboxMessageSender(req, function (errInbox, resInbox) {
+                                    if (errInbox) {
+                                        console.log("Error in Message Saving ", errInbox);
+                                        res.end();
+                                    }
+                                    else {
+                                        console.log("Message saving succeeded ", resInbox);
+                                        res.end("Message saved to related client's inbox");
+                                    }
+                                });
+                            }
+                            else {
+
+                                DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+
+                                    if (errSave) {
+                                        console.log("Error in Message Saving ", errSave);
+                                        res.end();
+                                    }
+                                    else {
+                                        console.log("Message saving succeeded ", resSave);
+                                        res.end();
+                                    }
+                                });
+                            }
+
+                        }
+
                     }
-
-
                 });
 
-
             }
-
         }
-
     });
-
 
     return next();
 });
