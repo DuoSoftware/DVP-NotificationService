@@ -7,7 +7,7 @@
     "async": "^1.5.2",
     "config": "^1.16.0",
     "dvp-common": "^0.1.3",
-    "dvp-dbmodels": "0.0.64",
+    "dvp-dbmodels": "^1.1.8",
     "dvp-mongomodels": "^4.6.3",
     "ip": "^1.1.0",
     "moment": "^2.18.0",
@@ -20,6 +20,7 @@
     "restify-jwt": "^0.4.0",
     "socket.io": "^1.3.7",
     "socket.io-client": "^1.3.7",
+    "socket.io-redis": "^4.0.0",
     "socketio-jwt": "^4.3.4",
     "util": "^0.10.3",
     "validator": "^4.9.0"
