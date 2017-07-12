@@ -360,35 +360,29 @@ var InboxMessageSender = function (req,callback) {
         {
             httpReq(options, function (error, response, body) {
 
-                if(!error && response.statusCode >= 200 && response.statusCode <= 299)
+
+                if(error)
                 {
-                    console.log("Messages sent to inbox successfully");
-                    callback(null,response);
+                    console.log("Messages sending failed to inbox");
+                    callback(error,null);
                 }
                 else
                 {
-                    if(error)
+                    if(response.statusCode == 200 && body && body.IsSuccess)
                     {
-                        console.log("Messages sending failed to inbox");
-                        callback(error,null);
+
+                            console.log("Message sent to inbox successfully");
+                            callback(null,body.CustomMessage);
+
+
                     }
                     else
                     {
-                        if(body)
+                        console.log("Error in sending messages to Inbox");
+                        callback(response.body,null);
 
-                        {
-                            console.log("Messages sending failed to inbox, Error in response ",body.message);
-                            callback(body.message,null);
-                        }
-                        else
-                        {
-                            console.log("Error in messages sending to Inbox");
-                            callback(new Error("Error in messages sending to Inbox"),null);
-                        }
                     }
-
                 }
-
 
 
             });
