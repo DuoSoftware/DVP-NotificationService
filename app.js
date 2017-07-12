@@ -1095,9 +1095,43 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:ro
         "roomName":req.params.room,
         "From":sender
     };
+console.log("No client found.....................");
+            if(req.body.isPersist)
+            {
+                console.log("No client found,  backing up messages ");
 
-    var uniqueRoomName = util.format('%d:%d:subscribe:%s', Tenant, Company, req.params.room);
+                if(inboxMode)
+                {
+                    DBController.InboxMessageSender(req, function (errInbox,resInbox) {
+                        if(errInbox)
+                        {
+                            console.log("Error in Message Saving ",errInbox);
+                            res.end();
+                        }
+                        else
+                        {
+                            console.log("Message saving succeeded ");
+                            res.end("Message saved to related client's inbox");
+                        }
+                    });
+                }
+                else
+                {
+                    DBController.PersistenceMessageRecorder(req, function (errSave,resSave) {
 
+                        if(errSave)
+                        {
+                            console.log("Error in Message Saving ",errSave);
+                            res.end();
+                        }
+                        else
+                        {
+                            console.log("Message saving succeeded ",resSave);
+                            res.end("Message saved until related client is online");
+                        }
+                    });
+                }
+var uniqueRoomName = util.format('%d:%d:subscribe:%s', Tenant, Company, req.params.room);
     io.to(uniqueRoomName).emit('room:event', msgObj);
 
     res.end();

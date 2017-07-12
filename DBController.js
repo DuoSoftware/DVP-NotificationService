@@ -342,49 +342,74 @@ var SipUserDetailsPicker = function (sipUsername,company,tenant,callback) {
 
 var InboxMessageSender = function (req,callback) {
 
-    var messageData =
+
+    if(!req.user || !req.user.company || !req.user.tenant)
     {
-        message:req.body.Message,
-        msgType:"NOTIFICATION",
-        heading:req.headers.eventname,
-        from:req.body.From,
-        issuer:req.user.iss
+        callback(new Error("Invalid company information found"),null);
     }
+    else
+    {
+        var companyInfo = req.user.tenant+":"+req.user.company;
+        var messageData =
+            {
+                message:req.body.Message,
+                msgType:"NOTIFICATION",
+                heading:req.headers.eventname,
+                from:req.body.From,
+                issuer:req.user.iss
+            }
 
 
-    var httpUrl = util.format('http://interactions.app.veery.cloud/DVP/API/1.0.0.0/Inbox/Message' );
-    var options = {
-        url: httpUrl,
-        method: 'POST',
-        json: messageData,
-        headers:
+        var httpUrl = util.format('http://interactions.app.veery.cloud/DVP/API/1.0.0.0/Inbox/Message' );
+        var options = {
+            url: httpUrl,
+            method: 'POST',
+            json: messageData,
+            headers:
+                {
+                    'authorization':"bearer "+token,
+                    'CompanyInfo':companyInfo
+                }
+
+        };
+
+        try
         {
-            'authorization':"bearer "+token,
-            'CompanyInfo':'1:103'
+            httpReq(options, function (error, response, body) {
+
+
+                if(error)
+                {
+                    console.log("Messages sending failed to inbox");
+                    callback(error,null);
+                }
+                else
+                {
+                    if(response.statusCode == 200 && body && body.IsSuccess)
+                    {
+                          console.log("Message sent to inbox successfully");
+                            callback(null,body.CustomMessage);
+
+                    }
+                    else
+                    {
+                        console.log("Error in sending messages to Inbox");
+                        callback(response.body,null);
+
+                    }
+                }
+
+
+            });
         }
+        catch (ex) {
+            callback(ex,undefined);
 
-    };
 
-    try
-    {
-        httpReq(options, function (error, response, body) {
-
-            if(error)
-            {
-                callback(error,null);
-            }
-            else
-            {
-                callback(null,response);
-            }
-
-        });
+        }
     }
-    catch (ex) {
-        callback(ex,undefined);
 
 
-    }
 
 
 
