@@ -46,7 +46,8 @@ module.exports = {
     "port": 8089,
     "version":"1.0.0.0",
     "hostpath":"./config",
-    "logfilepath": ""
+    "logfilepath": "",
+    "crm": "true"
   },
   "Socket":
   {

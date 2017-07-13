@@ -138,10 +138,6 @@ if(redismode != "cluster") {
 
 
 
-
-
-
-
 pubclient.on("error", function (err) {
     logger.error("Error ",  err);
 });
@@ -157,9 +153,6 @@ subclient.on("node error", function (err) {
 pubclient.on("node error", function (err) {
     logger.error("Error ",  err);
 });
-
-
-
 
 
 
@@ -669,7 +662,9 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
     }
 
-    if(isCallEvent){
+    var callcrm = confg.Host.crm;
+
+    if(isCallEvent && callcrm === "true"){
 
         console.log("Call Object is "+ JSON.stringify(callObject));
         CallCRM(Company,Tenant,callObject);
