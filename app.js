@@ -662,7 +662,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
     }
 
-    var callcrm = confg.Host.crm;
+    var callcrm = config.Host.crm;
 
     if(isCallEvent && callcrm === "true"){
 
