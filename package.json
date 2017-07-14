@@ -24,7 +24,8 @@
     "socket.io-redis": "^5.1.0",
     "socketio-jwt": "^4.3.4",
     "util": "^0.10.3",
-    "validator": "^4.9.0"
+    "validator": "^4.9.0",
+    "memwatch":"^0.2.2"
   },
   "devDependencies": {},
   "scripts": {
