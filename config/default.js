@@ -47,7 +47,7 @@ module.exports = {
     "version":"1.0.0.0",
     "hostpath":"./config",
     "logfilepath": "",
-    "crm": "true"
+    "crm": "false"
   },
   "Socket":
   {
