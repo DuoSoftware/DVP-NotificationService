@@ -664,7 +664,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
     var callcrm = config.Host.crm;
 
-    if(isCallEvent && callcrm === "true"){
+    //if(isCallEvent && callcrm === "true"){
+    if( callcrm === "true"){
 
         console.log("Call Object is "+ JSON.stringify(callObject));
         CallCRM(Company,Tenant,callObject);
