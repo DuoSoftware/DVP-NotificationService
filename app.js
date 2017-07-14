@@ -25,11 +25,6 @@ var authorization = require('dvp-common/Authentication/Authorization.js');
 var adapter = require('socket.io-redis');
 
 var redis = require('ioredis');
-var memwatch = require('memwatch');
-
-memwatch.on('leak', function(info) {
-    console.log(info);
-});
 
 
 var opt = {
@@ -311,7 +306,7 @@ io.sockets.on('connection',socketioJwt.authorize({
 })).on('authenticated',function (socket) {
 
     console.log(socket.decoded_token.iss);
-    // newSock=socket;
+   // newSock=socket;
     console.log('authenticated received ');
     var clientID = socket.decoded_token.iss;
     console.log("Client logged "+clientID);
@@ -1007,8 +1002,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/Broadcast/:u
 
     var BcMsgObj={
 
-        "Message":userData.Message
-    };
+                "Message":userData.Message
+            };
 
     io.to(user).emit('broadcast',BcMsgObj);
 
@@ -1915,9 +1910,9 @@ InstanceMessageHandler = function (clientData,instanceArray,messageData,callback
             };
             socket.emit('broadcast', BcMsgObj);
             var processStatus =
-                {
-                    clientStatus:clientData+" : success"
-                }
+            {
+                clientStatus:clientData+" : success"
+            }
             processData.push(processStatus);
 
         });
@@ -1940,15 +1935,15 @@ HandleNoticeMessage = function (req,company,tenant,callbackResult) {
     var messageData=req.body;
     var fromUser;
 
-    console.log("Requested user "+req.user.iss);
+console.log("Requested user "+req.user.iss);
     User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,owner) {
 
         if(err)
         {
             var processStatus =
-                {
-                    Owner:"Error in searching owner"
-                }
+            {
+                Owner:"Error in searching owner"
+            }
             callbackResult(null,processStatus);
         }
         else
@@ -1963,11 +1958,11 @@ HandleNoticeMessage = function (req,company,tenant,callbackResult) {
                     {
                         //clientArray=messageData.toUser;
                         var clientObj =
-                            {
-                                company:company,
-                                tenant:tenant,
-                                $or:[]
-                            }
+                        {
+                            company:company,
+                            tenant:tenant,
+                            $or:[]
+                        }
 
                         messageData.toUser.map(function (user) {
 
@@ -2017,11 +2012,11 @@ HandleNoticeMessage = function (req,company,tenant,callbackResult) {
 
 
                         var grpObj =
-                            {
-                                company:company,
-                                tenant:tenant,
-                                $or:[]
-                            }
+                        {
+                            company:company,
+                            tenant:tenant,
+                            $or:[]
+                        }
 
                         messageData.toGroup.map(function (group) {
 
@@ -2143,9 +2138,9 @@ HandleNoticeMessage = function (req,company,tenant,callbackResult) {
                             {
                                 console.log("Error in saving notice data");
                                 var processStatus =
-                                    {
-                                        NoticeStatus:"Notice saving failed"
-                                    }
+                                {
+                                    NoticeStatus:"Notice saving failed"
+                                }
                                 callbackResult(null,processStatus);
                             }
                             else
@@ -2186,9 +2181,9 @@ HandleNoticeMessage = function (req,company,tenant,callbackResult) {
                                 {
                                     console.log("Error in saving notice data");
                                     var processStatus =
-                                        {
-                                            NoticeStatus:"Notice saving failed"
-                                        }
+                                    {
+                                        NoticeStatus:"Notice saving failed"
+                                    }
                                     callbackResult(null,processStatus);
 
 
@@ -2204,9 +2199,9 @@ HandleNoticeMessage = function (req,company,tenant,callbackResult) {
                     else
                     {
                         var processStatus =
-                            {
-                                ClientsList:"Empty Client List"
-                            }
+                        {
+                            ClientsList:"Empty Client List"
+                        }
                         callbackResult(null,processStatus);
                     }
 
@@ -2217,9 +2212,9 @@ HandleNoticeMessage = function (req,company,tenant,callbackResult) {
             else
             {
                 var processStatus =
-                    {
-                        Owner:"Invalid owner"
-                    }
+                {
+                    Owner:"Invalid owner"
+                }
                 callbackResult(null,processStatus);
             }
         }
@@ -2246,13 +2241,13 @@ GetStoredNotices = function (req,company,tenant,callbackResult) {
                 if(user)
                 {
                     var qObj =
-                        {
-                            company:company,
-                            tenant:tenant,
-                            $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
+                    {
+                        company:company,
+                        tenant:tenant,
+                        $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
 
 
-                        }
+                    }
                     if(user.group)
                     {
                         qObj.$or.push({toGroup:{$in:[user.group]}});
@@ -2295,46 +2290,46 @@ GetPersistenceMessages = function (req,company,tenant,callbackResult) {
     DBController.
 
 
-    User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
 
-        if(err)
-        {
-            callbackResult(err,undefined);
-        }
-        else
-        {
-            if(user)
+            if(err)
             {
-                var qObj =
-                    {
-                        company:company,
-                        tenant:tenant,
-                        $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
-
-
-                    }
-
-
-
-                Notice.find(qObj).populate("attachments","url type file").exec(function (errNotices,resNotices) {
-
-                    if(errNotices)
-                    {
-                        callbackResult(errNotices,undefined);
-                    }
-                    else
-                    {
-                        callbackResult(undefined,resNotices);
-                    }
-                });
-
+                callbackResult(err,undefined);
             }
             else
             {
-                callbackResult(new Error("No user found"),undefined);
+                if(user)
+                {
+                    var qObj =
+                        {
+                            company:company,
+                            tenant:tenant,
+                            $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
+
+
+                        }
+
+
+
+                    Notice.find(qObj).populate("attachments","url type file").exec(function (errNotices,resNotices) {
+
+                        if(errNotices)
+                        {
+                            callbackResult(errNotices,undefined);
+                        }
+                        else
+                        {
+                            callbackResult(undefined,resNotices);
+                        }
+                    });
+
+                }
+                else
+                {
+                    callbackResult(new Error("No user found"),undefined);
+                }
             }
-        }
-    });
+        });
 
 
 
@@ -2357,13 +2352,13 @@ GetSubmitedNotices = function (req,company,tenant,callbackResult) {
                 if(user)
                 {
                     var qObj =
-                        {
-                            company:company,
-                            tenant:tenant,
-                            from:user.id
+                    {
+                        company:company,
+                        tenant:tenant,
+                        from:user.id
 
 
-                        }
+                    }
 
                     Notice.find(qObj).populate("attachments","url").populate("toUser","username").populate("toGroup","name").exec(function (errNotices,resNotices) {
 
@@ -2409,14 +2404,14 @@ RemoveNotice = function (req,company,tenant,callbackResult) {
                 if(user)
                 {
                     var qObj =
-                        {
-                            company:company,
-                            tenant:tenant,
-                            from:user.id,
-                            _id:new ObjectId(req.params.id).path
+                    {
+                        company:company,
+                        tenant:tenant,
+                        from:user.id,
+                        _id:new ObjectId(req.params.id).path
 
 
-                        }
+                    }
 
                     Notice.remove(qObj,function (errNotices,resNotices) {
 
