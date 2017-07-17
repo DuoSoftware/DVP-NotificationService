@@ -46,7 +46,8 @@ module.exports = {
         "domain": "HOST_NAME",
         "port": "HOST_NOTIFICATIONSERVICE_PORT",
         "version": "HOST_VERSION",
-        "logfilepath": "LOG4JS_CONFIG"
+        "logfilepath": "LOG4JS_CONFIG",
+        "crm": "SYS_CRM_ENABLE"
     },
     "Services" : {
         "accessToken": "HOST_TOKEN",
