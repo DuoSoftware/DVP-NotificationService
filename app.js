@@ -457,7 +457,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var message=req.body.Message;
     var ref=req.body.Ref;
 
-    Refs[topicID]=ref;
+
 
 
     var sender = req.body.From;
@@ -476,6 +476,12 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
     if(direction=="STATEFUL")
     {
+        if(req.body.Ref)
+        {
+            Refs[topicID]=req.body.Ref;
+            console.log("Reference added");
+        }
+
         callbackURL=req.body.CallbackURL;
         redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj){
             if(errTobj){
