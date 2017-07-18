@@ -11,17 +11,33 @@ module.exports = {
 
     "Redis":
     {
-        "ip": "SYS_REDIS_HOST",
-        "port": "SYS_REDIS_PORT",
-        "db":"SYS_REDIS_DB"
-
-    },
-    "Security":
-    {
+        "mode":"SYS_REDIS_MODE",
         "ip": "SYS_REDIS_HOST",
         "port": "SYS_REDIS_PORT",
         "user": "SYS_REDIS_USER",
-        "password": "SYS_REDIS_PASSWORD"
+        "db":"SYS_REDIS_DB",
+        "password": "SYS_REDIS_PASSWORD",
+        "sentinels":{
+            "hosts": "SYS_REDIS_SENTINEL_HOSTS",
+            "port":"SYS_REDIS_SENTINEL_PORT",
+            "name":"SYS_REDIS_SENTINEL_NAME"
+        }
+
+    },
+
+    "Security":
+    {
+
+        "ip": "SYS_REDIS_HOST",
+        "port": "SYS_REDIS_PORT",
+        "user": "SYS_REDIS_USER",
+        "password": "SYS_REDIS_PASSWORD",
+        "mode":"SYS_REDIS_MODE",
+        "sentinels":{
+            "hosts": "SYS_REDIS_SENTINEL_HOSTS",
+            "port":"SYS_REDIS_SENTINEL_PORT",
+            "name":"SYS_REDIS_SENTINEL_NAME"
+        }
 
     },
 
@@ -30,7 +46,8 @@ module.exports = {
         "domain": "HOST_NAME",
         "port": "HOST_NOTIFICATIONSERVICE_PORT",
         "version": "HOST_VERSION",
-        "logfilepath": "LOG4JS_CONFIG"
+        "logfilepath": "LOG4JS_CONFIG",
+        "crm": "SYS_CRM_ENABLE"
     },
     "Services" : {
         "accessToken": "HOST_TOKEN",
