@@ -457,7 +457,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var message=req.body.Message;
     var ref=req.body.Ref;
 
-    Refs[topicID]=ref;
+    //Refs[topicID]=ref;
 
 
     var sender = req.body.From;
