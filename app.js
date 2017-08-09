@@ -2162,7 +2162,6 @@ console.log("Requested user "+req.user.iss);
                                             from:req.user.iss,
                                             title:messageData.title,
                                             message:messageData.message,
-                                            message:messageData.message,
                                             attachments:messageData.attachments,
                                             priority:messageData.priority,
                                             company:company,
