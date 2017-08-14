@@ -455,6 +455,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var topicID=TopicIdGenerator();
     var direction=req.body.Direction;
     var message=req.body.Message;
+    message = decodeURIComponent(message);
     var ref=req.body.Ref;
 
     //Refs[topicID]=ref;
@@ -583,7 +584,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var callObject = {};
     //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
 
-    message = decodeURIComponent(message);
+
     console.log("Message is "+message);
     var messageList = message.split('|');
 
