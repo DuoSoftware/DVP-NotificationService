@@ -455,6 +455,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var topicID=TopicIdGenerator();
     var direction=req.body.Direction;
     var message=req.body.Message;
+    message = decodeURIComponent(message);
     var ref=req.body.Ref;
 
     //Refs[topicID]=ref;
@@ -541,9 +542,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                 res.end("Message is not stored");
             }
 
-
-
-
         }else {
 
             logger.error('No user available in room', err);
@@ -560,7 +558,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                     }
                 });
             }
-            else {
+            else if(req.body && req.body.isPersist){
                 DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
 
                     if (errSave) {
@@ -572,6 +570,9 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                         res.end("Message saved until related client is online");
                     }
                 });
+            }else{
+
+                console.log("No Message doesnt persists due to no persists requested.......");
             }
 
 
@@ -582,6 +583,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var isCallEvent = false;
     var callObject = {};
     //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
+
 
     console.log("Message is "+message);
     var messageList = message.split('|');
