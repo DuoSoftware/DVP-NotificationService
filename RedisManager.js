@@ -6,6 +6,7 @@ var config = require('config');
 var port = config.Redis.port || 3000;
 //var client = redis.createClient(port,config.Redis.ip);
 var uuid = require('node-uuid');
+var util = require('util');
 //var io = require('socket.io')(config.Host.port);
 
 var redisip = config.Redis.ip;
@@ -125,6 +126,54 @@ var SocketObjectManager = function(TopicID,socketID,clientID,direction,From,clbk
 
 };
 
+
+var SetReferenceObject = function(company, tenant, topic, ttl, obj, callback){
+
+    var key = util.format("%d:%d:NOTIFICATION:REFERENCE:%s", tenant, company, topic);
+    var stringObj = JSON.stringify(obj);
+
+    client.set(key,stringObj, function (errSet, resSet) {
+        if (errSet) {
+            callback(errSet, undefined);
+        }
+        else {
+            if (resSet == "" || !resSet || resSet == "NULL") {
+                callback(new Error("Invalid key to Update " + key), undefined);
+            }
+            else {
+                console.log("value found ......");
+                TouchSession(key, ttl);
+                callback(undefined, resSet);
+            }
+        }
+    });
+
+};
+
+
+var GetReferenceObject = function(company, tenant, topic, ttl,  callback){
+
+    var key = util.format("%d:%d:NOTIFICATION:REFERENCE:%s", tenant, company, topic);
+
+    client.get(key, function (errSet, resSet) {
+        if (errSet) {
+            callback(errSet, undefined);
+        }
+        else {
+            if (resSet == "" || !resSet || resSet == "NULL") {
+                callback(new Error("Invalid Key to Get " + key), undefined);
+            }
+            else {
+                console.log("yap...............................");
+                callback(undefined, JSON.parse(resSet));
+            }
+        }
+    });
+
+};
+
+
+
 var SocketFinder = function(TopicID,ttl,callback)
 {
     try {
@@ -145,8 +194,7 @@ var SocketFinder = function(TopicID,ttl,callback)
 
             }
         });
-    } catch (e)
-    {
+    } catch (e) {
         callback(e,undefined);
     }
 };
@@ -240,13 +288,13 @@ var SocketObjectUpdater = function(TopicID,SocketID,callback)
 
 };
 
-var TokenObjectCreator = function(topicID,clientID,direction,sender,resURL,ttl,callback)
+var TokenObjectCreator = function(topicID,clientID,direction,reference,sender,resURL,ttl,callback)
 {
     console.log("Token Object creation started");
     try {
         var key = "notification:" + topicID;
 //notification:topic
-        client.hmset(key, ["From", sender, "Client", clientID, "Direction", direction, "Callback", resURL], function (errHmset, resHmset) {
+        client.hmset(key, ["From", sender, "Client", clientID, "Reference", reference, "Direction", direction, "Callback", resURL], function (errHmset, resHmset) {
             if (errHmset) {
                 callback(errHmset, undefined);
             }
@@ -336,7 +384,7 @@ var ResponseUrlPicker = function(topicID,ttl,callback)
         var key = "notification:" + topicID;
 
 
-        client.hmget(key, "Direction", "Callback", function (errGet, resGet) {
+        client.hmget(key, "Direction", "Callback", "Reference", function (errGet, resGet) {
             if (errGet) {
                 callback(errGet, undefined);
             }
@@ -999,6 +1047,11 @@ module.exports.RecordUserServer = RecordUserServer;
 module.exports.GetClientsServer = GetClientsServer;
 
 
+module.exports.GetReferenceObject =GetReferenceObject;
+module.exports.SetReferenceObject = SetReferenceObject;
+
+
+
 
 module.exports.ClientLocationDataRemover = ClientLocationDataRemover;
 module.exports.SessionRemover = SessionRemover;
@@ -1014,6 +1067,7 @@ module.exports.QueryKeySubscriberPicker = QueryKeySubscriberPicker;
 module.exports.QuerySubscriberRecorder = QuerySubscriberRecorder;
 module.exports.LocationListPicker = LocationListPicker;
 module.exports.QueryUnsubscriber = QueryUnsubscriber;
+
 
 
 

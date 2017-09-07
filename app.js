@@ -208,7 +208,7 @@ RestServer.use(restify.queryParser());
 RestServer.use(jwt({secret: secret.Secret}));
 
 
-var Refs=new Array();
+//var Refs=new Array();
 
 //var newSock;
 
@@ -350,6 +350,7 @@ io.sockets.on('connection',socketioJwt.authorize({
                 {
                     var direction = resURL[0];
                     var URL =resURL[1];
+                    var reference = resURL[2];
 
                     console.log("URL "+URL);
                     console.log("DIRECTION "+direction);
@@ -364,7 +365,9 @@ io.sockets.on('connection',socketioJwt.authorize({
                         {
                             var replyObj={
                                 Reply:data,
-                                Ref:Refs[clientTopic]
+                                Topic: clientTopic,
+                                Ref: reference
+                                //Ref:Refs[clientTopic]
                             };
 
                             console.log("Reply to sender .... "+JSON.stringify(replyObj));
@@ -455,6 +458,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var topicID=TopicIdGenerator();
     var direction=req.body.Direction;
     var message=req.body.Message;
+    message = decodeURIComponent(message);
     var ref=req.body.Ref;
 
     //Refs[topicID]=ref;
@@ -479,12 +483,21 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     {
         if(req.body.Ref)
         {
-            Refs[topicID]=req.body.Ref;
+           // Refs[topicID]=req.body.Ref;
+            //redisManager.SetReferenceObject(Company,Tenant,topicID,req.body.Ref,3600,function(err, refobj){
+            //
+            //    if(err){
+            //
+            //        logger.error("Set reference object failed....", err);
+            //    }
+            //
+            //});
+
             console.log("Reference added");
         }
 
         callbackURL=req.body.CallbackURL;
-        redisManager.TokenObjectCreator(topicID,clientID,direction,sender,callbackURL,TTL,function(errTobj,resTobj){
+        redisManager.TokenObjectCreator(topicID,clientID,direction,ref,sender,callbackURL,TTL,function(errTobj,resTobj){
             if(errTobj){
                 logger.error('Set TokenObjectCreator Failed :: ' + errTobj);
             }
@@ -541,9 +554,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                 res.end("Message is not stored");
             }
 
-
-
-
         }else {
 
             logger.error('No user available in room', err);
@@ -560,7 +570,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                     }
                 });
             }
-            else {
+            else if(req.body && req.body.isPersist){
                 DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
 
                     if (errSave) {
@@ -572,6 +582,9 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                         res.end("Message saved until related client is online");
                     }
                 });
+            }else{
+
+                console.log("No Message doesnt persists due to no persists requested.......");
             }
 
 
@@ -582,6 +595,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var isCallEvent = false;
     var callObject = {};
     //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
+
 
     console.log("Message is "+message);
     var messageList = message.split('|');
@@ -715,6 +729,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/reply',autho
                 {
                     var direction = resURL[0];
                     var URL =resURL[1];
+                    var reference = resURL[2];
 
                     console.log("URL "+URL);
                     console.log("DIRECTION "+direction);
@@ -723,7 +738,9 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/reply',autho
                     {
                         var replyObj={
                             Reply:req.body,
-                            Ref:Refs[clientTopic]
+                            Topic: clientTopic,
+                            Ref: reference
+                            //Ref:Refs[clientTopic]
                         };
 
                         console.log("Reply to sender .... "+JSON.stringify(replyObj));
@@ -1608,7 +1625,7 @@ QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
         var eventUuid = callbackObj.eventUuid;
 
 
-        Refs[topicID] = ref;
+        //Refs[topicID] = ref;
 
         if (direction == "STATEFUL") {
             callbackURL = callbackObj.CallbackURL;
@@ -1616,7 +1633,7 @@ QueuedInitiateMessageSender = function (messageObj,socketObj,callback) {
         var sender = From;
 
 
-        redisManager.TokenObjectCreator(topicID, clientID, direction, sender, callbackURL, TTL, function (errTobj, resTobj) {
+        redisManager.TokenObjectCreator(topicID, clientID, direction,ref, sender, callbackURL, TTL, function (errTobj, resTobj) {
             if (errTobj) {
                 console.log("Error in TokenObject creation " + errTobj);
                 //res.end("Error in TokenObject creation "+errTobj);
