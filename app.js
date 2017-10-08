@@ -548,17 +548,23 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
                         if (errSave) {
                             console.log("Error in Message Saving ", errSave);
-                            res.end();
+                            var jsonString = messageFormatter.FormatMessage(errSave, 'Error in messege persistance', false, undefined);
+                            res.end(jsonString);
                         }
                         else {
                             console.log("Message saving succeeded ");
-                            res.end("Message saved until related client is online");
+
+                            var jsonString = messageFormatter.FormatMessage(undefined, 'Message saved until related client is online', true, undefined);
+                            res.end(jsonString);
+
+                           // res.end("Message saved until related client is online");
                         }
                     });
                 }
                 else {
-                    console.log("Message is not stored");
-                    res.end("Message is not stored");
+                    var jsonString = messageFormatter.FormatMessage(undefined, 'Message is not stored', true, undefined);
+                    res.end(jsonString);
+                    //res.end("Message is not stored");
                 }
 
             } else {
@@ -569,11 +575,18 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                     DBController.InboxMessageSender(req, function (errInbox, resInbox) {
                         if (errInbox) {
                             console.log("Error in Message Saving ", errInbox);
-                            res.end();
+                            var jsonString = messageFormatter.FormatMessage(errInbox, 'Message is not stored due to inbox error', false, undefined);
+                            res.end(jsonString);
+
+                            //res.end();
                         }
                         else {
                             console.log("Message saving succeeded ");
-                            res.end("Message saved to related client's inbox");
+
+                            var jsonString = messageFormatter.FormatMessage(undefined, 'Message saved to related client\'s inbox', true, undefined);
+                            res.end(jsonString);
+
+                            //res.end("Message saved to related client's inbox");
                         }
                     });
                 }
@@ -582,11 +595,17 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
                         if (errSave) {
                             console.log("Error in Message Saving ", errSave);
-                            res.end();
+
+                            var jsonString = messageFormatter.FormatMessage(errSave, 'Error in Message Saving for persistance message', false, undefined);
+                            res.end(jsonString);
+
+                            //res.end();
                         }
                         else {
                             console.log("Message saved until related client is online");
-                            res.end("Message saved until related client is online");
+                            var jsonString = messageFormatter.FormatMessage(undefined, 'Message saved until related client is online', true, undefined);
+                            res.end(jsonString);
+                            //res.end("Message saved until related client is online");
                         }
                     });
                 } else {
@@ -703,6 +722,11 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     }else{
 
         io.volatile.emit(eventName, msgObj);
+
+        var jsonString = messageFormatter.FormatMessage(undefined, 'Messege broadcast to all available sockets', true, undefined);
+        res.end(jsonString);
+
+        //res.end();
     }
 
 
