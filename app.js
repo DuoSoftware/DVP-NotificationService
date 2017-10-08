@@ -510,16 +510,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
         });
     }
 
-    GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
-        if(errGnotf)
-        {
-            console.log("Error in Google notifications:  "+errGnotf);
-        }
-        else
-        {
-            console.log("Success. Google notifications sent:  "+resGnotf);
-        }
-    });
+
 
     if(eventName == 'message'){
 
@@ -532,170 +523,190 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     console.log("Event Message : " + msgObj);
     console.log("Event User : " + clientID);
 
+    if(clientID) {
 
-    io.sockets.adapter.clients( [clientID], function (err, clients) {
-        logger.info('io.sockets.adapter.clients result :: clients :: '+ JSON.stringify(clients) +' :: err :: '+ err);
-        if (!err && (Array.isArray(clients) && clients.length > 0) ) {
-
-
-            io.to(clientID).emit(eventName, msgObj);
-            console.log("Notification sent : " + JSON.stringify(msgObj));
-            if(req.body.isPersist)
+        GooglePushMessageSender(clientID,msgObj, function (errGnotf,resGnotf) {
+            if(errGnotf)
             {
-                DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
-
-                    if (errSave) {
-                        console.log("Error in Message Saving ", errSave);
-                        res.end();
-                    }
-                    else {
-                        console.log("Message saving succeeded ");
-                        res.end("Message saved until related client is online");
-                    }
-                });
+                console.log("Error in Google notifications:  "+errGnotf);
             }
             else
             {
-                console.log("Message is not stored");
-                res.end("Message is not stored");
+                console.log("Success. Google notifications sent:  "+resGnotf);
+            }
+        });
+
+        io.sockets.adapter.clients( [clientID], function (err, clients) {
+            logger.info('io.sockets.adapter.clients result :: clients :: ' + JSON.stringify(clients) + ' :: err :: ' + err);
+            if (!err && (Array.isArray(clients) && clients.length > 0)) {
+
+
+                io.to(clientID).emit(eventName, msgObj);
+                console.log("Notification sent : " + JSON.stringify(msgObj));
+                if (req.body.isPersist) {
+                    DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+
+                        if (errSave) {
+                            console.log("Error in Message Saving ", errSave);
+                            res.end();
+                        }
+                        else {
+                            console.log("Message saving succeeded ");
+                            res.end("Message saved until related client is online");
+                        }
+                    });
+                }
+                else {
+                    console.log("Message is not stored");
+                    res.end("Message is not stored");
+                }
+
+            } else {
+
+                logger.error('No user available in room', err);
+
+                if (inboxMode) {
+                    DBController.InboxMessageSender(req, function (errInbox, resInbox) {
+                        if (errInbox) {
+                            console.log("Error in Message Saving ", errInbox);
+                            res.end();
+                        }
+                        else {
+                            console.log("Message saving succeeded ");
+                            res.end("Message saved to related client's inbox");
+                        }
+                    });
+                }
+                else if (req.body && req.body.isPersist) {
+                    DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+
+                        if (errSave) {
+                            console.log("Error in Message Saving ", errSave);
+                            res.end();
+                        }
+                        else {
+                            console.log("Message saved until related client is online");
+                            res.end("Message saved until related client is online");
+                        }
+                    });
+                } else {
+
+                    console.log("No Message doesnt persists due to no persists requested.......");
+                }
+
+
             }
 
-        }else {
+        });
 
-            logger.error('No user available in room', err);
 
-            if (inboxMode) {
-                DBController.InboxMessageSender(req, function (errInbox, resInbox) {
-                    if (errInbox) {
-                        console.log("Error in Message Saving ", errInbox);
-                        res.end();
-                    }
-                    else {
-                        console.log("Message saving succeeded ");
-                        res.end("Message saved to related client's inbox");
-                    }
-                });
-            }
-            else if(req.body && req.body.isPersist){
-                DBController.PersistenceMessageRecorder(req, function (errSave, resSave) {
+        ////////////////////////////////////////////////on special call status events//////////
+        var isCallEvent = false;
+        var callObject = {};
+        //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
 
-                    if (errSave) {
-                        console.log("Error in Message Saving ", errSave);
-                        res.end();
-                    }
-                    else {
-                        console.log("Message saved until related client is online");
-                        res.end("Message saved until related client is online");
-                    }
-                });
-            }else{
 
-                console.log("No Message doesnt persists due to no persists requested.......");
+        console.log("Message is "+message);
+        var messageList = message.split('|');
+
+        console.log("Message list object is" + JSON.stringify(messageList) );
+
+        console.log("Message list object length is " + messageList.length );
+
+        if (eventName == "agent_connected") {
+
+
+            isCallEvent = true;
+            if (Array.isArray(messageList) && messageList.length > 9) {
+
+
+                callObject.action = "answered";
+                callObject.session = messageList[1];
+                callObject.from = messageList[3];
+                callObject.to = messageList[5];
+                callObject.profile = messageList[9];
             }
 
+        }
+        else if (eventName == "agent_disconnected") {
+
+            isCallEvent = true;
+
+            if (Array.isArray(messageList) && messageList.length > 11) {
+
+                callObject.action = "hungup";
+                callObject.session = messageList[1];
+                callObject.from = messageList[3];
+                callObject.to = messageList[5];
+                callObject.profile = messageList[9];
+                var startTime = messageList[10];
+                var utcSeconds = parseInt(startTime)/1000000;
+                var m = moment.unix(utcSeconds);
+                var date = m.format("YYYY-MM-DD HH:mm:ss");
+
+
+                callObject.starttime = date;
+                callObject.direction = messageList[7];
+                callObject.duration = messageList[11];
+                callObject.description = messageList[8];
+
+            }
 
         }
-    });
+        else if (eventName == "agent_found") {
 
-    ////////////////////////////////////////////////on special call status events//////////
-    var isCallEvent = false;
-    var callObject = {};
-    //msg = switch_mprintf("agent_found|%q|%q|%q|%q|%q|%q|inbound|%q", h->member_uuid, skill, cid_number, cid_name, calling_number, h->skills, engagement_type);
+            isCallEvent = true;
 
-
-    console.log("Message is "+message);
-    var messageList = message.split('|');
-
-    console.log("Message list object is" + JSON.stringify(messageList) );
-
-    console.log("Message list object length is " + messageList.length );
-
-    if (eventName == "agent_connected") {
+            if (Array.isArray(messageList) && messageList.length > 9) {
 
 
-        isCallEvent = true;
-        if (Array.isArray(messageList) && messageList.length > 9) {
+                console.log("Agents found crm ready to call .....");
+                callObject.action = "received";
+                callObject.session = messageList[1];
+                callObject.from = messageList[3];
+                callObject.to = messageList[5];
+                callObject.profile = messageList[9];
+            }
 
-
-            callObject.action = "answered";
-            callObject.session = messageList[1];
-            callObject.from = messageList[3];
-            callObject.to = messageList[5];
-            callObject.profile = messageList[9];
         }
+        else if (eventName == "agent_rejected") {
 
-    }
-    else if (eventName == "agent_disconnected") {
+            isCallEvent = true;
 
-        isCallEvent = true;
+            if (Array.isArray(messageList) && messageList.length > 11) {
 
-        if (Array.isArray(messageList) && messageList.length > 11) {
+                callObject.action = "missed";
+                callObject.session = messageList[1];
+                callObject.from = messageList[3];
+                callObject.to = messageList[5];
+                callObject.profile = messageList[9];
 
-            callObject.action = "hungup";
-            callObject.session = messageList[1];
-            callObject.from = messageList[3];
-            callObject.to = messageList[5];
-            callObject.profile = messageList[9];
-            var startTime = messageList[10];
-            var utcSeconds = parseInt(startTime)/1000000;
-            var m = moment.unix(utcSeconds);
-            var date = m.format("YYYY-MM-DD HH:mm:ss");
+                var startTime = messageList[11];
+                var utcSeconds = parseInt(startTime)/1000000;
+                var m = moment.unix(utcSeconds);
+                var date = m.format("YYYY-MM-DD HH:mm:ss");
 
-
-            callObject.starttime = date;
-            callObject.direction = messageList[7];
-            callObject.duration = messageList[11];
-            callObject.description = messageList[8];
+                callObject.missedtime =  date;
+                callObject.sequential = true;
+            }
 
         }
 
-    }
-    else if (eventName == "agent_found") {
+        var callcrm = config.Host.crm;
 
-        isCallEvent = true;
+        if(isCallEvent && callcrm === "true"){
 
-        if (Array.isArray(messageList) && messageList.length > 9) {
-
-
-            console.log("Agents found crm ready to call .....");
-            callObject.action = "received";
-            callObject.session = messageList[1];
-            callObject.from = messageList[3];
-            callObject.to = messageList[5];
-            callObject.profile = messageList[9];
+            console.log("Call Object is "+ JSON.stringify(callObject));
+            CallCRM(Company,Tenant,callObject);
         }
 
-    }
-    else if (eventName == "agent_rejected") {
+    }else{
 
-        isCallEvent = true;
-
-        if (Array.isArray(messageList) && messageList.length > 11) {
-
-            callObject.action = "missed";
-            callObject.session = messageList[1];
-            callObject.from = messageList[3];
-            callObject.to = messageList[5];
-            callObject.profile = messageList[9];
-
-            var startTime = messageList[11];
-            var utcSeconds = parseInt(startTime)/1000000;
-            var m = moment.unix(utcSeconds);
-            var date = m.format("YYYY-MM-DD HH:mm:ss");
-
-            callObject.missedtime =  date;
-            callObject.sequential = true;
-        }
-
+        io.volatile.emit(eventName, msgObj);
     }
 
-    var callcrm = config.Host.crm;
 
-    if(isCallEvent && callcrm === "true"){
 
-        console.log("Call Object is "+ JSON.stringify(callObject));
-        CallCRM(Company,Tenant,callObject);
-    }
 
 
 
