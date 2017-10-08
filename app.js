@@ -198,6 +198,7 @@ restify.CORS.ALLOW_HEADERS.push('authorization');
 restify.CORS.ALLOW_HEADERS.push('eventname');
 restify.CORS.ALLOW_HEADERS.push('eventuuid');
 restify.CORS.ALLOW_HEADERS.push('appkey');
+restify.CORS.ALLOW_HEADERS.push('eventlevel');
 RestServer.use(restify.CORS());
 RestServer.use(restify.fullResponse());
 RestServer.use(restify.bodyParser());
