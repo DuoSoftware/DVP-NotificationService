@@ -447,6 +447,10 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var clientID=req.body.To;
     var eventName=req.headers.eventname;
     var eventUuid=req.headers.eventuuid;
+    var eventlevel = "normal";
+    if(req.headers.eventlevel){
+        eventlevel = req.headers.eventlevel;
+    }
     var msgSenderArray=[];
     if(!isNaN(req.body.Timeout))
     {
@@ -475,6 +479,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
         "TopicKey":topicID,
         "Message":message,
         "eventName":eventName,
+        "eventLevel": eventlevel,
         "From":sender
     };
 
@@ -787,6 +792,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/reply',autho
     }
 
 });
+
 
 RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
