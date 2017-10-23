@@ -16,6 +16,7 @@ var redisManager=require('./RedisManager.js');
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
 var DBController = require('./DBController.js');
 var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
+var isJSON = require('is-json');
 
 
 var secret = require('dvp-common/Authentication/Secret.js');
@@ -463,7 +464,12 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var topicID=TopicIdGenerator();
     var direction=req.body.Direction;
     var message=req.body.Message;
-    message = decodeURIComponent(message);
+
+    if(!isJSON(message)){
+        message = decodeURIComponent(message);
+    }
+
+
     var ref=req.body.Ref;
 
     //Refs[topicID]=ref;
@@ -728,10 +734,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
         //res.end();
     }
-
-
-
-
 
 
     return next();
