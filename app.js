@@ -465,7 +465,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var direction=req.body.Direction;
     var message=req.body.Message;
 
-    if(!isJSON(message)){
+    if(typeof message === 'string'){
         message = decodeURIComponent(message);
     }
 
