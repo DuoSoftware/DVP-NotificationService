@@ -526,7 +526,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
 
 
     console.log("Event Name : " + eventName);
-    console.log("Event Message : " + msgObj);
+    console.log("Event Message : " + JSON.stringify(msgObj));
     console.log("Event User : " + clientID);
 
     if(clientID) {
