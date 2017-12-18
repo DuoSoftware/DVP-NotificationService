@@ -616,7 +616,9 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                     });
                 } else {
 
-                    console.log("No Message doesnt persists due to no persists requested.......");
+                    console.log("No Message does not persists due to no persists requested.......");
+                    var jsonString = messageFormatter.FormatMessage(new Error("No Message does not persists due to no persists requested"), "No Message does not persists due to no persists requested", false, undefined);
+                    res.end(jsonString);
                 }
 
 
