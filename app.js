@@ -4,7 +4,6 @@
 
 var config=require('config');
 var restify = require('restify');
-var DbConn = require('dvp-dbmodels');
 var httpReq = require('request');
 var util = require('util');
 var uuid = require('node-uuid');
@@ -16,7 +15,6 @@ var redisManager=require('./RedisManager.js');
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
 var DBController = require('./DBController.js');
 var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
-var isJSON = require('is-json');
 
 
 var secret = require('dvp-common/Authentication/Secret.js');
