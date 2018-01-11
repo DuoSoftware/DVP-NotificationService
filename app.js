@@ -2354,9 +2354,6 @@ GetStoredNotices = function (req,company,tenant,callbackResult) {
 GetPersistenceMessages = function (req,company,tenant,callbackResult) {
 
 
-    DBController.
-
-
         User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
 
             if(err)
