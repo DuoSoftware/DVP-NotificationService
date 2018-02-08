@@ -4,7 +4,6 @@
 
 var config=require('config');
 var restify = require('restify');
-var DbConn = require('dvp-dbmodels');
 var httpReq = require('request');
 var util = require('util');
 var uuid = require('node-uuid');
@@ -16,7 +15,6 @@ var redisManager=require('./RedisManager.js');
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
 var DBController = require('./DBController.js');
 var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
-var isJSON = require('is-json');
 
 
 var secret = require('dvp-common/Authentication/Secret.js');
@@ -616,7 +614,9 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                     });
                 } else {
 
-                    console.log("No Message doesnt persists due to no persists requested.......");
+                    console.log("No Message does not persists due to no persists requested.......");
+                    var jsonString = messageFormatter.FormatMessage(new Error("No Message does not persists due to no persists requested"), "No Message does not persists due to no persists requested", false, undefined);
+                    res.end(jsonString);
                 }
 
 
@@ -2352,9 +2352,6 @@ GetStoredNotices = function (req,company,tenant,callbackResult) {
 };
 
 GetPersistenceMessages = function (req,company,tenant,callbackResult) {
-
-
-    DBController.
 
 
         User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {

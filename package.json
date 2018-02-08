@@ -6,8 +6,8 @@
   "dependencies": {
     "async": "^1.5.2",
     "config": "^1.16.0",
-    "dvp-common": "^0.8.4",
-    "dvp-dbmodels": "^1.1.8",
+    "dvp-common": "^1.1.0",
+    "dvp-dbmodels": "^2.1.0",
     "dvp-mongomodels": "^4.6.3",
     "ioredis": "^3.1.1",
     "ip": "^1.1.0",
