@@ -4,7 +4,6 @@
 
 var config=require('config');
 var restify = require('restify');
-var DbConn = require('dvp-dbmodels');
 var httpReq = require('request');
 var util = require('util');
 var uuid = require('node-uuid');
@@ -16,7 +15,6 @@ var redisManager=require('./RedisManager.js');
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
 var DBController = require('./DBController.js');
 var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
-var isJSON = require('is-json');
 
 
 var secret = require('dvp-common/Authentication/Secret.js');
@@ -171,6 +169,7 @@ var MyID = config.ID;
 var Notice = require('dvp-mongomodels/model/Notice').Notice;
 var User = require('dvp-mongomodels/model/User');
 var UserGroup = require('dvp-mongomodels/model/UserGroup').UserGroup;
+var UserAccount = require('dvp-mongomodels/model/UserAccount');
 
 
 var RestServer = restify.createServer({
@@ -616,7 +615,9 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
                     });
                 } else {
 
-                    console.log("No Message doesnt persists due to no persists requested.......");
+                    console.log("No Message does not persists due to no persists requested.......");
+                    var jsonString = messageFormatter.FormatMessage(new Error("No Message does not persists due to no persists requested"), "No Message does not persists due to no persists requested", false, undefined);
+                    res.end(jsonString);
                 }
 
 
@@ -2004,21 +2005,21 @@ HandleNoticeMessage = function (req,company,tenant,callbackResult) {
     var fromUser;
 
 console.log("Requested user "+req.user.iss);
-    User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,owner) {
+    UserAccount.findOne({company:company,tenant:tenant,user:req.user.iss,active:true}).populate('userref' ,'-password').exec(function (err,owner) {
 
         if(err)
         {
             var processStatus =
             {
                 Owner:"Error in searching owner"
-            }
+            };
             callbackResult(null,processStatus);
         }
         else
         {
             if(owner)
             {
-                fromUser=owner.id;
+                fromUser=owner.userref.id;
 
                 userListArray.push(function createContact(listCallBack) {
 
@@ -2034,13 +2035,13 @@ console.log("Requested user "+req.user.iss);
 
                         messageData.toUser.map(function (user) {
 
-                            clientObj.$or.push({username:user});
+                            clientObj.$or.push({user:user});
 
                         });
 
                         try
                         {
-                            User.find(clientObj,'_id username', function (err,users) {
+                            UserAccount.find(clientObj).populate('userref' ,'-password _id username').exec(function (err,userAccounts) {
 
                                 if(err)
                                 {
@@ -2049,6 +2050,9 @@ console.log("Requested user "+req.user.iss);
                                 }
                                 else
                                 {
+                                    var users = userAccounts.map(function (userAcc) {
+                                        return userAcc.userref;
+                                    });
                                     if(users)
                                     {
                                         console.log("Users found");
@@ -2107,10 +2111,10 @@ console.log("Requested user "+req.user.iss);
                                     var groupObj={
                                         company:company,
                                         tenant:tenant,
-                                        Active:true,
+                                        active:true,
                                         $or:[]
 
-                                    }
+                                    };
 
                                     groups.map(function (item) {
                                         groupList.push(item);
@@ -2118,7 +2122,7 @@ console.log("Requested user "+req.user.iss);
                                         console.log(JSON.stringify(new ObjectId(item)));
                                     });
 
-                                    User.find(groupObj,'_id username', function (err,Users) {
+                                    UserAccount.find(groupObj).populate('userref' ,'-password _id username').exec(function (err,UserAccounts) {
 
                                         if(err)
                                         {
@@ -2129,6 +2133,10 @@ console.log("Requested user "+req.user.iss);
                                         }
                                         else
                                         {
+                                            var Users = UserAccounts.map(function (userAcc) {
+                                                return userAcc.userref;
+                                            });
+
                                             if(Users)
                                             {
                                                 console.log("group users found");
@@ -2297,7 +2305,7 @@ GetStoredNotices = function (req,company,tenant,callbackResult) {
 
     if(req.user.iss)
     {
-        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+        UserAccount.findOne({company:company,tenant:tenant,user:req.user.iss,active:true}).populate('userref' ,'-password').exec(function (err,user) {
 
             if(err)
             {
@@ -2311,7 +2319,7 @@ GetStoredNotices = function (req,company,tenant,callbackResult) {
                     {
                         company:company,
                         tenant:tenant,
-                        $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
+                        $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.userref.id]}}]
 
 
                     }
@@ -2354,10 +2362,10 @@ GetStoredNotices = function (req,company,tenant,callbackResult) {
 GetPersistenceMessages = function (req,company,tenant,callbackResult) {
 
 
-    DBController.
+    // DBController.
+    //
 
-
-        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+        UserAccount.findOne({company:company,tenant:tenant,user:req.user.iss,active:true}).populate('userref', 'password').exec(function (err,user) {
 
             if(err)
             {
@@ -2371,10 +2379,10 @@ GetPersistenceMessages = function (req,company,tenant,callbackResult) {
                         {
                             company:company,
                             tenant:tenant,
-                            $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.id]}}]
+                            $or:[{toUser:null , toGroup:null},{toUser:{$in:[user.userref.id]}}]
 
 
-                        }
+                        };
 
 
 
@@ -2408,7 +2416,7 @@ GetSubmitedNotices = function (req,company,tenant,callbackResult) {
 
     if(req.user.iss)
     {
-        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+        UserAccount.findOne({company:company,tenant:tenant,user:req.user.iss,active:true}).populate('userref', 'password').exec(function (err,user) {
 
             if(err)
             {
@@ -2422,10 +2430,10 @@ GetSubmitedNotices = function (req,company,tenant,callbackResult) {
                     {
                         company:company,
                         tenant:tenant,
-                        from:user.id
+                        from:user.userref.id
 
 
-                    }
+                    };
 
                     Notice.find(qObj).populate("attachments","url").populate("toUser","username").populate("toGroup","name").exec(function (errNotices,resNotices) {
 
@@ -2460,7 +2468,7 @@ RemoveNotice = function (req,company,tenant,callbackResult) {
 
     if(req.user.iss)
     {
-        User.findOne({company:company,tenant:tenant,username:req.user.iss,Active:true}, function (err,user) {
+        UserAccount.findOne({company:company,tenant:tenant,user:req.user.iss,active:true}).populate('userref', 'password').exec(function (err,user) {
 
             if(err)
             {
@@ -2474,7 +2482,7 @@ RemoveNotice = function (req,company,tenant,callbackResult) {
                     {
                         company:company,
                         tenant:tenant,
-                        from:user.id,
+                        from:user.userref.id,
                         _id:new ObjectId(req.params.id).path
 
 
