@@ -2041,7 +2041,7 @@ console.log("Requested user "+req.user.iss);
 
                         try
                         {
-                            UserAccount.find(clientObj).populate('userref' ,'-password _id username').exec(function (err,userAccounts) {
+                            UserAccount.find(clientObj).populate('userref').exec(function (err,userAccounts) {
 
                                 if(err)
                                 {
