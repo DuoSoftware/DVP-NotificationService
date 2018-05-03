@@ -6,7 +6,7 @@
 #CMD ["nodejs", "/usr/local/src/notificationservice/app.js"]
 
 #EXPOSE 8833
-FROM node:5.10.0
+FROM node:9.9.0
 ARG VERSION_TAG
 RUN git clone -b $VERSION_TAG https://github.com/DuoSoftware/DVP-NotificationService.git /usr/local/src/notificationservice
 RUN cd /usr/local/src/notificationservice;
