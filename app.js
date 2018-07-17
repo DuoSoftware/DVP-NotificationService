@@ -2,6 +2,7 @@
  * Created by Pawan on 11/4/2015.
  */
 
+var mongomodels = require('dvp-mongomodels');
 var config=require('config');
 var restify = require('restify');
 var httpReq = require('request');
@@ -218,7 +219,7 @@ var inboxMode=config.PERSISTENCY.inbox_mode;
 
 //Server listen
 
-var mongoip=config.Mongo.ip;
+/*var mongoip=config.Mongo.ip;
 var mongoport=config.Mongo.port;
 var mongodb=config.Mongo.dbname;
 var mongouser=config.Mongo.user;
@@ -283,7 +284,7 @@ process.on('SIGINT', function() {
         console.log('Mongoose default connection disconnected through app termination');
         process.exit(0);
     });
-});
+});*/
 
 
 
@@ -292,7 +293,7 @@ RestServer.listen(port, function () {
 
 });
 
-
+var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var ObjectId = Schema.ObjectId;
 
