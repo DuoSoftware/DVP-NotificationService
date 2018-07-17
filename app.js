@@ -2009,6 +2009,7 @@ console.log("Requested user "+req.user.iss);
 
         if(err)
         {
+            console.log("Error in searching Requester");
             var processStatus =
             {
                 Owner:"Error in searching owner"
@@ -2019,6 +2020,9 @@ console.log("Requested user "+req.user.iss);
         {
             if(owner)
             {
+
+                console.log("Requester found");
+
                 fromUser=owner.userref.id;
 
                 userListArray.push(function createContact(listCallBack) {
@@ -2041,6 +2045,7 @@ console.log("Requested user "+req.user.iss);
 
                         try
                         {
+
                             UserAccount.find(clientObj).populate('userref').exec(function (err,userAccounts) {
 
                                 if(err)
