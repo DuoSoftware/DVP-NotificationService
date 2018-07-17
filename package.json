@@ -1,0 +1,41 @@
+{
+  "name": "dvp-notificationservice",
+  "version": "1.0.0",
+  "description": "",
+  "main": "DBController.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DuoSoftware/DVP-NotificationService.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DuoSoftware/DVP-NotificationService/issues"
+  },
+  "homepage": "https://github.com/DuoSoftware/DVP-NotificationService#readme",
+  "dependencies": {
+    "config": "^1.30.0",
+    "dvp-common": "^1.5.2",
+    "dvp-dbmodels": "^3.0.3",
+    "dvp-mongomodels": "^5.1.1",
+    "ioredis": "^3.2.2",
+    "ip": "^1.1.5",
+    "is-json": "^2.0.1",
+    "moment": "^2.22.2",
+    "node-gcm": "^1.0.2",
+    "node-uuid": "^1.4.8",
+    "redis": "^2.8.0",
+    "request": "^2.87.0",
+    "restify": "^4.0.3",
+    "restify-jwt": "^0.4.0",
+    "socket.io": "^2.1.1",
+    "socket.io-client": "^2.1.1",
+    "socket.io-redis": "^5.2.0",
+    "socketio-jwt": "^4.5.0",
+    "util": "^0.11.0",
+    "validator": "^10.4.0"
+  }
+}
