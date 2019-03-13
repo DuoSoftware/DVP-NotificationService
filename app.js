@@ -837,7 +837,6 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/reply',autho
 RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:room',authorization({resource:"notification", action:"write"}),function(req,res,next)
 {
     console.log(req.params.room);
-    console.log("REQ BODY : " + JSON.stringify(req.body));
     if(!req.user.company || !req.user.tenant)
     {
         throw new Error("Invalid company or tenant");
@@ -857,6 +856,11 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:ro
         "roomName":req.params.room,
         "From":sender
     };
+    
+    if(req.body && req.body.Message)
+    {
+        msgObj.Message = req.body.Message;
+    }
 
     var uniqueRoomName = util.format('%d:%d:subscribe:%s', Tenant, Company, req.params.room);
     
