@@ -856,8 +856,15 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate/:ro
         "roomName":req.params.room,
         "From":sender
     };
+    
+    if(req.body && req.body.Message)
+    {
+        msgObj.Message = req.body.Message;
+    }
 
     var uniqueRoomName = util.format('%d:%d:subscribe:%s', Tenant, Company, req.params.room);
+    
+    console.log("SENDING EVENT TO ROOM : " + JSON.stringify(msgObj));
 
     io.to(uniqueRoomName).emit('room:event', msgObj);
 
