@@ -2126,11 +2126,12 @@ console.log("Requested user "+req.user.iss);
 
                                     groups.map(function (item) {
                                         groupList.push(item);
-                                        groupObj.$or.push({group:new ObjectId(item).path});
+                                        //groupObj.$or.push({group:new ObjectId(item).path});
+                                        groupObj.$or.push({group:item.id});
                                         console.log(JSON.stringify(new ObjectId(item)));
                                     });
 
-                                    UserAccount.find(groupObj).populate('userref' ,'-password _id username').exec(function (err,UserAccounts) {
+                                    UserAccount.find(groupObj).populate('userref' ,{password:0}).exec(function (err,UserAccounts) {
 
                                         if(err)
                                         {

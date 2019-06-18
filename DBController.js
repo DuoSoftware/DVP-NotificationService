@@ -1,12 +1,10 @@
 /**
  * Created by Pawan on 2/24/2016.
  */
-var mongoose = require('mongoose');
+
 var DbConn = require('dvp-dbmodels');
 var User = require('dvp-mongomodels/model/User');
 var InboxMessage = require('dvp-mongomodels/model/UserInbox').InboxMessage;
-var Schema = mongoose.Schema;
-var ObjectId = Schema.ObjectId;
 var httpReq = require('request');
 var util = require('util');
 var config=require('config');
