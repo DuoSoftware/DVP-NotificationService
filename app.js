@@ -464,6 +464,7 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
     var topicID=TopicIdGenerator();
     var direction=req.body.Direction;
     var message=req.body.Message;
+    var businessUnit = req.body.BusinessUnit
 
     if(typeof message === 'string'){
         message = decodeURIComponent(message);
@@ -487,7 +488,8 @@ RestServer.post('/DVP/API/:version/NotificationService/Notification/initiate',au
         "Message":message,
         "eventName":eventName,
         "eventLevel": eventlevel,
-        "From":sender
+        "From":sender,
+        "BusinessUnit": businessUnit
     };
 
 
