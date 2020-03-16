@@ -20,6 +20,7 @@
     "config": "^1.30.0",
     "dvp-common": "^1.5.2",
     "dvp-dbmodels": "^3.0.3",
+    "dvp-healthcheck": "^1.0.3",
     "dvp-mongomodels": "^5.1.1",
     "ioredis": "^3.2.2",
     "ip": "^1.1.5",

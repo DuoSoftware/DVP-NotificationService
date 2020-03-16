@@ -16,6 +16,7 @@ var redisManager=require('./RedisManager.js');
 var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
 var DBController = require('./DBController.js');
 var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
+var healthcheck = require('dvp-healthcheck/DBHealthChecker');
 
 
 var secret = require('dvp-common/Authentication/Secret.js');
@@ -441,6 +442,9 @@ io.sockets.on('connection',socketioJwt.authorize({
     });
 
 });
+    
+var hc = new healthcheck(RestServer, {redis: pubclient});
+hc.Initiate();
 
 
 // check and follow common format or res.end();
