@@ -69,13 +69,13 @@ module.exports = {
   {
     "inbox_mode":false
   },
-  "Mongo":
-  {
-    "ip":"",
-    "port":"27017",
-    "dbname":"",
-    "password":"",
-    "user":"duo"
+  "Mongo":{
+    ip: "",
+    port: "",
+    dbname: "",
+    password: "",
+    user: "",
+    type: "mongodb+srv",
   },
   "ID":"7",
   "SENDER":"",

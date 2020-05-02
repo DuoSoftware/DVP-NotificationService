@@ -21,7 +21,7 @@
     "dvp-common": "^1.5.2",
     "dvp-dbmodels": "^3.0.3",
     "dvp-healthcheck": "^1.0.3",
-    "dvp-mongomodels": "^5.1.1",
+    "dvp-mongomodels": "^6.1.0",
     "ioredis": "^3.2.2",
     "ip": "^1.1.5",
     "is-json": "^2.0.1",
