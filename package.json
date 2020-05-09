@@ -2,7 +2,7 @@
   "name": "dvp-notificationservice",
   "version": "1.0.0",
   "description": "",
-  "main": "DBController.js",
+  "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -20,7 +20,7 @@
     "config": "^1.30.0",
     "dvp-common": "^1.5.2",
     "dvp-dbmodels": "^3.0.3",
-    "dvp-healthcheck": "^1.0.3",
+    "dvp-healthcheck": "^1.0.6",
     "dvp-mongomodels": "^6.1.0",
     "ioredis": "^3.2.2",
     "ip": "^1.1.5",

@@ -3,6 +3,7 @@
  */
 
 var mongomodels = require('dvp-mongomodels');
+var dbModel = require('dvp-dbmodels');
 var config=require('config');
 var restify = require('restify');
 var httpReq = require('request');
@@ -219,7 +220,7 @@ RestServer.use(restify.acceptParser(RestServer.acceptable));
 RestServer.use(restify.queryParser());
 
 
-RestServer.use(jwt({secret: secret.Secret}));
+RestServer.use(jwt({secret: secret.Secret}).unless({path: ['/healthcheck']}));
 
 
 //var Refs=new Array();
@@ -442,8 +443,8 @@ io.sockets.on('connection',socketioJwt.authorize({
     });
 
 });
-    
-var hc = new healthcheck(RestServer, {redis: pubclient});
+
+var hc = new healthcheck(RestServer, {redis: pubclient, pg: dbModel.SequelizeConn, mongo:mongomodels.connection });
 hc.Initiate();
 
 
