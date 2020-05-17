@@ -62,7 +62,8 @@ module.exports = {
     "accessToken": "",
     "crmIntegrationHost": "",
     "crmIntegrationPort": "8831",
-    "crmIntegrationVersion": "1.0.0.0"
+    "crmIntegrationVersion": "1.0.0.0",
+    "dynamicPort" : false
   },
 
   "PERSISTENCY":

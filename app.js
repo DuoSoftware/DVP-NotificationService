@@ -2583,7 +2583,7 @@ function CallCRM(company, tenant, object) {
 
         var zohoserviceURL = util.format("http://%s/DVP/API/%s/Zoho/Integration/Emit", config.Services.crmIntegrationHost,
             config.Services.crmIntegrationVersion);
-        if (validator.isIP(config.Services.crmIntegrationHost))
+        if (config.Services.dynamicPort || validator.isIP(config.Services.crmIntegrationHost))
             zohoserviceURL = util.format("http://%s:%s/DVP/API/{2}/Zoho/Integration/Emit",
                 config.Services.crmIntegrationHost, config.Services.crmIntegrationPort, config.Services.crmIntegrationVersion, object.action);
 
