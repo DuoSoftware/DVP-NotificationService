@@ -10,7 +10,7 @@ var util = require('util');
 var config=require('config');
 var token=config.Token;
 
-var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
+var messageFormatter = require('dvp-common-lite/CommonMessageGenerator/ClientMessageJsonFormatter.js');
 
 var ServerPicker = function (SID,callback) {
 

@@ -14,16 +14,16 @@ var gcm = require('node-gcm');
 var moment = require('moment');
 var validator = require('validator');
 var redisManager=require('./RedisManager.js');
-var logger = require('dvp-common/LogHandler/CommonLogHandler.js').logger;
+var logger = require('dvp-common-lite/LogHandler/CommonLogHandler.js').logger;
 var DBController = require('./DBController.js');
-var messageFormatter = require('dvp-common/CommonMessageGenerator/ClientMessageJsonFormatter.js');
+var messageFormatter = require('dvp-common-lite/CommonMessageGenerator/ClientMessageJsonFormatter.js');
 var healthcheck = require('dvp-healthcheck/DBHealthChecker');
 
 
-var secret = require('dvp-common/Authentication/Secret.js');
+var secret = require('dvp-common-lite/Authentication/Secret.js');
 var socketioJwt =  require("socketio-jwt");
 var jwt = require('restify-jwt');
-var authorization = require('dvp-common/Authentication/Authorization.js');
+var authorization = require('dvp-common-lite/Authentication/Authorization.js');
 var adapter = require('socket.io-redis');
 
 var redis = require('ioredis');

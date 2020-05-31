@@ -19,6 +19,7 @@
   "dependencies": {
     "config": "^1.30.0",
     "dvp-common": "^1.5.2",
+    "dvp-common-lite": "^1.1.0",
     "dvp-dbmodels": "^3.0.3",
     "dvp-healthcheck": "^1.0.6",
     "dvp-mongomodels": "^6.1.0",
