@@ -76,7 +76,7 @@ module.exports = {
     dbname: "",
     password: "",
     user: "",
-    type: "mongodb+srv",
+    type: "mongodb",
   },
   "ID":"7",
   "SENDER":"",
