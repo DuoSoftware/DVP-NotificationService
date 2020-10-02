@@ -63,7 +63,7 @@ module.exports = {
     "crmIntegrationHost": "",
     "crmIntegrationPort": "8831",
     "crmIntegrationVersion": "1.0.0.0",
-    "dynamicPort" : true
+    "dynamicPort" : false
   },
 
   "PERSISTENCY":
