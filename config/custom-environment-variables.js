@@ -69,7 +69,32 @@ module.exports = {
         "port":"SYS_MONGO_PORT",
         "dbname":"SYS_MONGO_DB",
         "password":"SYS_MONGO_PASSWORD",
-        "user":"SYS_MONGO_USER"
+        "user":"SYS_MONGO_USER",
+        "type": "SYS_MONGO_TYPE"
+    },
+
+    "Services" : {
+        "accessToken": "HOST_TOKEN",
+        "resourceServiceHost": "SYS_RESOURCESERVICE_HOST",
+        "resourceServicePort": "SYS_RESOURCESERVICE_PORT",
+        "resourceServiceVersion": "SYS_RESOURCESERVICE_VERSION",
+        "uploadurl": "SYS_FILESERVICE_HOST",
+        "uploadport":"SYS_FILESERVICE_PORT",
+        "uploadurlVersion":"SYS_FILESERVICE_VERSION",
+
+        "interactionurl": "SYS_INTERACTIONS_HOST",
+        "interactionport": "SYS_INTERACTIONS_PORT",
+        "interactionversion":"SYS_INTERACTIONS_VERSION",
+
+
+        "cronurl": "SYS_SCHEDULEWORKER_HOST",
+        "cronport": "SYS_SCHEDULEWORKER_PORT",
+        "cronversion":"SYS_SCHEDULEWORKER_VERSION",
+
+
+        "ticketServiceHost": "SYS_LITETICKET_HOST",
+        "ticketServicePort":  "SYS_LITETICKET_PORT",
+        "ticketServiceVersion":  "SYS_LITETICKET_VERSION",
     },
     "ID":"SYS_NS_ID",
     "Token":"HOST_TOKEN"
