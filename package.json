@@ -19,11 +19,11 @@
   "dependencies": {
     "config": "^1.30.0",
     "dvp-common": "^1.5.2",
-    "dvp-common-lite": "^1.1.0",
+    "dvp-common-lite": "^1.3.0",
     "dvp-dbmodels": "^3.0.3",
     "dvp-healthcheck": "^1.0.6",
     "dvp-mongomodels": "^6.2.0",
-    "ioredis": "^3.2.2",
+    "ioredis": "^4.27.1",
     "ip": "^1.1.5",
     "is-json": "^2.0.1",
     "moment": "^2.22.2",
